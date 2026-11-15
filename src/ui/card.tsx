@@ -18,7 +18,7 @@ export class Card extends Component<Props> {
           {!view.shown && !view.proposalShown && '(line break)'}
         </> : <blockquote>{view.shown}</blockquote>}
       </div>
-      {view.comments.map((comment, index) => <p class="gr-comment" key={index}>{comment.text}{view.editable && <>{' '}<button type="button" class="gr-link" onClick={event => { event.stopPropagation(); session.deleteComment(view.id, index) }}>Delete</button></>}</p>)}
+      {view.comments.map((comment, index) => <p class="gr-comment" key={index}>{comment.text}{view.editable && <>{' '}<button type="button" class="gr-small" onClick={event => { event.stopPropagation(); session.deleteComment(view.id, index) }}>Delete</button></>}</p>)}
       {view.editable && <div class="gr-card-actions">
         <button type="button" onClick={event => { event.stopPropagation(); session.openForm({ id: view.id }) }}>{view.comments.length ? 'Add comment' : 'Comment'}</button>
         {proposal && <button type="button" onClick={event => { event.stopPropagation(); session.undoProposal(view.id) }}>Undo change</button>}

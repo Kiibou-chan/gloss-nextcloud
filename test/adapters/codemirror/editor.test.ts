@@ -125,13 +125,47 @@ describe('CodeMirror editor port', () => {
     expect(view.dom.querySelector('.cm-line span')).not.toBeNull()
   })
 
-  it('reports non-empty selections for the comment form', () => {
-    const select = vi.fn()
-    editor.onSelect(select)
-    view.dispatch({ selection: EditorSelection.single(1, 5) })
-    expect(select).toHaveBeenCalledWith({ from: 1, to: 5 })
-    view.dispatch({ selection: { anchor: 0 } })
-    expect(select).toHaveBeenCalledTimes(1)
+  it('reports pointer selections and explicit Ctrl+Alt+M, ignoring Ctrl+A, Shift+Arrow, search, and programmatic selections', () => {
+    const select = vi.fn(); editor.onSelect(select)
+    view.focus(); key('a', { ctrlKey: true }); key('ArrowRight', { shiftKey: true })
+    view.dispatch({ selection: EditorSelection.single(1, 5), userEvent: 'select.search' })
+    view.dispatch({ selection: EditorSelection.single(0, 5) })
+    expect(select).not.toHaveBeenCalled()
+    view.contentDOM.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+    expect(select).toHaveBeenLastCalledWith({ from: 0, to: 5 })
+    key('m', { ctrlKey: true, altKey: true })
+    expect(select).toHaveBeenCalledTimes(2)
+  })
+  it('reports refused keystrokes, paste, and input transactions without losing text silently', () => {
+    const attempt = vi.fn(); editor.onAttempt?.(attempt); editor.setEditable(false)
+    key('x'); view.contentDOM.dispatchEvent(new Event('paste', { bubbles: true }))
+    view.dispatch({ changes: { from: 0, insert: 'x' }, userEvent: 'input.type' })
+    expect(attempt).toHaveBeenCalledTimes(3)
+    expect(editor.text()).toBe('alpha beta\ngamma')
   })
 
+})
+
+it('lets a read-only editor receive keys so it can explain refused input', () => {
+  editor.setEditable(false)
+  expect(view.contentDOM.tabIndex).toBe(0)
+})
+it.each(['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Escape', 'Shift', 'Control', 'Alt', 'Meta'])('does not report editor navigation key %s as refused input', navigation => {
+  const attempt = vi.fn(); editor.onAttempt?.(attempt); editor.setEditable(false)
+  key(navigation); key(navigation, { shiftKey: true })
+  expect(attempt).not.toHaveBeenCalled()
+})
+it.each(['x', 'Enter', 'Backspace', 'Delete'])('reports editor text key %s as refused input', textKey => {
+  const attempt = vi.fn(); editor.onAttempt?.(attempt); editor.setEditable(false)
+  key(textKey)
+  expect(attempt).toHaveBeenCalled()
+})
+it.each([['Backspace', 'alphabeta'], ['Delete', 'alpha eta']])('keeps normal editable %s and undo working', (textKey, expected) => {
+  const attempt = vi.fn(); editor.onAttempt?.(attempt)
+  editor.setText('alpha beta'); view.dispatch({ selection: { anchor: 6 } })
+  key(textKey)
+  expect(editor.text()).toBe(expected)
+  expect(attempt).not.toHaveBeenCalled()
+  expect(undo(view)).toBe(true)
+  expect(editor.text()).toBe('alpha beta')
 })

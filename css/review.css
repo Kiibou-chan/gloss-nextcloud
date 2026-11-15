@@ -2,7 +2,7 @@
 	background: var(--color-main-background); border-radius: var(--border-radius-large); }
 .gr-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .gr-title { font-weight: bold; font-size: 1.2em; flex: 1 1 auto; }
-.gr-status { color: var(--color-text-maxcontrast); }
+.gr-status { flex-basis: 100%; min-height: 1.5em; color: var(--color-text-maxcontrast); }
 .gr-body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
 #gloss-review[data-view="both"] { max-width: 1800px; }
 #gloss-review[data-view="both"] .gr-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 300px; }
@@ -14,7 +14,7 @@ body[data-themes*="dark"] .gr-text { --gr-c-keyword: #c79bf0; --gr-c-string: #6c
 .gr-text .cm-editor { max-height: calc(100vh - 140px); font-size: 0.95em; }
 .gr-text .cm-editor.cm-focused { outline: 2px solid var(--color-primary-element); }
 .gr-text .cm-scroller { font-family: var(--font-face-monospace, monospace); line-height: 1.55; }
-.gr-text .cm-content { caret-color: var(--color-main-text); }
+.gr-text .cm-content { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; caret-color: var(--color-main-text); }
 .gr-text .cm-gutters { background: var(--color-background-hover); color: var(--color-text-maxcontrast); border-right: 1px solid var(--color-border); }
 .gr-text .cm-selectionBackground, .gr-text .cm-focused .cm-selectionBackground { background: var(--color-primary-element-light) !important; }
 .gr-side { position: sticky; top: 60px; display: flex; flex-direction: column; gap: 12px; }
@@ -31,8 +31,8 @@ body[data-themes*="dark"] .gr-text { --gr-c-keyword: #c79bf0; --gr-c-string: #6c
 [hidden] { display: none !important; }
 .gr-views { display: flex; gap: 0; }
 .gr-views button[aria-pressed="true"] { background: var(--color-primary-element-light); }
-.gr-pdf { display: flex; flex-direction: column; gap: 12px; align-items: center; overflow-x: auto; min-width: 0; }
-.gr-page { position: relative; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); }
+.gr-pdf { background: var(--color-background-hover); box-sizing: border-box; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--border-radius-large); display: flex; flex-direction: column; gap: 12px; align-items: center; overflow-x: auto; min-width: 0; }
+.gr-page { flex: none; border: 1px solid var(--color-border); position: relative; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); }
 .gr-page canvas { display: block; }
 .gr-pdf-marks { position: absolute; inset: 0; pointer-events: none; }
 .gr-pdf-mark { position: absolute; background: rgba(255, 200, 0, 0.35); border-bottom: 2px solid rgba(220, 150, 0, 0.9); }
@@ -47,7 +47,7 @@ body[data-themes*="dark"] .gr-text { --gr-c-keyword: #c79bf0; --gr-c-string: #6c
 .gr-card-head del { color: #c23b3b; } .gr-card-head ins { color: #2e9d4f; text-decoration: underline; }
 .gr-comment { margin: 0; }
 .gr-card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.gr-card-actions button { min-height: 28px; padding: 2px 10px; font-size: 0.9em; }
+.gr-card-actions button, .gr-items .gr-small { min-height: 28px; padding: 2px 10px; font-size: 0.9em; }
 .gr-link { background: none !important; border: none !important; padding: 0 !important; min-height: 0 !important; color: var(--color-text-maxcontrast); text-decoration: underline; font-size: 0.85em; cursor: pointer; }
 .gr-items li { cursor: pointer; }
 
@@ -81,3 +81,9 @@ body[data-themes*="dark"] .gr-card-head ins { color: #7ee29b; }
 .gr-unplaced { padding: 1rem; border-top: 1px solid var(--color-border); }
 .gr-unplaced blockquote, .gr-unplaced p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .gr-unplaced ol { padding-left: 1.25rem; }
+.gr-quote { max-height: 8em; overflow-y: auto; overflow-wrap: anywhere; }
+.gr-review-link { display: flex; flex-direction: column; gap: 4px; }
+.gr-review-link label, .gr-conflict label { display: flex; flex-direction: column; gap: 4px; }
+.gr-review-link input, .gr-conflict textarea { width: 100%; box-sizing: border-box; }
+.gr-review-link button { align-self: start; }
+.gr-overall-text p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 0; }

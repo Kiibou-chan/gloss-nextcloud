@@ -25,3 +25,15 @@ test('defers PDF marks, reuses unchanged placements, and cancels on disposal', a
   unit.deferPdf(); unit.dispose(); await f.advance(400)
   expect(f.pdf.setMarks).toHaveBeenCalledTimes(1)
 })
+
+test('announces PDF loading before show resolves and clears it afterwards', async () => {
+  const f = fakes(), s = new SessionState(f.ports)
+  let resolve!: (value: { pages: string[][] }) => void
+  f.pdf.show.mockImplementation(() => new Promise(done => { resolve = done }))
+  const head = vi.fn(), unit = new PdfMarks(s, { head })
+  const loading = unit.setView('pdf')
+  expect(s.status).toBe('Loading the PDF…')
+  expect(head).toHaveBeenCalled()
+  resolve({ pages: [['alpha']] }); await loading
+  expect(s.status).toBe('')
+})

@@ -108,7 +108,7 @@ describe('PDF view', () => {
     expect(pdf.getDocument).toHaveBeenCalledExactlyOnceWith({ url: '/synthetic.pdf' })
     expect(pdf.options.workerSrc).toBe('/apps/gloss/js/pdf.worker.js')
     expect(boxes().map(b => [b.style.width, b.style.height])).toEqual([
-      ['600px', '800px'], ['600px', '1600px'], ['600px', '800px'],
+      ['598px', `${800 * (598 / 600)}px`], ['598px', `${800 * (598 / 300)}px`], ['598px', `${800 * (598 / 600)}px`],
     ])
     expect(host.querySelector('canvas')).toBeNull()
     expect(pages.every(p => p.render.mock.calls.length === 0)).toBe(true)
@@ -132,10 +132,10 @@ describe('PDF view', () => {
     await settle()
     expect(pages[1]!.render).toHaveBeenCalledTimes(1)
     const canvas = boxes()[1]!.querySelector('canvas')!
-    expect([canvas.width, canvas.height, canvas.style.width, canvas.style.height]).toEqual([1200, 3200, '600px', '1600px'])
+    expect([canvas.width, canvas.height, canvas.style.width, canvas.style.height]).toEqual([1196, Math.floor(2 * 800 * (598 / 300)), '598px', `${800 * (598 / 300)}px`])
     expect(pages[1]!.render).toHaveBeenCalledWith(expect.objectContaining({ canvas, transform: [2, 0, 0, 2, 0, 0] }))
     expect(boxes()[1]!.querySelector('.textLayer')!.textContent).toBe('Page 2 synthetic words')
-    expect((boxes()[1]!.querySelector('.textLayer') as HTMLElement).style.getPropertyValue('--scale-factor')).toBe('2')
+    expect((boxes()[1]!.querySelector('.textLayer') as HTMLElement).style.getPropertyValue('--scale-factor')).toBe(String(598 / 300))
     expect(host.querySelectorAll('canvas')).toHaveLength(1)
   })
 
@@ -196,6 +196,25 @@ describe('PDF view', () => {
     expect(listener).toHaveBeenCalledExactlyOnceWith({ text: `Page ${index + 1}`, fraction: (index + 0.5) / 3 })
   })
 
+  it('ignores keyboard selections until an explicit comment action', async () => {
+    const view = create()
+    const listener = vi.fn()
+    view.onSelect(listener)
+    await view.show()
+    observe(0)
+    await settle()
+    const range = document.createRange()
+    range.selectNodeContents(boxes()[0]!.querySelector('span')!.firstChild!)
+    window.getSelection()!.addRange(range)
+    host.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', shiftKey: true, bubbles: true }))
+    expect(listener).not.toHaveBeenCalled()
+    expect(view.commentSelection?.()).toBe(true)
+    expect(listener).toHaveBeenCalledExactlyOnceWith({ text: 'Page 1', fraction: 0.5 / 3 })
+    listener.mockClear()
+    host.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', ctrlKey: true, altKey: true, bubbles: true }))
+    expect(listener).toHaveBeenCalledExactlyOnceWith({ text: 'Page 1', fraction: 0.5 / 3 })
+  })
+
   it('ignores empty selections and selections outside the PDF view', async () => {
     const view = create()
     const listener = vi.fn()
@@ -242,7 +261,7 @@ describe('distant canvas releasing', () => {
     expect([canvas.width, canvas.height]).toEqual([0, 0])
     expect(firstBox.querySelector('.textLayer')).toBeNull()
     expect(firstBox.querySelector('.gr-pdf-mark')).toBeNull()
-    expect(firstBox.style.height).toBe('800px')
+    expect(firstBox.style.height).toBe(`${800 * (598 / 600)}px`)
     expect(boxes()).toHaveLength(24)
     expect(pages[0]!.cleanup).toHaveBeenCalledTimes(1)
     // Page 2 is exactly ten pages from page 12, so its canvas stays.
@@ -317,4 +336,11 @@ describe('PDF disposal', () => {
     expect(destroy).toHaveBeenCalledTimes(1)
     expect(Observer.instances.flatMap(o => [...o.targets])).toEqual([])
   })
+})
+
+it('fits the page and its border inside the padded PDF pane', async () => {
+  host.style.padding = '12px'
+  const view = create(); await view.show()
+  expect(boxes()[0]!.style.width).toBe('574px')
+  view.dispose?.()
 })

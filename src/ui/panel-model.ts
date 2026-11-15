@@ -6,9 +6,10 @@ import type { UnplacedView, CardView, HeadView } from '../app/view'
 import { flushIslands } from './island'
 
 /** Only the public session commands are available to the islands and their fakes. */
-export type PanelCommands = Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges'> & Pick<ReviewSession, 'copyReviewLink'>
+export type PanelCommands = Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges'> & Pick<ReviewSession, 'copyReviewLink'> & Partial<Pick<ReviewSession, 'requestName' | 'commentSelection' | 'setCommentDraft'>>
 export interface PanelModel extends PanelPort {
   readonly unplaced: Signal<readonly UnplacedView[]>
+  readonly commentDraft: Signal<string>
   readonly overall: Signal<string>
   readonly link: Signal<ReviewLinkView | null>
   setLink(view: ReviewLinkView | null): void
@@ -23,14 +24,19 @@ export function createPanelModel(): PanelModel {
   const link = signal<ReviewLinkView | null>(null)
   const overall = signal('')
   const unplaced = signal<readonly UnplacedView[]>([])
+  const commentDraft = signal('')
   const cards = new Map<string, Signal<CardView>>()
   const order = signal<readonly string[]>([])
   const count = signal({ changes: 0, comments: 0 })
   const head = signal<HeadView>({ name: '', title: '', hasPdf: false, view: 'editor', editable: false, canSend: false, status: '', form: null })
   const conflict = signal<{ text: string; show: boolean } | null>(null)
   return {
-    link, unplaced,
+    link, unplaced, commentDraft,
     setUnplaced(items) { unplaced.value = items; flushIslands() },
+    focusName() { document.getElementById('gr-name')?.focus() },
+    setCommentDraft(text) { commentDraft.value = text; flushIslands() },
+    hasCommentDraft() { return commentDraft.value.length > 0 },
+    clearCommentDraft() { commentDraft.value = ''; flushIslands() },
     setLink(view) { link.value = view; flushIslands() },
     overall, cards, order, count, head, conflict,
     setOverallView(text) { overall.value = text; flushIslands() },

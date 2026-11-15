@@ -44,9 +44,8 @@ it('reports every input, keeps focus, and draws port updates synchronously', () 
 it.each([{ editable: false, reviewable: true }, { editable: false, reviewable: false }])('is read-only when editing is unavailable: %o', ({ editable, reviewable }) => {
   const { el } = setup(editable, reviewable)
   const box = el.querySelector<HTMLTextAreaElement>('#gr-overall')
-  expect(box).not.toBeNull()
-  expect(box!.readOnly).toBe(true)
-  expect(box!.value).toBe('Saved synthetic note')
+  expect(box).toBeNull()
+  expect(el.querySelector('.gr-overall-text')?.textContent).toBe('Overall commentSaved synthetic note')
 })
 
 it('keeps a typed space in the controlled box while disabling Send and omitting the saved item', async () => {

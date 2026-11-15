@@ -17,8 +17,11 @@ export class PdfMarks {
     if (this.s.ports.hasPdf === false) view = 'editor'
     this.s.view = view; this.s.ports.store.setView(view); this.actions.head()
     if (view === 'editor') { this.cancelPdf?.(); this.pdfScheduledSignature = null; return }
-    this.pdfLoading ??= this.s.ports.pdf.show().then(({ pages }) => { this.pdfIndex = pdfKey(pages) })
-    try { await this.pdfLoading; if (this.s.status === 'Could not load the PDF.') { this.s.status = ''; this.actions.head() }; this.deferPdf() }
+    if (!this.pdfLoading) {
+      this.s.status = 'Loading the PDF…'; this.actions.head()
+      this.pdfLoading = this.s.ports.pdf.show().then(({ pages }) => { this.pdfIndex = pdfKey(pages) })
+    }
+    try { await this.pdfLoading; if (['Loading the PDF…', 'Could not load the PDF.'].includes(this.s.status)) { this.s.status = ''; this.actions.head() }; this.deferPdf() }
     catch {
       this.pdfLoading = null
       if (this.s.disposed) return

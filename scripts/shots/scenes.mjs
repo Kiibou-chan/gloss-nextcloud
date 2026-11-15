@@ -30,7 +30,7 @@ async function find(page, word) {
 
 async function comment(page, word) {
   await find(page, word);
-  await page.locator('#gr-text').dispatchEvent('mouseup');
+  await content(page).dispatchEvent('mouseup');
   await expect(page.getByRole('textbox', { name: 'Comment', exact: true })).toBeVisible();
   await expect(page.locator('.gr-form blockquote')).toHaveText(word);
   await page.getByRole('textbox', { name: 'Comment', exact: true }).fill('Please clarify this synthetic observation.');

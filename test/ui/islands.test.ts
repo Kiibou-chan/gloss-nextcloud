@@ -59,7 +59,7 @@ describe('review islands', () => {
     click(button(a, 'Comment')); expect(session.openForm).toHaveBeenCalledWith({ id: 'a' })
     click(button(a, 'Undo change')); expect(session.undoProposal).toHaveBeenCalledWith('a')
     click(button(b, 'Add comment')); expect(session.openForm).toHaveBeenCalledWith({ id: 'b' })
-    click(b.querySelector('button.gr-link')); expect(session.deleteComment).toHaveBeenCalledWith('b', 0)
+    click(b.querySelector('button.gr-small')); expect(session.deleteComment).toHaveBeenCalledWith('b', 0)
     expect(session.focusItem).not.toHaveBeenCalled(); expect(button(b, 'Undo change')).toBeNull()
   })
   it('renders insertions, deletions, line breaks, and read-only cards', () => {
@@ -98,7 +98,8 @@ describe('review islands', () => {
     act(() => { el.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })) })
     expect(session.commentOn).toHaveBeenCalledWith(form.target, 'Synthetic note')
     act(() => model.setHead(head({ form: { target: { id: 'a' }, quote: '', focus: true } })))
-    expect(document.activeElement).toBe(textarea); expect(textarea.value).toBe(''); expect(el.querySelector('#gr-quote')?.textContent).toBe('(new words)')
+    expect(document.activeElement).toBe(textarea); expect(textarea.value).toBe('  Synthetic note  ')
+    act(() => model.clearCommentDraft?.()); expect(el.querySelector('#gr-quote')?.textContent).toBe('(new words)')
     act(() => { el.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })) })
     expect(session.commentOn).toHaveBeenCalledTimes(1)
     click(el.querySelector('#gr-cancel')); expect(session.cancelForm).toHaveBeenCalledOnce()

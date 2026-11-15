@@ -3,6 +3,8 @@ import type { Change } from '../domain/review/model'
 import type { UnplacedView, CardView, DeletedWords, EditorMark, HeadView, ViewMode } from './view'
 export type { Change } from '../domain/review/model'
 export interface EditorPort {
+  onAttempt?(listener: () => void): void | (() => void)
+  selection?(): { from: number; to: number }
   dispose?(): void
   setText(text: string): void
   text(): string
@@ -14,6 +16,7 @@ export interface EditorPort {
   onSelect(listener: (range: { from: number; to: number }) => void): void | (() => void)
 }
 export interface PdfPort {
+  commentSelection?(): boolean
   dispose?(): void
   show(): Promise<{ pages: readonly (readonly string[])[] }>
   setMarks(placements: readonly PdfPlacement[]): void
@@ -42,12 +45,17 @@ export interface BackupStore {
   view(): ViewMode | null
   setView(v: ViewMode): void
 }
-export interface Clock { now(): string }
+export interface CommentDraftStore { read(key: string): string | null; write(key: string, value: string): void; clear(key: string): void }
+export interface Clock { now(): string; local?(at: string): string }
 export interface Ids { item(): string; key(): string }
 export interface Scheduler { after(ms: number, run: () => void): () => void }
 export type ReviewLinkView = { url: string; message: string }
 export interface PanelPort {
   setUnplaced(items: readonly UnplacedView[]): void
+  setCommentDraft?(text: string): void
+  focusName?(): void
+  hasCommentDraft?(): boolean
+  clearCommentDraft?(): void
   setLink(view: ReviewLinkView | null): void
   upsertCard(view: CardView): void
   removeCard(id: string): void
@@ -58,4 +66,4 @@ export interface PanelPort {
   setConflictView(view: { text: string; show: boolean }): void
 }
 export interface Clipboard { write(text: string): Promise<boolean> }
-export type Ports = { editor: EditorPort; pdf: PdfPort; api: ReviewApi; store: BackupStore; clock: Clock; ids: Ids; scheduler: Scheduler; clipboard: Clipboard; panel: PanelPort; reviewable: boolean; hasPdf: boolean; diagnostic(message: string): void }
+export type Ports = { draftStore: CommentDraftStore; editor: EditorPort; pdf: PdfPort; api: ReviewApi; store: BackupStore; clock: Clock; ids: Ids; scheduler: Scheduler; clipboard: Clipboard; panel: PanelPort; reviewable: boolean; hasPdf: boolean; diagnostic(message: string): void }

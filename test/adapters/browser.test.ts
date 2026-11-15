@@ -47,3 +47,8 @@ it('writes to the clipboard and returns false on refusal or absence', async () =
   vi.stubGlobal('navigator', {})
   expect(await browserClipboard.write('synthetic link')).toBe(false)
 })
+
+it('formats a kept-changes timestamp with the browser locale', () => {
+  const at = '2026-11-15T20:00:00.000Z'
+  expect(browserClock.local?.(at)).toBe(new Date(at).toLocaleString())
+})

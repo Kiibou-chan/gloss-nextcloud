@@ -1,3 +1,4 @@
+import { createCommentDraftStore } from './adapters/storage/comment-draft-store'
 import { ReviewSession } from './app/session'
 import { createEditor } from './adapters/codemirror/editor'
 import { createPdfView } from './adapters/pdfjs/pdf-view'
@@ -29,7 +30,7 @@ export async function mountReview(root: HTMLElement): Promise<() => void> {
   const pdf = createPdfView(pdfSlot, { url: `${base}/pdf`, workerUrl: root.dataset.worker ?? '' })
   const model = createPanelModel()
   const session = new ReviewSession({
-    editor, pdf, api, panel: model,
+    editor, pdf, api, panel: model, draftStore: createCommentDraftStore(root.dataset.token ?? ''),
     store: createBrowserStore(root.dataset.token ?? ''), clock: browserClock,
     ids: browserIds, scheduler: browserScheduler, clipboard: browserClipboard,
     reviewable: root.dataset.reviewable === '1', hasPdf: root.dataset.hasPdf === '1',
