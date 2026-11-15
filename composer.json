@@ -1,0 +1,8 @@
+{
+  "name": "gloss/nextcloud",
+  "type": "project",
+  "require": { "php": ">=8.2" },
+  "require-dev": { "nextcloud/ocp": "dev-stable33", "phpunit/phpunit": "^11.5" },
+  "autoload": { "psr-4": { "OCA\\Gloss\\": "lib/" } },
+  "config": { "platform": { "php": "8.2.0" }, "sort-packages": true }
+}
