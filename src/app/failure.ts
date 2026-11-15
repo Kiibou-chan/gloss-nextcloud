@@ -6,12 +6,6 @@ export function classify(failure: Failure): 'retry' | 'final' | 'linkGone' | 'se
   return failure.status === 412 ? 'session' : 'final'
 }
 
-/** Preserve the existing reload policy until stored-refusal recovery changes. */
-export function restoreRefusal(failure: Failure | null | undefined): Failure | null {
-  return failure && (classify(failure) === 'linkGone' ||
-    (classify(failure) === 'final' && [400, 409, 413].includes(failure.status))) ? failure : null
-}
-
 export function refusal(failure: Failure, prefix: string): { text: string; blocks: boolean } {
   const blocks = classify(failure) === 'linkGone'
   if (failure.status === 403) return { text: 'This link is not set up for reviewing.', blocks }

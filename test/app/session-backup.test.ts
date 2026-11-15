@@ -41,16 +41,6 @@ describe('session backup and recovery', () => {
     const t = new ReviewSession(g.ports); await t.start(); await g.advance(60000); await settle()
     expect(g.api.save).toHaveBeenCalledTimes(1); expect(t.dirty).toBe(true); t.dispose()
   })
-  it.each([400, 403, 404, 409, 410, 413])('preserves a %s refusal across reload and online events', async status => {
-    const { f, s } = await ready(); f.api.save.mockResolvedValue({ status, error: status === 409 ? 'full' : 'refused' })
-    f.editor.replace(edit); await f.advance(5000); await settle()
-    const sentence = f.head().status, backup = f.store.read(key)!; s.dispose()
-    const g = fakes(); g.store.remember(key); g.store.write(key, backup)
-    const t = new ReviewSession(g.ports); await t.start(); t.online(); t.pagehide()
-    await g.advance(60000); await settle()
-    expect(g.api.save).not.toHaveBeenCalled(); expect(g.head().status).toBe(sentence)
-    expect(g.editor.text()).toBe('alpha blue gamma delta'); expect(t.dirty).toBe(true); t.dispose()
-  })
   it('writes pending before keepalive; a landed page-close save reloads as Saved without conflict', async () => {
     const { f, s } = await ready(); let body = ''
     f.api.save.mockImplementation(async (_key, incoming) => { expect(f.store.read(key)?.pending?.body).toBe(incoming); body = incoming; return { revision: 1 } })
@@ -60,12 +50,12 @@ describe('session backup and recovery', () => {
     const t = new ReviewSession(g.ports); await t.start(); await settle()
     expect(g.head().status).toBe('Saved'); expect(g.store.keepConflict).not.toHaveBeenCalled(); expect(g.editor.text()).toBe('alpha blue gamma delta')
   })
-  it('sends nothing on pagehide during an in-flight save; reload resends its body and lands by row 4', async () => {
+  it('duplicates the in-flight save on pagehide; reload opens and resends its body by row 4', async () => {
     const { f, s } = await ready(); f.api.save.mockImplementation(() => new Promise(() => {})); f.editor.replace(edit); await f.advance(5000)
-    const incoming = f.api.save.mock.lastCall![1]; s.pagehide(); expect(f.api.save).toHaveBeenCalledTimes(1); const b = f.store.read(key)!; expect(b.pending?.body).toBe(incoming); s.dispose()
+    const incoming = f.api.save.mock.lastCall![1]; s.pagehide(); expect(f.api.save).toHaveBeenCalledTimes(2); const b = f.store.read(key)!; expect(b.pending?.body).toBe(incoming); s.dispose()
     const g = fakes(); g.store.remember(key); g.store.write(key, b)
     g.api.save.mockImplementation(async (_key, body, base) => { expect(body).toBe(incoming); expect(base).toBe(0); expect(JSON.parse(body).revision).toBe(1); expect(protocol[3]!.expected.written).toBe(false); return { revision: 1 } })
-    const t = new ReviewSession(g.ports); await t.start(); await settle(); expect(g.api.open).not.toHaveBeenCalled(); expect(g.api.save).toHaveBeenCalledTimes(1); expect(g.head().status).toBe('Saved')
+    const t = new ReviewSession(g.ports); await t.start(); await settle(); expect(g.api.open).toHaveBeenCalledWith(key); expect(g.api.save).toHaveBeenCalledTimes(1); expect(g.head().status).toBe('Saved')
   })
   it.each(['equal', 'pending', 'conflict'] as const)('restores by revision: %s', async mode => {
     const f = fakes(); const b = fixtureBackup(mode === 'equal' ? 2 : 1); if (mode === 'pending') b.pending = { body: fixtureBackup(2).review, revision: 1 }
@@ -77,11 +67,6 @@ describe('session backup and recovery', () => {
   it('adds the full-storage warning while still saving', async () => {
     const { f, s } = await ready(); vi.spyOn(f.store, 'write').mockImplementation(() => false as true); f.editor.replace(edit); await f.advance(5000); await settle()
     expect(f.head().status).toContain('Not backed up in this browser.'); expect(f.api.save).toHaveBeenCalledTimes(1); expect(s.dirty).toBe(false)
-  })
-  it('clears refused pending data so reload does not resend a 413', async () => {
-    const { f, s } = await ready(); f.editor.replace(edit); await f.advance(5000); await settle(); f.api.save.mockClear(); f.api.open.mockResolvedValue({ review: JSON.parse(f.store.read(key)!.review), revision: 1 }); f.api.save.mockResolvedValue({ status: 413, error: 'tooLarge' }); f.editor.replace(edit); await f.advance(5000); await settle()
-    expect(f.store.read(key)?.pending).toBeNull(); s.dispose(); const t = new ReviewSession(f.ports); await t.start(); await settle(); expect(f.api.save).toHaveBeenCalledTimes(1)
-    f.api.save.mockResolvedValue({ revision: 1 }); f.editor.replace({ from: 6, to: 10, insert: 'x' }); await f.advance(5000); await settle(); expect(f.api.save.mock.lastCall![2]).toBe(1)
   })
   it('keeps the key and edits when renaming during and before saves, and pauses for a blank name', async () => {
     const { f, s } = await ready(); f.editor.replace(edit); await s.setName('Bob'); await f.advance(5000); await settle()

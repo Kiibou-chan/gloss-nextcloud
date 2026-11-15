@@ -49,16 +49,10 @@ it('returns false on a refused write and tolerates unavailable storage', () => {
   expect(store.rememberedKey()).toBeNull()
   expect(store.view()).toBeNull()
 })
-it('reads older backups and validates the optional refusal marker', () => {
+it('I1 reads older backups and ignores every legacy refusal marker', () => {
   const store = createBrowserStore('synthetic')
-  store.write('key', backup)
-  expect(store.read('key')).toEqual(backup)
-  for (const refusal of [null, { status: 413, error: 'tooLarge' }]) {
+  for (const refusal of [undefined, null, { status: 413, error: 'tooLarge' }, true, {}, { status: '413' }]) {
     localStorage.setItem('gloss-review:synthetic:key', JSON.stringify({ ...backup, refusal }))
-    expect(store.read('key')).toEqual({ ...backup, refusal })
-  }
-  for (const refusal of [true, {}, { status: '413', error: 'tooLarge' }, { status: 413 }, { status: 0, error: 'network' }]) {
-    localStorage.setItem('gloss-review:synthetic:key', JSON.stringify({ ...backup, refusal }))
-    expect(store.read('key')).toBeNull()
+    expect(store.read('key')).toEqual(backup)
   }
 })

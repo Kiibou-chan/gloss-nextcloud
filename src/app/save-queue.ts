@@ -1,9 +1,12 @@
-import { classify, restoreRefusal } from './failure'
+import { utf8Length, reviewUploadLength } from '../domain/text/utf8'
+import { SESSION_ENDED } from './messages'
+import { classify } from './failure'
 import type { Backup, Failure, Scheduler } from './ports'
 
 type Pending = NonNullable<Backup['pending']>
 export type Outcome = { revision: number } | Failure | { idle: true }
 type Options = {
+  key?: string
   save(body: string, baseRevision: number, options: { keepalive?: boolean }): Promise<{ revision: number } | Failure>
   enabled?(): boolean
   body(revision: number): string | null
@@ -13,16 +16,6 @@ type Options = {
   revision?: number
   pending?: Pending | null
   dirty?: boolean
-  refusal?: Failure | null
-}
-
-function byteLength(text: string): number {
-  let bytes = 0
-  for (const character of text) {
-    const point = character.codePointAt(0)!
-    bytes += point < 0x80 ? 1 : point < 0x800 ? 2 : point < 0x10000 ? 3 : 4
-  }
-  return bytes
 }
 
 /** One immutable request survives retries; later edits wait for its acknowledgement. */
@@ -41,7 +34,6 @@ export class SaveQueue {
     this.revision = options.revision ?? 0
     this.pending = options.pending ?? null
     this.dirty = options.dirty ?? !!this.pending
-    this.refusal = restoreRefusal(options.refusal)
     if (this.pending && options.body(this.pending.revision + 1) !== this.pending.body) this.version++
     if (this.dirty && !this.pending && !this.refusal) this.changed()
   }
@@ -57,9 +49,17 @@ export class SaveQueue {
     if (!this.refusal && this.dirty) { this.cancel?.(); this.cancel = null; void this.flush() }
   }
   pagehide(): void {
-    if (this.disposed || this.flight || this.refusal || !this.dirty || this.options.enabled?.() === false) return
+    if (this.disposed || this.refusal || !this.dirty || this.options.enabled?.() === false) return
     const body = this.pending?.body ?? this.options.body(this.revision + 1)
-    if (body && byteLength(body) < 65_536) void this.run(true)
+    if (!body) return
+    if (!this.pending) {
+      this.pending = { body, revision: this.revision }; this.pendingVersion = this.version
+      this.options.onChange?.()
+    }
+    if (reviewUploadLength(this.options.key ?? '', body, this.pending?.revision ?? this.revision) >= 65_536) return
+    if (this.flight && this.pending) {
+      void this.options.save(this.pending.body, this.pending.revision, { keepalive: true }).catch(() => {})
+    } else void this.run(true)
   }
   flush(): Promise<Outcome> {
     if (this.disposed || this.refusal || !this.dirty || this.options.enabled?.() === false) return Promise.resolve({ idle: true })
@@ -82,7 +82,7 @@ export class SaveQueue {
     const execute = async (): Promise<Outcome> => {
       let result: { revision: number } | Failure
       try {
-        result = byteLength(pending.body) > 1_048_576 ? { status: 413, error: 'tooLarge' }
+        result = utf8Length(pending.body) > 1_048_576 ? { status: 413, error: 'tooLarge' }
           : await this.options.save(pending.body, pending.revision, keepalive ? { keepalive: true } : {})
       } catch { result = { status: 0, error: 'network' } }
       if (this.disposed) return result
@@ -93,7 +93,7 @@ export class SaveQueue {
           this.cancel = this.options.scheduler.after(delay * 1000, () => { this.cancel = null; void this.flush() })
         } else {
           this.pending = null; this.refusal = result; this.attempt = 0
-          this.options.onStatus(classify(result) === 'session' ? 'Your session ended. Reload the page to continue; your changes are kept in this browser.' : `Not ${sent ? 'sent' : 'saved'}: ${result.error}`, result)
+          this.options.onStatus(classify(result) === 'session' ? SESSION_ENDED : `Not ${sent ? 'sent' : 'saved'}: ${result.error}`, result)
         }
       } else {
         this.revision = result.revision; this.pending = null; this.attempt = 0

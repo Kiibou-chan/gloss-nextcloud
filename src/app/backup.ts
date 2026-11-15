@@ -1,8 +1,8 @@
-import { readReview } from '../domain/format/read'
+import { parseReview } from '../domain/format/read'
 import type { Backup, Ids } from './ports'
 
-export function readBackup(review: string, ids: Ids): ReturnType<typeof readReview> | null {
-  try { return readReview(JSON.parse(review), () => ids.item()) } catch { return null }
+export function readBackup(review: string, ids: Ids): ReturnType<typeof parseReview> {
+  return parseReview(review, () => ids.item())
 }
 
 export function keptText(backup: Backup, ids: Ids): string {

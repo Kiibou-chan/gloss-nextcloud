@@ -62,7 +62,7 @@ describe('review link', () => {
     f.store.remember(key)
     f.store.write(key, {
       review: JSON.stringify({ format: 1, revision: 1, name: 'Ada', draft: { file: 'draft.txt', etag: 'v1' }, sent: false, sentAt: null, updatedAt: f.clock.now(), items: [] }),
-      revision: 1, saved: true, dirty: false, pending: null, refusal: null, at: f.clock.now(),
+      revision: 1, saved: true, dirty: false, pending: null, at: f.clock.now(),
     })
     f.api.open.mockResolvedValue({ status, error: 'refused' })
     await s.start()

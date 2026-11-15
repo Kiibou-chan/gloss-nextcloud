@@ -18,10 +18,10 @@ export async function mountReview(root: HTMLElement): Promise<() => void> {
     return el
   }
   const header = slot('.gr-head'), side = slot('.gr-side'), text = slot('#gr-text'), pdfSlot = slot('#gr-pdf')
-  const requestToken = (globalThis as typeof globalThis & { OC?: { requestToken?: string } }).OC?.requestToken
+  const requestToken = (globalThis as typeof globalThis & { OC?: { requestToken?: string; webroot?: string } }).OC?.requestToken
     ?? document.head.dataset.requesttoken ?? ''
-  const base = location.pathname.replace(/\/$/, '')
-  const api = createReviewApi(base, requestToken)
+  const base = (root.dataset.base ?? location.pathname).replace(/\/$/, '')
+  const api = createReviewApi(base, requestToken, root.dataset.webroot ?? (globalThis as typeof globalThis & { OC?: { webroot?: string } }).OC?.webroot)
   const draft = await api.draft(), main = draft.files.find(file => file.file === draft.main)
   if (!main) throw new Error('The draft could not be found.')
   const language = languageOf(main.file)

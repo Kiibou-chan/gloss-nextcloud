@@ -44,17 +44,17 @@ describe('reviewable links and remembered reviews', () => {
     expect(f.editor.text()).toBe('alpha blue gamma delta'); s.commentOn({ from: 0, to: 5 }, 'Synthetic note'); await f.advance(5000)
     expect(f.api.save.mock.lastCall![2]).toBe(3)
   })
-  it('restores an unsaved backup on reload without opening an unknown server key', async () => {
+  it('opens again and restores an unsaved backup on reload', async () => {
     const f = fakes(); f.store.remember(key); f.store.write(key, backup())
     const s = new ReviewSession(f.ports); await s.start()
-    expect(f.api.open).not.toHaveBeenCalled(); expect(f.head()).toMatchObject({ name: 'Ada', editable: true })
+    expect(f.api.open).toHaveBeenCalledExactlyOnceWith(key); expect(f.head()).toMatchObject({ name: 'Ada', editable: true })
     expect(f.editor.text()).toBe('alpha blue gamma delta'); s.commentOn({ from: 0, to: 5 }, 'Synthetic note'); await f.advance(5000)
     expect(f.api.save.mock.lastCall![2]).toBe(0)
   })
-  it('starts empty on the same key when a saved review has gone', async () => {
+  it('restores the saved backup on the same key when the review file has gone', async () => {
     const f = fakes(); f.store.remember(key); f.store.write(key, backup(true))
     const s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
-    expect(f.api.open).toHaveBeenCalledExactlyOnceWith(key); expect(f.editor.text()).toBe('alpha beta gamma delta')
+    expect(f.api.open).toHaveBeenCalledExactlyOnceWith(key); expect(f.editor.text()).toBe('alpha blue gamma delta')
     f.editor.replace({ from: 6, to: 10, insert: 'blue' }); await f.advance(5000)
     expect(f.api.save.mock.lastCall![0]).toBe(key); expect(f.api.save.mock.lastCall![2]).toBe(0)
   })

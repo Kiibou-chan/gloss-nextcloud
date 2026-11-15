@@ -1,8 +1,9 @@
+import type { Item, Proposal, Quote } from '../review/model'
 /** Ported from gloss src/platform/text/logic/text.ts at 8fc93e7eb.
  * R9 differences: an empty quote without joined context is detached;
  * placeItems rejects overlapping proposals in saved order, retaining their comments.
  */
-export type Quote = { exact: string; prefix: string; suffix: string };
+export type { Quote } from '../review/model'
 
 const MAX_DISTANCE = 5000;
 
@@ -91,18 +92,7 @@ export function quoteAt(text: string, start: number, end: number): Quote {
 }
 
 
-type AnchoredRecord = {
-  id: string;
-  file: string;
-  from: number;
-  quote: Quote;
-  comments: readonly { text: string; at: string }[];
-  at: string;
-};
-type ProposalRecord = AnchoredRecord & { kind: 'proposal'; proposal: string };
-type ItemRecord = ProposalRecord | (AnchoredRecord & { kind: 'comment' })
-  | { id: string; kind: 'overall'; text: string; at: string };
-type Placed<T> = T extends ProposalRecord
+type Placed<T> = T extends Proposal
   ? T | (Omit<T, 'kind' | 'proposal'> & { kind: 'comment' }) : T;
 
 /** Half-open ranges, with an insertion conflicting at the start or inside a range.
@@ -114,8 +104,8 @@ function overlaps(a: number, aEnd: number, b: number, bEnd: number): boolean {
 }
 
 /** Place in saved order, preserving metadata and leaving the saved input untouched. */
-export function placeItems<T extends ItemRecord>(records: readonly T[], draft: string): { placed: Placed<T>[]; lost: number } {
-  const placed: ItemRecord[] = [];
+export function placeItems<T extends Item>(records: readonly T[], draft: string): { placed: Placed<T>[]; lost: number } {
+  const placed: Item[] = [];
   const proposals: { start: number; end: number }[] = [];
   let lost = 0;
   for (const record of records) {
@@ -133,7 +123,7 @@ export function placeItems<T extends ItemRecord>(records: readonly T[], draft: s
       if (proposals.some(prior => overlaps(prior.start, prior.end, range.start, range.end))) {
         lost++;
         if (record.comments.length) {
-          const { proposal: _proposal, ...comment } = refreshed as ProposalRecord;
+          const { proposal: _proposal, ...comment } = refreshed as Proposal;
           placed.push({ ...comment, kind: 'comment' });
         }
         continue;

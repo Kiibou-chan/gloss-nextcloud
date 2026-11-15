@@ -70,6 +70,8 @@ class ReviewController extends PublicShareController {
 		$draft = $this->draftLocator->locate($this->folder())?->main;
 		$response = new PublicTemplateResponse('gloss', 'review', [
 			'token' => $this->getToken(),
+			'base' => $this->urls->linkToRoute('gloss.review.page', ['token' => $this->getToken()]),
+			'webroot' => $this->urls->getWebroot(),
 			'draftName' => $draft?->getName() ?? '',
 			'hasPdf' => $this->draftLocator->pdf($this->folder()) !== null,
 			'worker' => $this->urls->linkTo('gloss', 'js/pdf.worker.js'),
@@ -122,7 +124,7 @@ class ReviewController extends PublicShareController {
 		try {
 			$stored = $this->reviewStore->open($this->requireShare(), $parsed);
 			return new DataResponse($stored === null ? ['review' => null] : [
-				'review' => json_decode($stored->content, true), 'revision' => $stored->revision,
+				'review' => json_decode($stored->content, true), 'revision' => $stored->revision, 'rawReview' => $stored->content,
 			]);
 		} catch (ReviewRefused $e) {
 			return $this->refusal($e);

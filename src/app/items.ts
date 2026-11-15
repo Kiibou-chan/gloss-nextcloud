@@ -11,9 +11,12 @@ export class SessionItems {
   constructor(private readonly s: SessionState, private readonly actions: Pick<SessionActions, 'changed' | 'editable' | 'head' | 'render'>) {}
   install(record: ReviewRecord): void {
     const placed = placeItems(record.items.filter(i => i.kind === 'overall' || i.file === this.s.file), this.s.draft)
+    const ids = new Set(placed.placed.map(i => i.id))
+    this.s.unplaced = record.items.filter(i => !ids.has(i.id))
+    this.s.ports.panel.setUnplaced(this.s.unplaced.flatMap(i => i.kind === 'overall' ? [] : [{ id: i.id, quote: i.quote.exact, comments: i.comments }]))
     this.s.record = record; this.s.review = new DraftReview(this.s.file, this.s.draft, placed.placed)
     this.s.overallDraft = record.items.find(item => item.kind === 'overall')?.text ?? ''
-    this.s.status = placed.lost ? `${placed.lost} of your earlier items no longer match the draft.` : record.sent ? 'Review sent. Thank you.' : ''
+    this.s.status = this.s.unplacedStatus || (record.sent ? 'Review sent. Thank you.' : '')
     this.s.ports.editor.setText(this.s.review.applied()); this.actions.render()
   }
   edit(changes: readonly Change[]): void {

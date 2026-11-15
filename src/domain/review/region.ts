@@ -1,15 +1,11 @@
+import { AppliedMap } from './applied-map'
 import type { Change, Proposal } from './model'
 
 export type Region = { from: number; to: number }
 
 /** Regions use the editor text before the transaction, as do its changes. */
-export function regions(applied: string, changes: readonly Change[], proposals: readonly Proposal[]): Region[] {
-  let delta = 0
-  const spans = [...proposals].sort((a, b) => a.from - b.from).map(p => {
-    const from = p.from + delta
-    delta += p.proposal.length - p.quote.exact.length
-    return { from, to: from + p.proposal.length }
-  })
+export function regions(applied: string, changes: readonly Change[], proposals: readonly Proposal[] | AppliedMap): Region[] {
+  const spans = (proposals instanceof AppliedMap ? proposals : new AppliedMap(proposals)).spans().map(e => ({ from: e.start, to: e.appliedEnd }))
   const out: Region[] = []
   for (const change of [...changes].sort((a, b) => a.from - b.from)) {
     const newline = applied.indexOf('\n', change.to)

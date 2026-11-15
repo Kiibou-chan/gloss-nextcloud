@@ -36,10 +36,10 @@ describe('SaveQueue', () => {
     expect(x.q.pending).toBeNull(); expect(x.q.dirty).toBe(true); await x.f.advance(60000); x.q.online(); await settle(); expect(x.save).toHaveBeenCalledTimes(1)
     x.change('short'); await x.q.flush(); expect(x.save.mock.lastCall![1]).toBe(0); expect(x.q.dirty).toBe(false)
   })
-  it('sends keepalive only below 64 KiB and never beside an in-flight save', async () => {
+  it('sends keepalive below 64 KiB, including a duplicate beside an in-flight save', async () => {
     const x = setup(); x.change('small'); x.q.pagehide(); await settle(); expect(x.save.mock.lastCall![2]).toEqual({ keepalive: true })
     x.change('ü'.repeat(40000)); x.q.pagehide(); await settle(); expect(x.save).toHaveBeenCalledTimes(1)
-    const y = setup(); y.save.mockImplementation(() => new Promise(() => {})); y.change('a'); void y.q.flush(); y.q.pagehide(); expect(y.save).toHaveBeenCalledTimes(1)
+    const y = setup(); y.save.mockImplementation(() => new Promise(() => {})); y.change('a'); void y.q.flush(); y.q.pagehide(); expect(y.save).toHaveBeenCalledTimes(2)
   })
   it.each(protocol.filter(row => row.description.startsWith('A lost')))('recovers $description from the shared protocol table', async row => {
     const initial = protocol.find(r => r.request.review === row.request.review && r.expected.written)!
@@ -59,7 +59,7 @@ describe('SaveQueue', () => {
     try {
       const f = fakes(); const statuses: string[] = []; const api = createReviewApi('/index.php/apps/gloss/r/synthetic', 'synthetic-old')
       const q = new SaveQueue({ save: (body, base) => api.save('Abcdef1234567890', body, base), body: () => '{}', scheduler: f.scheduler, onStatus: s => statuses.push(s) })
-      q.changed(); await q.flush(); expect(fetcher.mock.calls[1]![0]).toBe('/index.php/csrftoken'); expect(fetcher.mock.calls[1]![1].method).toBe('GET')
+      q.changed(); await q.flush(); expect(fetcher.mock.calls[1]![0]).toBe('/csrftoken'); expect(fetcher.mock.calls[1]![1].method).toBe('GET')
       expect(fetcher.mock.calls[2]![1].headers).toEqual({ requesttoken: 'synthetic-fresh' }); await f.advance(60000); expect(fetcher).toHaveBeenCalledTimes(3)
       expect(statuses.at(-1)).toBe(twice ? 'Your session ended. Reload the page to continue; your changes are kept in this browser.' : 'Saved')
     } finally { vi.unstubAllGlobals() }

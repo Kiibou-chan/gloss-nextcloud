@@ -3,6 +3,7 @@ import type { ReadResult, ReviewRecord, ReviewItem } from './record'
 function object(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
+function required(value: Record<string, unknown>, allowed: string[]): boolean { return allowed.every(key => key in value) }
 function keys(value: Record<string, unknown>, allowed: string[]): boolean {
   return Object.keys(value).every(key => allowed.includes(key)) && allowed.every(key => key in value)
 }
@@ -38,15 +39,15 @@ export function calendarError(json: Record<string, unknown>): string | undefined
 
 function item(value: unknown): value is ReviewItem {
   if (!object(value) || typeof value.id !== 'string' || !/^[a-z0-9]{10}$/.test(value.id) || !time(value.at)) return false
-  if (value.kind === 'overall') return keys(value, ['id', 'kind', 'text', 'at']) && typeof value.text === 'string'
+  if (value.kind === 'overall') return required(value, ['id', 'kind', 'text', 'at']) && typeof value.text === 'string'
   if (value.kind !== 'proposal' && value.kind !== 'comment') return false
-  if (!keys(value, ['id', 'kind', 'file', 'from', 'quote', 'comments', 'at', ...(value.kind === 'proposal' ? ['proposal'] : [])])) return false
+  if (!required(value, ['id', 'kind', 'file', 'from', 'quote', 'comments', 'at', ...(value.kind === 'proposal' ? ['proposal'] : [])])) return false
   if (typeof value.file !== 'string' || !Number.isInteger(value.from) || (value.from as number) < 0) return false
-  if (!object(value.quote) || !keys(value.quote, ['exact', 'prefix', 'suffix'])) return false
+  if (!object(value.quote) || !required(value.quote, ['exact', 'prefix', 'suffix'])) return false
   const quote = value.quote
   if (typeof quote.exact !== 'string' || typeof quote.prefix !== 'string' || typeof quote.suffix !== 'string' || [...quote.prefix].length > 32 || [...quote.suffix].length > 32) return false
   if (!Array.isArray(value.comments) || (value.kind === 'comment' && value.comments.length === 0)) return false
-  if (!value.comments.every(c => object(c) && keys(c, ['text', 'at']) && typeof c.text === 'string' && time(c.at))) return false
+  if (!value.comments.every(c => object(c) && required(c, ['text', 'at']) && typeof c.text === 'string' && time(c.at))) return false
   return value.kind !== 'proposal' || typeof value.proposal === 'string'
 }
 

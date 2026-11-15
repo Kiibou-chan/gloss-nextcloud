@@ -31,6 +31,8 @@ export class AppliedMap {
     this.nonempty = this.entries.filter(e => e.item.proposal.length > 0)
   }
 
+  spans(): readonly Readonly<Entry>[] { return this.entries }
+
   toApplied(p: number): number {
     const i = first(this.entries, e => e.end >= p)
     const e = this.entries[i]

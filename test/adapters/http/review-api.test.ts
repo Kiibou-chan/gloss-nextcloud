@@ -28,7 +28,7 @@ describe('review HTTP adapter', () => {
     const { api, fetcher } = setup()
     const review = { name: 'Synthetic Reviewer', items: [] }
     fetcher.mockResolvedValueOnce(reply({ review, revision: 7 }))
-    expect(await api.open('a+b')).toEqual({ review, revision: 7 })
+    expect(await api.open('a+b')).toEqual({ review, revision: 7, rawReview: JSON.stringify(review) })
     expect(fetcher).toHaveBeenCalledWith(base + '/review/open', expect.objectContaining({ method: 'POST', body: new URLSearchParams({ key: 'a+b' }), headers: { requesttoken: 'initial-token' } }))
   })
   it('posts the exact review bytes, key, and baseRevision', async () => {
@@ -74,7 +74,7 @@ describe('review HTTP adapter', () => {
       fetcher.mockResolvedValueOnce(reply({}, 412)).mockResolvedValueOnce(reply({ token: 'fresh-token' })).mockResolvedValueOnce(reply(method === 'draft' ? draft : { saved: true }))
       await call(api)
       expect(fetcher).toHaveBeenCalledTimes(3)
-      expect(fetcher.mock.calls[1]?.[0]).toBe('/index.php/csrftoken')
+      expect(fetcher.mock.calls[1]?.[0]).toBe('/csrftoken')
       expect(fetcher.mock.calls[1]?.[1]?.method ?? 'GET').toBe('GET')
       const first = fetcher.mock.calls[0]!
       const retried = fetcher.mock.calls[2]!
