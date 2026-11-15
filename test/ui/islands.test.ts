@@ -150,3 +150,12 @@ describe('review islands', () => {
     expect(el.childNodes.length).toBe(0); expect(panel.childNodes.length).toBe(0)
   })
 })
+
+
+it('skips a name change when the trimmed name is unchanged', () => {
+  const model = createPanelModel(), session = commands(), el = slot()
+  act(() => { model.setHead(head()); dispose.push(mountHead(el, model, session)) })
+  const name = el.querySelector<HTMLInputElement>('#gr-name')!
+  act(() => { name.value = '  Ada  '; name.dispatchEvent(new Event('change', { bubbles: true })) })
+  expect(session.setName).not.toHaveBeenCalled()
+})

@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ReviewSession } from '../../../src/app/session'
+import { fakes } from '../../app/fakes'
 import { createReviewApi } from '../../../src/adapters/http/review-api'
 
 const base = '/index.php/apps/gloss/r/synthetic'
 const ended = 'Your session ended. Reload the page to continue; your changes are kept in this browser.'
 const draft = { main: 'draft.typ', files: [{ file: 'draft.typ', text: 'Synthetic draft.', etag: 'etag' }] }
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
 function setup() {
   const fetcher = vi.fn<typeof fetch>()
@@ -91,5 +93,42 @@ describe('review HTTP adapter', () => {
     fetcher.mockResolvedValueOnce(reply({}, 412)).mockResolvedValueOnce(reply({}, 412))
     expect(await api.save('key', '{}', 0)).toEqual({ status: 412, error: ended })
     expect(fetcher).toHaveBeenCalledTimes(2)
+  })
+})
+
+
+describe('save request lifetime', () => {
+  it('passes keepalive and propagates the caller abort signal to fetch', async () => {
+    const { api, fetcher } = setup(); const controller = new AbortController()
+    fetcher.mockImplementation(() => new Promise(() => {}))
+    const saving = api.save('key', '{}', 0, { keepalive: true, signal: controller.signal })
+    expect(fetcher.mock.calls[0]![1]?.keepalive).toBe(true)
+    const signal = fetcher.mock.calls[0]![1]?.signal
+    expect(signal?.aborted).toBe(false); controller.abort()
+    expect(signal?.aborted).toBe(true)
+    expect(await saving).toEqual({ status: 0, error: 'network' })
+  })
+  it('times out a hung save after 30 seconds as a network failure', async () => {
+    vi.useFakeTimers(); const { api, fetcher } = setup()
+    fetcher.mockImplementation(() => new Promise(() => {}))
+    let result: unknown; const saving = api.save('key', '{}', 0).then(value => { result = value })
+    await vi.advanceTimersByTimeAsync(29_999); expect(result).toBeUndefined()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(result).toEqual({ status: 0, error: 'network' })
+    expect(fetcher.mock.calls[0]![1]?.signal?.aborted).toBe(true)
+    await saving; expect(vi.getTimerCount()).toBe(0)
+  })
+  it('clears pending and resolves Send after hung saves time out', async () => {
+    vi.useFakeTimers(); const { api, fetcher } = setup(); const f = fakes()
+    fetcher.mockImplementation(() => new Promise(() => {}))
+    const session = new ReviewSession({ ...f.ports, api: { ...f.api, save: api.save } })
+    await session.start(); await session.setName('Ada')
+    f.editor.replace({ from: 6, to: 10, insert: 'blue' }); await f.advance(600)
+    let resolved = false; const sending = session.send().then(() => { resolved = true })
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(resolved).toBe(true); expect(f.head()).toMatchObject({ editable: true, status: 'Not sent: network' })
+    await sending
+    fetcher.mockResolvedValue(reply({ saved: true })); await session.send()
+    expect(f.head().status).toBe('Review sent. Thank you.'); session.dispose()
   })
 })

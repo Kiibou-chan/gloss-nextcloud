@@ -6,7 +6,8 @@ module.exports = {
     { name: 'adapters-allowed-layers', severity: 'error', from: { path: '^src/adapters/' }, to: { path: '^src/', pathNot: '^src/(adapters|app|domain)/' } },
     { name: 'ui-no-adapters', severity: 'error', from: { path: '^src/ui/' }, to: { path: '^src/adapters/' } },
     { name: 'ui-allowed-layers', severity: 'error', from: { path: '^src/ui/' }, to: { pathNot: '^(src/(ui|app|domain)/|node_modules/(preact|@preact/signals)/|preact(?:/|$)|@preact/signals(?:/|$))' } },
-    { name: 'main-is-wiring', severity: 'error', from: {}, to: { path: '^src/main\\.ts$' } },
+    // Only the wiring test imports the page entry point.
+    { name: 'main-is-wiring', severity: 'error', from: { pathNot: '^test/main\\.test\\.ts$' }, to: { path: '^src/main\\.ts$' } },
     { name: 'no-cycles', severity: 'error', from: {}, to: { circular: true } },
     { name: 'no-unresolved', severity: 'error', from: {}, to: { couldNotResolve: true } },
   ],

@@ -61,19 +61,16 @@ class ReviewController extends PublicShareController {
 	#[PublicPage]
 	#[NoCSRFRequired]
 	public function page(): PublicTemplateResponse {
-		Util::addScript('gloss', 'vendor/pdf.min');
-		Util::addScript('gloss', 'typst-view');
-		Util::addScript('gloss', 'pdf-view');
-		Util::addScript('gloss', 'diff');
-		Util::addScript('gloss', 'vendor/editor.bundle');
-		Util::addScript('gloss', 'review');
+		Util::addScript('gloss', 'gloss-review');
 		Util::addStyle('gloss', 'review');
+		Util::addStyle('gloss', 'pdf-text-layer');
 		$draft = $this->draftLocator->locate($this->folder())?->main;
 		$response = new PublicTemplateResponse('gloss', 'review', [
 			'token' => $this->getToken(),
 			'draftName' => $draft?->getName() ?? '',
 			'hasPdf' => $this->draftLocator->pdf($this->folder()) !== null,
-			'worker' => $this->urls->linkTo('gloss', 'js/vendor/pdf.worker.min.js'),
+			'worker' => $this->urls->linkTo('gloss', 'js/pdf.worker.js'),
+			'reviewable' => true,
 		]);
 		$csp = new ContentSecurityPolicy();
 		$csp->addAllowedWorkerSrcDomain("'self'");

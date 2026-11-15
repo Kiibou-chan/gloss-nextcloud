@@ -20,6 +20,8 @@ type Page = {
 
 /** The host is the PDF scroll container; matching uses cached text, never the DOM. */
 export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string; workerUrl: string }): PdfPort {
+  let disposed = false
+  let task: ReturnType<typeof getDocument> | undefined
   let loading: ReturnType<PdfPort['show']> | undefined
   let pages: Page[] = []
   let placements: readonly PdfPlacement[] = []
@@ -90,6 +92,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
   }
 
   function draw(page: Page): Promise<void> {
+    if (disposed) return Promise.resolve()
     if (page.drawing) return page.drawing
     const generation = ++page.generation
     page.drawing = (async () => {
@@ -131,12 +134,14 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
 
   async function load(): ReturnType<PdfPort['show']> {
     GlobalWorkerOptions.workerSrc = workerUrl
-    const task = getDocument({ url })
+    task = getDocument({ url })
     const doc = await task.promise
+    if (disposed) return { pages: [] }
     const width = el.clientWidth || 900
     const next: Page[] = []
     for (let number = 1; number <= doc.numPages; number++) {
       const pdf = await doc.getPage(number)
+      if (disposed) return { pages: [] }
       const base = pdf.getViewport({ scale: 1 })
       const viewport = pdf.getViewport({ scale: width / base.width })
       const box = document.createElement('div')
@@ -147,7 +152,9 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
       const marks = document.createElement('div')
       marks.className = 'gr-pdf-marks'
       box.append(marks)
-      next.push({ number, pdf, viewport, content: await pdf.getTextContent(), box, marks, generation: 0 })
+      const content = await pdf.getTextContent()
+      if (disposed) return { pages: [] }
+      next.push({ number, pdf, viewport, content, box, marks, generation: 0 })
     }
     pages = next
     el.replaceChildren(...pages.map(page => page.box))
@@ -174,6 +181,12 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
     return { pages: pages.map(page => page.content.items.flatMap(item => 'str' in item ? [item.str] : [])) }
   }
 
+  function destroyTask() {
+    const current = task
+    task = undefined
+    if (current) void current.destroy().catch(error => console.error('Could not destroy PDF document', error))
+  }
+
   function reportSelection() {
     const selection = window.getSelection()
     if (!selection || selection.isCollapsed || !selection.anchorNode || !selection.focusNode) return
@@ -190,11 +203,14 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
 
   return {
     show() {
+      if (disposed) return Promise.resolve({ pages: [] })
       loading ??= load().catch(error => {
         observer?.disconnect()
         viewportObserver?.disconnect()
         visible.clear()
         loading = undefined
+        destroyTask()
+        if (disposed) return { pages: [] }
         throw error
       })
       return loading
@@ -210,6 +226,15 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
       const mark = [...page.marks.children].find(child => (child as HTMLElement).dataset.id === id)
       ;(mark ?? page.box).scrollIntoView({ block: 'center', behavior: 'smooth' })
     },
-    onSelect(listener) { selected = listener },
+    dispose() {
+      if (disposed) return
+      disposed = true
+      destroyTask()
+      observer?.disconnect(); viewportObserver?.disconnect()
+      el.removeEventListener('mouseup', reportSelection); el.removeEventListener('keyup', reportSelection)
+      selected = undefined
+      for (const page of pages) release(page)
+    },
+    onSelect(listener) { selected = listener; return () => { if (selected === listener) selected = undefined } },
   }
 }

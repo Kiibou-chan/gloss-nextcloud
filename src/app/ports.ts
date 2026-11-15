@@ -3,26 +3,33 @@ import type { Change } from '../domain/review/model'
 import type { CardView, DeletedWords, EditorMark, HeadView, ViewMode } from './view'
 export type { Change } from '../domain/review/model'
 export interface EditorPort {
+  dispose?(): void
   setText(text: string): void
   text(): string
   replace(change: Change): void
   setMarks(marks: readonly EditorMark[], deleted: readonly DeletedWords[]): void
   setEditable(on: boolean): void
   scrollTo(pos: number): void
-  onEdit(listener: (changes: readonly Change[]) => void): void
-  onSelect(listener: (range: { from: number; to: number }) => void): void
+  onEdit(listener: (changes: readonly Change[]) => void): void | (() => void)
+  onSelect(listener: (range: { from: number; to: number }) => void): void | (() => void)
 }
 export interface PdfPort {
+  dispose?(): void
   show(): Promise<{ pages: readonly (readonly string[])[] }>
   setMarks(placements: readonly PdfPlacement[]): void
   scrollToMark(id: string): void
-  onSelect(listener: (s: { text: string; fraction: number }) => void): void
+  onSelect(listener: (s: { text: string; fraction: number }) => void): void | (() => void)
 }
 export type Failure = { status: number; error: string }
+export interface CancelSignal {
+  readonly aborted: boolean
+  addEventListener(type: 'abort', listener: () => void, options?: { once?: boolean }): void
+  removeEventListener(type: 'abort', listener: () => void): void
+}
 export interface ReviewApi {
   draft(): Promise<{ main: string; files: readonly { file: string; text: string; etag: string }[] }>
   open(key: string): Promise<{ review: unknown; revision: number } | { review: null } | Failure>
-  save(key: string, body: string, baseRevision: number): Promise<{ revision: number } | Failure>
+  save(key: string, body: string, baseRevision: number, options?: { keepalive?: boolean; signal?: CancelSignal }): Promise<{ revision: number } | Failure>
 }
 export type Backup = { review: string; pending: { body: string; revision: number } | null; revision: number; saved: boolean; dirty: boolean; at: string }
 export interface BackupStore {
