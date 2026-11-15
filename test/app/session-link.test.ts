@@ -47,4 +47,47 @@ describe('review link', () => {
     expect(f.store.rememberedKey()).toBe(key)
     expect(setLink.mock.lastCall?.[0]).toBeNull()
   })
+  it.each([403, 404, 410])('hides the confirmed link after a save is refused with %s (P2)', async status => {
+    const { f, s, setLink } = setup()
+    await s.start(); await s.setName('Ada')
+    s.setOverall('Synthetic note'); await f.advance(5000)
+    expect(setLink.mock.lastCall?.[0]?.url).toContain(`#${key}`)
+    f.api.save.mockResolvedValueOnce({ status, error: 'refused' })
+    s.setOverall('Revised synthetic note'); await f.advance(5000)
+    expect(f.head().editable).toBe(false)
+    expect(setLink.mock.lastCall?.[0]).toBeNull()
+  })
+  it.each([403, 404, 410].flatMap(status => [false, true].map(fragment => ({ status, fragment }))))('hides a saved backup link when open is refused: %o', async ({ status, fragment }) => {
+    const { f, s, setLink } = setup(fragment ? `#${key}` : '')
+    f.store.remember(key)
+    f.store.write(key, {
+      review: JSON.stringify({ format: 1, revision: 1, name: 'Ada', draft: { file: 'draft.txt', etag: 'v1' }, sent: false, sentAt: null, updatedAt: f.clock.now(), items: [] }),
+      revision: 1, saved: true, dirty: false, pending: null, refusal: null, at: f.clock.now(),
+    })
+    f.api.open.mockResolvedValue({ status, error: 'refused' })
+    await s.start()
+    expect(f.api.open).toHaveBeenCalledWith(key)
+    expect(f.head().editable).toBe(false)
+    expect(setLink.mock.lastCall?.[0]).toBeNull()
+  })
+  it('hides the link when an opened review has an invalid format (P3)', async () => {
+    const { f, s, setLink } = setup(`#${key}`)
+    f.api.open.mockResolvedValue({ review: { format: 999 }, revision: 1 })
+    await s.start()
+    expect(f.head().status).not.toBe('')
+    expect(f.head().editable).toBe(false)
+    expect(setLink.mock.lastCall?.[0]).toBeNull()
+  })
+  it('clears the clipboard message on the next change and keeps it clear after saving', async () => {
+    const { f, s, setLink } = setup()
+    await s.start(); await s.setName('Ada')
+    s.setOverall('Synthetic note'); await f.advance(5000)
+    await s.copyReviewLink()
+    expect(setLink.mock.lastCall?.[0]?.message).toBe('Link copied.')
+    s.setOverall('Revised synthetic note')
+    expect(setLink.mock.lastCall?.[0]?.message).toBe('')
+    await f.advance(5000)
+    expect(setLink.mock.lastCall?.[0]?.message).toBe('')
+  })
+
 })

@@ -37,7 +37,12 @@ describe('overall comment', () => {
       session.setOverall(empty)
       expect(backup(f).items).toEqual([])
       expect(f.head().canSend).toBe(false)
-      expect(f.panel.setOverallView).toHaveBeenLastCalledWith('')
+      expect(f.panel.setOverallView).toHaveBeenLastCalledWith(empty)
+      await session.send()
+      expect(f.api.save).not.toHaveBeenCalled()
+      await f.advance(5000)
+      expect(JSON.parse(f.api.save.mock.lastCall![1]).items).toEqual([])
+      expect(f.panel.setOverallView).toHaveBeenLastCalledWith(empty)
     }
   })
   it('sends an overall-only review without changing the count or making cards', async () => {

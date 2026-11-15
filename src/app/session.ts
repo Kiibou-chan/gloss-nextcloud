@@ -21,6 +21,7 @@ export class ReviewSession {
   private saved = false
   private blocked = false
   private pendingName = ''
+  private overallDraft = ''
   private blankName = false
   private draft = ''
   private file = ''
@@ -140,6 +141,7 @@ export class ReviewSession {
   private install(record: ReviewRecord): void {
     const placed = placeItems(record.items.filter(i => i.kind === 'overall' || i.file === this.file), this.draft)
     this.record = record; this.review = new DraftReview(this.file, this.draft, placed.placed)
+    this.overallDraft = record.items.find(item => item.kind === 'overall')?.text ?? ''
     this.status = placed.lost ? `${placed.lost} of your earlier items no longer match the draft.` : record.sent ? 'Review sent. Thank you.' : ''
     this.ports.editor.setText(this.review.applied()); this.render()
   }
@@ -165,9 +167,9 @@ export class ReviewSession {
         }
         if (name) this.install(this.emptyRecord(name))
       } else {
-        this.saved = true
         const result = readReview(opened.review, () => this.ports.ids.item())
         if ('error' in result) { this.status = result.error; return }
+        this.saved = true
         if ('revision' in opened) result.record.revision = opened.revision
         this.install(result.record)
       }
@@ -280,7 +282,7 @@ export class ReviewSession {
 
   // F3: link visibility follows a confirmed server save or open.
   private reviewLink(): string | null {
-    return this.saved && this.key && this.page.address ? `${this.page.address.split('#')[0]}#${this.key}` : null
+    return this.saved && !this.blocked && this.record && this.key && this.page.address ? `${this.page.address.split('#')[0]}#${this.key}` : null
   }
   private publishLink(): void {
     const url = this.reviewLink()
@@ -337,6 +339,7 @@ export class ReviewSession {
   }
   private changed(): void {
     if (!this.record) return
+    this.linkMessage = ''
     this.record.updatedAt = this.ports.clock.now(); this.status = 'Saving…'; this.queue?.changed(); this.render()
     this.cancelBackup?.(); this.cancelBackup = this.ports.scheduler.after(300, () => { this.cancelBackup = null; this.backup(this.dirty); this.head() })
   }
@@ -415,10 +418,11 @@ export class ReviewSession {
   }
   /** Reserved feature seams, settled by the S7 coordinator ruling. */
   private overallText(): string {
-    return this.record?.items.find(item => item.kind === 'overall')?.text ?? ''
+    return this.overallDraft
   }
   setOverall(text: string): void {
     if (!this.editable() || !this.record || text === this.overallText()) return
+    this.overallDraft = text
     const existing = this.record.items.find(item => item.kind === 'overall')
     this.record.items = this.record.items.filter(item => item.kind !== 'overall')
     if (text.trim()) this.record.items.push({ kind: 'overall', id: existing?.id ?? this.ports.ids.item(), text, at: this.ports.clock.now() })
