@@ -33,7 +33,7 @@ describe('reviewable links and remembered reviews', () => {
     expect(ids).toHaveBeenCalledTimes(1); expect(f.store.rememberedKey()).toBe(key); expect(f.api.open).not.toHaveBeenCalled()
     f.editor.replace({ from: 6, to: 10, insert: 'blue' }); await s.setName('Ada L'); await f.advance(5000)
     expect(ids).toHaveBeenCalledTimes(1); expect(f.editor.text()).toBe('alpha blue gamma delta')
-    expect(f.api.save).toHaveBeenLastCalledWith(key, expect.any(String), 0)
+    expect(f.api.save.mock.lastCall?.slice(0, 3)).toEqual([key, expect.any(String), 0])
     expect(JSON.parse(f.api.save.mock.lastCall![1])).toMatchObject({ name: 'Ada L', revision: 1 })
   })
   it('opens a remembered saved review on load and preserves its revision', async () => {

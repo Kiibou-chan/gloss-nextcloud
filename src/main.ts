@@ -24,16 +24,17 @@ export async function mountReview(root: HTMLElement): Promise<() => void> {
   const api = createReviewApi(base, requestToken)
   const draft = await api.draft(), main = draft.files.find(file => file.file === draft.main)
   if (!main) throw new Error('The draft could not be found.')
-  const editor = createEditor(text, { text: main.text, language: languageOf(main.file), spellLanguage: spellLanguage(main.text) ?? 'en' })
+  const language = languageOf(main.file)
+  const editor = createEditor(text, { text: main.text, language, spellLanguage: spellLanguage(main.text) ?? 'en' })
   const pdf = createPdfView(pdfSlot, { url: `${base}/pdf`, workerUrl: root.dataset.worker ?? '' })
   const model = createPanelModel()
   const session = new ReviewSession({
-    editor, pdf, api: { ...api, draft: async () => draft }, panel: model,
+    editor, pdf, api, panel: model,
     store: createBrowserStore(root.dataset.token ?? ''), clock: browserClock,
     ids: browserIds, scheduler: browserScheduler, clipboard: browserClipboard,
     reviewable: root.dataset.reviewable === '1', hasPdf: root.dataset.hasPdf === '1',
     diagnostic: message => console.warn(message),
-  }, { address: location.href, fragment: location.hash })
+  }, { address: location.href, fragment: location.hash }, { ...main, language })
   const unmountHead = mountHead(header, model, session)
   const unmountPanel = mountPanel(side, model, session)
   const unsubscribe = model.head.subscribe(view => {

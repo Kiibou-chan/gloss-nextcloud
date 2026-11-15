@@ -12,7 +12,7 @@ export function fakes() {
   const backups = new Map<string, Backup>()
   const panel = {
     upsertCard: vi.fn<PanelPort['upsertCard']>(), removeCard: vi.fn<PanelPort['removeCard']>(), setOrder: vi.fn<PanelPort['setOrder']>(), setCount: vi.fn<PanelPort['setCount']>(), setHead: vi.fn<(h: HeadView) => void>(),
-    setOverallView: vi.fn(), setConflictView: vi.fn(),
+    setLink: vi.fn(), setOverallView: vi.fn(), setConflictView: vi.fn(),
   } satisfies PanelPort
   const editor = {
     setText: vi.fn((s: string) => { text = s }), text: vi.fn(() => text),
@@ -28,6 +28,6 @@ export function fakes() {
   const ids = { item: () => (++sequence).toString().padStart(10, '0'), key: () => 'Abcdef1234567890' } satisfies Ids
   const scheduler = { after: (ms: number, run: () => void) => { const t = { at: time + ms, run, cancelled: false }; timers.push(t); return () => { t.cancelled = true } } } satisfies Scheduler
   const clipboard = { write: vi.fn(async () => true) } satisfies Clipboard
-  const ports = { editor, pdf, api, store, clock, ids, scheduler, clipboard, panel, reviewable: true, diagnostic: vi.fn<(message: string) => void>() } satisfies Ports
+  const ports = { editor, pdf, api, store, clock, ids, scheduler, clipboard, panel, reviewable: true, hasPdf: true, diagnostic: vi.fn<(message: string) => void>() } satisfies Ports
   return { ...ports, ports, failure, unsubscribed: () => unsubscriptions, select: (from: number, to: number) => select({ from, to }), pdfSelect: (text: string, fraction = 0) => pdfSelect({ text, fraction }), drift: (s: string) => { text = s }, head: () => panel.setHead.mock.lastCall![0], advance: async (ms: number) => { const end = time + ms; for (;;) { const t = timers.filter(t => !t.cancelled && t.at <= end).sort((a, b) => a.at - b.at)[0]; if (!t) break; t.cancelled = true; time = t.at; t.run(); await Promise.resolve(); await Promise.resolve() } time = end } }
 }

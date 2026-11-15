@@ -49,7 +49,7 @@ describe('overall comment', () => {
     const { f, session } = await setup()
     session.setOverall('Synthetic note')
     expect(f.head().canSend).toBe(true)
-    expect(f.head().countText).toBe('0 changes, 0 comments')
+    expect(f.panel.setCount).not.toHaveBeenCalled()
     expect(f.panel.upsertCard).not.toHaveBeenCalled()
     await session.send()
     const sent = JSON.parse(f.api.save.mock.lastCall![1])
@@ -65,10 +65,10 @@ describe('overall comment', () => {
     const { f, session } = await setup()
     f.editor.replace({ from: 0, to: 5, insert: 'omega' })
     session.commentOn({ from: 11, to: 16 }, 'Synthetic passage note')
-    const count = f.head().countText
+    const count = f.panel.setCount.mock.lastCall![0]
     session.setOverall('Synthetic overall note')
-    expect(f.head().countText).toBe(count)
-    expect(count).toBe('1 change, 1 comment')
+    expect(f.panel.setCount).toHaveBeenLastCalledWith(count)
+    expect(count).toEqual({ changes: 1, comments: 1 })
     await session.send()
     expect(JSON.parse(f.api.save.mock.lastCall![1]).items.map((item: { kind: string }) => item.kind).sort()).toEqual(['comment', 'overall', 'proposal'])
   })

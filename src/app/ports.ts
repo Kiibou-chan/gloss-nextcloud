@@ -45,17 +45,16 @@ export interface BackupStore {
 export interface Clock { now(): string }
 export interface Ids { item(): string; key(): string }
 export interface Scheduler { after(ms: number, run: () => void): () => void }
-// F3: the review link has its own panel update.
 export type ReviewLinkView = { url: string; message: string }
 export interface PanelPort {
-  setLink?(view: ReviewLinkView | null): void
+  setLink(view: ReviewLinkView | null): void
   upsertCard(view: CardView): void
   removeCard(id: string): void
   setOrder(ids: readonly string[]): void
   setCount(count: { changes: number; comments: number }): void
   setHead(view: HeadView): void
-  setOverallView?(text: string): void
-  setConflictView?(view: { text: string; show: boolean }): void
+  setOverallView(text: string): void
+  setConflictView(view: { text: string; show: boolean }): void
 }
 export interface Clipboard { write(text: string): Promise<boolean> }
-export type Ports = { editor: EditorPort; pdf: PdfPort; api: ReviewApi; store: BackupStore; clock: Clock; ids: Ids; scheduler: Scheduler; clipboard: Clipboard; panel: PanelPort; reviewable: boolean; hasPdf?: boolean; diagnostic?(message: string): void }
+export type Ports = { editor: EditorPort; pdf: PdfPort; api: ReviewApi; store: BackupStore; clock: Clock; ids: Ids; scheduler: Scheduler; clipboard: Clipboard; panel: PanelPort; reviewable: boolean; hasPdf: boolean; diagnostic(message: string): void }

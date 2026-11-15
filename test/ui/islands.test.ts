@@ -11,9 +11,9 @@ import { mountHead, mountPanel } from '../../src/ui/mount'
 
 const renderOptions = options as typeof options & { __r?: (vnode: { type: unknown; props: { id?: string } }) => void }
 
-const head = (extra: Partial<HeadView> = {}): HeadView => ({ name: 'Ada', title: 'synthetic.typ', hasPdf: true, view: 'editor', editable: true, canSend: true, status: '', countText: '1 change, 1 comment', form: null, ...extra })
+const head = (extra: Partial<HeadView> = {}): HeadView => ({ name: 'Ada', title: 'synthetic.typ', hasPdf: true, view: 'editor', editable: true, canSend: true, status: '', form: null, ...extra })
 const card = (id: string, extra: Partial<CardView> = {}): CardView => ({ id, kind: 'proposal', from: 0, shown: 'old', proposalShown: 'new', comments: [], editable: true, ...extra })
-const commands = () => ({ setName: vi.fn(), setView: vi.fn(), openForm: vi.fn(), cancelForm: vi.fn(), commentOn: vi.fn(), deleteComment: vi.fn(), undoProposal: vi.fn(), focusItem: vi.fn(), send: vi.fn(), setOverall: vi.fn(), showKeptChanges: vi.fn() } satisfies Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges'>)
+const commands = () => ({ setName: vi.fn(), setView: vi.fn(), openForm: vi.fn(), cancelForm: vi.fn(), commentOn: vi.fn(), deleteComment: vi.fn(), undoProposal: vi.fn(), focusItem: vi.fn(), send: vi.fn(), setOverall: vi.fn(), showKeptChanges: vi.fn(), copyReviewLink: vi.fn() } satisfies Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges' | 'copyReviewLink'>)
 let dispose: (() => void)[] = []
 afterEach(() => { act(() => dispose.forEach(fn => fn())); dispose = []; document.body.replaceChildren() })
 function slot() { const el = document.createElement('div'); document.body.append(el); return el }

@@ -6,7 +6,7 @@ import type { CardView, HeadView } from '../app/view'
 import { flushIslands } from './island'
 
 /** Only the public session commands are available to the islands and their fakes. */
-export type PanelCommands = Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges'> & Partial<Pick<ReviewSession, 'copyReviewLink'>>
+export type PanelCommands = Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges'> & Pick<ReviewSession, 'copyReviewLink'>
 export interface PanelModel extends PanelPort {
   readonly overall: Signal<string>
   readonly link: Signal<ReviewLinkView | null>
@@ -19,13 +19,12 @@ export interface PanelModel extends PanelPort {
 }
 
 export function createPanelModel(): PanelModel {
-  // F3: link updates are independent of the cards and overall comment.
   const link = signal<ReviewLinkView | null>(null)
   const overall = signal('')
   const cards = new Map<string, Signal<CardView>>()
   const order = signal<readonly string[]>([])
   const count = signal({ changes: 0, comments: 0 })
-  const head = signal<HeadView>({ name: '', title: '', hasPdf: false, view: 'editor', editable: false, canSend: false, status: '', countText: '0 changes, 0 comments', form: null })
+  const head = signal<HeadView>({ name: '', title: '', hasPdf: false, view: 'editor', editable: false, canSend: false, status: '', form: null })
   const conflict = signal<{ text: string; show: boolean } | null>(null)
   return {
     link,

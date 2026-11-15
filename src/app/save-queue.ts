@@ -1,9 +1,10 @@
+import { classify, restoreRefusal } from './failure'
 import type { Backup, Failure, Scheduler } from './ports'
 
 type Pending = NonNullable<Backup['pending']>
 export type Outcome = { revision: number } | Failure | { idle: true }
 type Options = {
-  save(body: string, baseRevision: number, options?: { keepalive?: boolean }): Promise<{ revision: number } | Failure>
+  save(body: string, baseRevision: number, options: { keepalive?: boolean }): Promise<{ revision: number } | Failure>
   enabled?(): boolean
   body(revision: number): string | null
   scheduler: Scheduler
@@ -40,7 +41,7 @@ export class SaveQueue {
     this.revision = options.revision ?? 0
     this.pending = options.pending ?? null
     this.dirty = options.dirty ?? !!this.pending
-    this.refusal = options.refusal && [400, 403, 404, 409, 410, 413].includes(options.refusal.status) ? options.refusal : null
+    this.refusal = restoreRefusal(options.refusal)
     if (this.pending && options.body(this.pending.revision + 1) !== this.pending.body) this.version++
     if (this.dirty && !this.pending && !this.refusal) this.changed()
   }
@@ -82,17 +83,17 @@ export class SaveQueue {
       let result: { revision: number } | Failure
       try {
         result = byteLength(pending.body) > 1_048_576 ? { status: 413, error: 'tooLarge' }
-          : await (keepalive ? this.options.save(pending.body, pending.revision, { keepalive: true }) : this.options.save(pending.body, pending.revision))
+          : await this.options.save(pending.body, pending.revision, keepalive ? { keepalive: true } : {})
       } catch { result = { status: 0, error: 'network' } }
       if (this.disposed) return result
       if ('status' in result) {
-        if (result.status === 0 || result.status === 423 || result.status >= 500) {
+        if (classify(result) === 'retry') {
           const delay = [2, 5, 15][Math.min(this.attempt++, 2)]!
           this.options.onStatus(`${sent ? 'Not sent' : 'Not saved'} yet; trying again in ${delay} s`, result)
           this.cancel = this.options.scheduler.after(delay * 1000, () => { this.cancel = null; void this.flush() })
         } else {
           this.pending = null; this.refusal = result; this.attempt = 0
-          this.options.onStatus(result.status === 412 ? 'Your session ended. Reload the page to continue; your changes are kept in this browser.' : `Not ${sent ? 'sent' : 'saved'}: ${result.error}`, result)
+          this.options.onStatus(classify(result) === 'session' ? 'Your session ended. Reload the page to continue; your changes are kept in this browser.' : `Not ${sent ? 'sent' : 'saved'}: ${result.error}`, result)
         }
       } else {
         this.revision = result.revision; this.pending = null; this.attempt = 0

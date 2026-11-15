@@ -45,7 +45,7 @@ describe('ReviewSession', () => {
     expect(f.head().status).toBe('That item no longer exists, so the comment form has been closed.')
     await f.advance(5000)
     expect(f.api.save).not.toHaveBeenCalled()
-    expect(f.head().countText).toBe('0 changes, 0 comments')
+    expect(f.panel.setCount).toHaveBeenLastCalledWith({ changes: 0, comments: 0 })
   })
   it('shows raw Typst syntax in proposal cards', async () => {
     const f = fakes()
@@ -148,7 +148,7 @@ describe('ReviewSession', () => {
     const { f } = await ready(); f.editor.replace(change)
     expect(f.editor.setMarks.mock.lastCall![0]).toEqual([expect.objectContaining({ from: 6, to: 14 })])
     expect(f.editor.setMarks.mock.lastCall![1]).toEqual([expect.objectContaining({ text: 'beta' })])
-    expect(f.head().countText).toBe('1 change, 0 comments')
+    expect(f.panel.setCount).toHaveBeenLastCalledWith({ changes: 1, comments: 0 })
     f.editor.replace({ from: 21, to: 26, insert: 'last' }); f.panel.upsertCard.mockClear(); f.panel.setOrder.mockClear()
     f.editor.replace({ from: 6, to: 14, insert: 'bright' })
     expect(f.panel.upsertCard).toHaveBeenCalledTimes(1); expect(f.panel.setOrder).not.toHaveBeenCalled()
@@ -169,7 +169,7 @@ describe('ReviewSession', () => {
     s.commentOn({ id }, 'two'); expect(f.panel.upsertCard.mock.lastCall![0].comments).toHaveLength(2)
     s.commentOn({ from: 0, to: 5 }, 'first'); expect(f.panel.setOrder.mock.lastCall![0][1]).toBe(id)
     s.deleteComment(id, 0); s.deleteComment(id, 0); expect(f.panel.removeCard).toHaveBeenCalledWith(id)
-    expect(f.head().countText).toBe('0 changes, 1 comment')
+    expect(f.panel.setCount).toHaveBeenLastCalledWith({ changes: 0, comments: 1 })
   })
   it('undoes through an editor replacement and keeps proposal comments', async () => {
     const { f, s } = await ready(); f.editor.replace(change); const id = f.panel.upsertCard.mock.lastCall![0].id

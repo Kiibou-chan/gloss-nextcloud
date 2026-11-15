@@ -12,7 +12,7 @@ function setup(editable = true, reviewable = true) {
   const model = createPanelModel()
   model.setHead({ ...model.head.value, editable, reviewable })
   model.setOverallView?.('Saved synthetic note')
-  const session = { setName: vi.fn(), setView: vi.fn(), openForm: vi.fn(), cancelForm: vi.fn(), commentOn: vi.fn(), deleteComment: vi.fn(), undoProposal: vi.fn(), focusItem: vi.fn(), send: vi.fn(), setOverall: vi.fn(), showKeptChanges: vi.fn() } satisfies PanelCommands
+  const session = { setName: vi.fn(), setView: vi.fn(), openForm: vi.fn(), cancelForm: vi.fn(), commentOn: vi.fn(), deleteComment: vi.fn(), undoProposal: vi.fn(), focusItem: vi.fn(), send: vi.fn(), setOverall: vi.fn(), showKeptChanges: vi.fn(), copyReviewLink: vi.fn() } satisfies PanelCommands
   const el = document.createElement('div'); document.body.append(el)
   dispose = mountPanel(el, model, session)
   act(() => {})
