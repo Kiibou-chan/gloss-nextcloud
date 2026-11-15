@@ -18,6 +18,8 @@ function nameKey(name: string, id: string): string {
   return `${slug}-${id}`
 }
 
+function brief(text: string): string { return text.replace(/\s+/g, ' ').trim() }
+
 export class ReviewSession {
   private draft = ''
   private file = ''
@@ -50,14 +52,14 @@ export class ReviewSession {
       if (!this.editable() || !this.review || range.to <= range.from) return
       const a = this.review.fromApplied(range.from), b = this.review.fromApplied(range.to)
       const target = 'inside' in a ? { id: a.inside } : 'inside' in b ? { id: b.inside } : this.review.targetFor(a.at, b.at)
-      this.form = { target, focus: false }; this.head()
+      this.openForm(target, false)
     })
     ports.pdf.onSelect(selection => {
       if (!this.editable() || !this.source || !this.review) return
       const range = toSource(this.source, selection.text, selection.fraction)
       if (!range) this.status = 'That selection could not be placed in the draft. Select a little more, or use the editor.'
       else {
-        this.form = { target: this.review.targetFor(range.from, range.to), focus: true }
+        this.openForm(this.review.targetFor(range.from, range.to))
         ports.editor.scrollTo(this.review.toApplied(range.from))
       }
       this.head()
@@ -101,8 +103,8 @@ export class ReviewSession {
       }
       const placed = placeItems(record.items.filter(i => i.kind === 'overall' || i.file === this.file), this.draft)
       this.record = record; this.review = new DraftReview(this.file, this.draft, placed.placed)
-      this.status = placed.lost ? `${placed.lost} of your earlier items no longer match the draft.` : ''
-      this.pdfCache.clear(); this.ports.editor.setText(this.review.applied())
+      this.status = placed.lost ? `${placed.lost} of your earlier items no longer match the draft.` : record.sent ? 'Review sent. Thank you.' : ''
+      this.ports.editor.setText(this.review.applied())
     } catch { if (generation === this.generation) this.status = 'Could not load your review.' }
     finally { if (generation === this.generation) { this.loading = false; this.render() } }
   }
@@ -123,7 +125,7 @@ export class ReviewSession {
     for (const item of [...this.review.items()].sort((a, b) => ('from' in a ? a.from : 0) - ('from' in b ? b.from : 0))) {
       if (item.kind === 'overall') continue
       const from = this.review.toApplied(item.from), to = this.review.toApplied(item.from + item.quote.exact.length)
-      const card: CardView = { id: item.id, kind: item.kind, from: item.from, shown: shown(this.draft, this.ops, item.from, item.from + item.quote.exact.length), proposalShown: item.kind === 'proposal' ? shown(item.proposal, languageOf(this.file) === 'typst' ? parseTypst(item.proposal) : plainOps(item.proposal), 0, item.proposal.length) : '', comments: item.comments.map(c => ({ ...c })), editable: this.editable() }
+      const card: CardView = { id: item.id, kind: item.kind, from: item.from, shown: brief(this.draft.slice(item.from, item.from + item.quote.exact.length)), proposalShown: item.kind === 'proposal' ? brief(item.proposal) : '', comments: item.comments.map(c => ({ ...c })), editable: this.editable() }
       const signature = JSON.stringify(card)
       if (this.cards.get(item.id) !== signature) this.ports.panel.upsertCard(card)
       next.set(item.id, signature); ids.push(item.id)
@@ -147,6 +149,17 @@ export class ReviewSession {
     this.record.updatedAt = this.ports.clock.now(); this.status = 'Saving…'; this.render()
     this.cancelSave?.(); this.cancelSave = this.ports.scheduler.after(600, () => { this.cancelSave = null; void this.save() })
   }
+  openForm(target: Target, focus = true): void {
+    if (!this.editable() || !this.review) return
+    let quote: string
+    if ('id' in target) {
+      const item = this.review.items().find(i => i.id === target.id)
+      if (!item || item.kind === 'overall') return
+      quote = this.draft.slice(item.from, item.from + item.quote.exact.length)
+    } else quote = this.draft.slice(target.from, target.to)
+    this.form = { target, quote: brief(quote), focus }; this.head()
+  }
+  cancelForm(): void { this.form = null; this.head() }
   commentOn(target: Target, text: string): void {
     if (!this.editable() || !text.trim()) return
     this.review!.comment(target, text, this.ports.ids.item(), this.ports.clock.now()); this.form = null; this.changed()

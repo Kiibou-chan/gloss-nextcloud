@@ -6,6 +6,64 @@ async function ready(name = 'Ada') { const f = fakes(); const s = new ReviewSess
 const change = { from: 6, to: 10, insert: 'brighter' }
 
 describe('ReviewSession', () => {
+  it('shows raw Typst syntax in proposal cards', async () => {
+    const f = fakes()
+    f.api.draft.mockResolvedValue({ main: 'draft.typ', files: [{ file: 'draft.typ', text: '*alpha* beta', etag: 'v1' }] })
+    const s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
+    f.editor.replace({ from: 0, to: 1, insert: '_' })
+    expect(f.panel.upsertCard.mock.lastCall![0]).toMatchObject({ shown: '*', proposalShown: '_' })
+    const g = fakes()
+    g.api.draft.mockResolvedValue({ main: 'draft.txt', files: [{ file: 'draft.txt', text: 'alpha\nbeta', etag: 'v1' }] })
+    const t = new ReviewSession(g.ports); await t.start(); await t.setName('Ada')
+    g.editor.replace({ from: 5, to: 6, insert: '\n\n' })
+    expect(g.panel.upsertCard.mock.lastCall![0]).toMatchObject({ shown: '', proposalShown: '' })
+  })
+  it('normalises raw card quotes and proposal whitespace', async () => {
+    const f = fakes()
+    f.api.draft.mockResolvedValue({ main: 'draft.typ', files: [{ file: 'draft.typ', text: '*alpha*  \n beta', etag: 'v1' }] })
+    const s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
+    s.commentOn({ from: 0, to: 15 }, 'Check this')
+    expect(f.panel.upsertCard.mock.lastCall![0]).toMatchObject({ shown: '*alpha* beta', proposalShown: '' })
+    f.editor.replace({ from: 0, to: 15, insert: '_gamma_ \n delta' })
+    expect(f.panel.upsertCard.mock.lastCall![0]).toMatchObject({ shown: '*alpha* beta', proposalShown: '_gamma_ delta' })
+  })
+  it('includes the normalised raw quote in the selected form', async () => {
+    const { f } = await ready(); f.select(0, 5)
+    expect(f.head().form).toMatchObject({ quote: 'alpha', focus: false })
+    const g = fakes()
+    g.api.draft.mockResolvedValue({ main: 'draft.typ', files: [{ file: 'draft.typ', text: '*alpha* \n beta', etag: 'v1' }] })
+    const t = new ReviewSession(g.ports); await t.start(); await t.setName('Ada'); g.select(0, 14)
+    expect(g.head().form).toMatchObject({ quote: '*alpha* beta', focus: false })
+  })
+  it.each(['proposal', 'comment'])('opens the form for a %s card and adds a comment to that item', async kind => {
+    const { f, s } = await ready()
+    if (kind === 'proposal') f.editor.replace(change)
+    else s.commentOn({ from: 6, to: 10 }, 'First')
+    const id = f.panel.upsertCard.mock.lastCall![0].id
+    s.openForm({ id })
+    expect(f.head().form).toEqual({ target: { id }, quote: 'beta', focus: true })
+    s.commentOn(f.head().form!.target, 'Another')
+    expect(f.panel.upsertCard.mock.lastCall![0]).toMatchObject({ id, comments: expect.arrayContaining([expect.objectContaining({ text: 'Another' })]) })
+  })
+  it('cancels the comment form without adding an item', async () => {
+    const { f, s } = await ready(); f.select(0, 5)
+    expect(f.head().form).not.toBeNull()
+    s.cancelForm()
+    expect(f.head().form).toBeNull(); expect(f.panel.upsertCard).not.toHaveBeenCalled(); expect(f.api.save).not.toHaveBeenCalled()
+  })
+  it('clears visible PDF marks when switching to an empty reviewer', async () => {
+    const { f, s } = await ready(); await s.setView('both')
+    s.commentOn({ from: 6, to: 10 }, 'Ada note'); await f.advance(400)
+    expect(f.pdf.setMarks.mock.lastCall![0]).not.toHaveLength(0)
+    f.pdf.setMarks.mockClear(); await s.setName('Bob'); await f.advance(400)
+    expect(f.pdf.setMarks).toHaveBeenLastCalledWith([])
+  })
+  it('shows the sent confirmation when reopening a sent review', async () => {
+    const f = fakes()
+    f.api.open.mockResolvedValue({ review: { name: 'Ada', draft: 'draft.txt', sent: true, items: [] }, revision: 1 })
+    const s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
+    expect(f.head().status).toBe('Review sent. Thank you.'); expect(f.head().editable).toBe(false)
+  })
   it('waits for a name and honours reviewable', async () => {
     const f = fakes(); const s = new ReviewSession(f.ports); await s.start(); expect(f.editor.setEditable).toHaveBeenLastCalledWith(false)
     await s.setName('Ada'); expect(f.editor.setEditable).toHaveBeenLastCalledWith(true)
@@ -28,11 +86,11 @@ describe('ReviewSession', () => {
   it('maps selections to proposals and plain targets without focusing', async () => {
     const { f } = await ready(); f.editor.replace(change); f.select(7, 12)
     expect(f.head().form).toMatchObject({ target: { id: expect.any(String) }, focus: false })
-    f.select(0, 5); expect(f.head().form).toEqual({ target: { from: 0, to: 5 }, focus: false })
+    f.select(0, 5); expect(f.head().form).toEqual({ target: { from: 0, to: 5 }, quote: 'alpha', focus: false })
   })
   it('places PDF selections, focuses, scrolls, and reports misses', async () => {
     const { f } = await ready(); f.pdfSelect('beta')
-    expect(f.head().form).toEqual({ target: { from: 6, to: 10 }, focus: true }); expect(f.editor.scrollTo).toHaveBeenLastCalledWith(6)
+    expect(f.head().form).toEqual({ target: { from: 6, to: 10 }, quote: 'beta', focus: true }); expect(f.editor.scrollTo).toHaveBeenLastCalledWith(6)
     f.pdfSelect('absent'); expect(f.head().status).toBe('That selection could not be placed in the draft. Select a little more, or use the editor.')
   })
   it('adds multiple comments, removes the last note, and orders cards', async () => {
