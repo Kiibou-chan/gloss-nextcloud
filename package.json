@@ -6,7 +6,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.pure.json",
     "test": "vitest run",
     "structure": "depcruise src test --config .dependency-cruiser.cjs && knip",
-    "check": "npm run build && npm run typecheck && npm run structure && npm test"
+    "check": "npm run build && npm run typecheck && npm run structure && npm test",
+    "ci": "npm run typecheck && npm test && npm run structure && npm run build && git diff --exit-code -- js css"
   },
   "devDependencies": {
     "@codemirror/commands": "^6.11.1",
