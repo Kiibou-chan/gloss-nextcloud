@@ -57,6 +57,16 @@ describe('word diff', () => {
     expect(changes('alpha '.repeat(3000), 'beta '.repeat(3000))).toBe('tooMany')
   })
 
+  test('honours an explicit 5,000 cap for 3,000 separated edits', () => {
+    const a = 'keep '.repeat(3000)
+    const b = '!keep '.repeat(3000)
+    const result = changes(a, b, { maxEdits: 5000 })
+    expect(result).not.toBe('tooMany')
+    if (result === 'tooMany') throw new Error('Expected exact changes')
+    expect(result).toHaveLength(3000)
+    expect(result.reduceRight((text, c) => text.slice(0, c.aFrom) + b.slice(c.bFrom, c.bTo) + text.slice(c.aTo), a)).toBe(b)
+  })
+
   test('trims a long common prefix and suffix without shifting offsets', () => {
     const prefix = 'alpha beta\n'.repeat(5000)
     const suffix = '\ngamma delta'.repeat(5000)
