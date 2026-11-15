@@ -71,7 +71,7 @@ class ReviewController extends PublicShareController {
 			'draftName' => $draft?->getName() ?? '',
 			'hasPdf' => $this->draftLocator->pdf($this->folder()) !== null,
 			'worker' => $this->urls->linkTo('gloss', 'js/pdf.worker.js'),
-			'reviewable' => true,
+			'reviewable' => $this->reviewStore->isReviewable($this->requireShare()),
 		]);
 		$csp = new ContentSecurityPolicy();
 		$csp->addAllowedWorkerSrcDomain("'self'");

@@ -9,7 +9,7 @@ import { languageOf } from '../domain/source/language'
 import { shown } from '../domain/source/shown'
 import { parseTypst, plainOps } from '../domain/source/typst-parse'
 import { placeItems } from '../domain/text/quote'
-import type { Ports } from './ports'
+import type { Backup, Failure, Ports } from './ports'
 import type { CardView, HeadView, ViewMode } from './view'
 
 function brief(text: string): string { return text.replace(/\s+/g, ' ').trim() }
@@ -17,7 +17,8 @@ function brief(text: string): string { return text.replace(/\s+/g, ' ').trim() }
 export class ReviewSession {
   private disposed = false
   private listeners: (() => void)[] = []
-  private named = false
+  private saved = false
+  private blocked = false
   private pendingName = ''
   private draft = ''
   private file = ''
@@ -87,52 +88,114 @@ export class ReviewSession {
       this.review = new DraftReview(this.file, this.draft)
       this.ports.editor.setText(this.review.applied()); this.render()
       await this.setView(this.ports.store.view() ?? 'editor')
+      if (!this.ports.reviewable) { this.status = 'This link is not set up for reviewing.'; this.head(); return }
+      const remembered = this.ports.store.rememberedKey()
+      if (remembered && /^[A-Za-z0-9]{16}$/.test(remembered)) {
+        this.key = remembered
+        const backup = this.ports.store.read(remembered)
+        this.saved = backup?.saved === true
+        if (this.saved) await this.loadReview('', backup)
+        else if (backup) this.restore(backup)
+      }
     } catch { this.status = 'Could not load the draft.'; this.head() }
   }
 
   async setName(name: string): Promise<void> {
-    if (this.disposed || !this.review || this.record?.sent) return
+    if (this.disposed || !this.ports.reviewable || this.blocked || !this.review || this.record?.sent) return
     name = name.trim()
     if (name === this.record?.name) return
     if ([...name].length > 100) {
       this.status = 'Your name must be 100 characters or fewer.'
       this.head(); return
     }
-    this.cancelSave?.(); this.cancelSave = null
-    const generation = ++this.generation
+    if (this.record) {
+      if (!name) return
+      this.record.name = name; this.changed(); return
+    }
     this.pendingName = name
-    this.record = null; this.form = null
     if (!name) { this.render(); return }
-    const remembered = this.ports.store.rememberedKey()
-    this.key = !this.named && remembered && /^[A-Za-z0-9]{16}$/.test(remembered) ? remembered : this.ports.ids.key()
+    if (!this.key) {
+      const remembered = this.ports.store.rememberedKey()
+      this.key = remembered && /^[A-Za-z0-9]{16}$/.test(remembered) ? remembered : this.ports.ids.key()
+      this.saved = !!remembered && /^[A-Za-z0-9]{16}$/.test(remembered) && this.ports.store.read(this.key)?.saved === true
+    }
+    if (this.saved) await this.loadReview(name, this.ports.store.read(this.key))
+    else {
+      this.install(this.emptyRecord(name))
+      this.ports.store.remember(this.key); this.backup(false)
+    }
+  }
+
+  private emptyRecord(name: string): ReviewRecord {
+    return { revision: 0, name, draft: { file: this.file, etag: this.etag }, sent: false, sentAt: null, updatedAt: this.ports.clock.now(), items: [] }
+  }
+  private install(record: ReviewRecord): void {
+    const placed = placeItems(record.items.filter(i => i.kind === 'overall' || i.file === this.file), this.draft)
+    this.record = record; this.review = new DraftReview(this.file, this.draft, placed.placed)
+    this.status = placed.lost ? `${placed.lost} of your earlier items no longer match the draft.` : record.sent ? 'Review sent. Thank you.' : ''
+    this.ports.editor.setText(this.review.applied()); this.render()
+  }
+  private restore(backup: Backup): void {
+    let json: unknown
+    try { json = JSON.parse(backup.review) } catch { return }
+    const result = readReview(json, () => this.ports.ids.item())
+    if ('error' in result) { this.status = result.error; this.head(); return }
+    result.record.revision = backup.revision
+    this.install(result.record)
+  }
+  private async loadReview(name: string, backup: Backup | null): Promise<void> {
+    const generation = ++this.generation
     this.loading = true; this.render()
     try {
       const opened = await this.ports.api.open(this.key)
-      if (generation !== this.generation) return
-      if ('status' in opened) { this.status = `Could not load your review: ${opened.error}`; return }
-      let record: ReviewRecord = { revision: 0, name, draft: { file: this.file, etag: this.etag }, sent: false, sentAt: null, updatedAt: this.ports.clock.now(), items: [] }
-      if (opened.review !== null) {
+      if (this.disposed || generation !== this.generation) return
+      if ('status' in opened) { this.status = this.refusal(opened, 'Could not load your review: '); return }
+      if (opened.review === null) {
+        this.saved = false
+        if (!name && backup) {
+          try { const result = readReview(JSON.parse(backup.review), () => this.ports.ids.item()); if (!('error' in result)) name = result.record.name } catch { /* An invalid backup cannot supply a name. */ }
+        }
+        this.install(this.emptyRecord(name))
+      } else {
         const result = readReview(opened.review, () => this.ports.ids.item())
         if ('error' in result) { this.status = result.error; return }
-        record = result.record
-        if ('revision' in opened) record.revision = opened.revision
+        if ('revision' in opened) result.record.revision = opened.revision
+        this.install(result.record)
       }
-      const placed = placeItems(record.items.filter(i => i.kind === 'overall' || i.file === this.file), this.draft)
-      this.named = true; this.ports.store.remember(this.key)
-      this.record = record; this.review = new DraftReview(this.file, this.draft, placed.placed)
-      this.status = placed.lost ? `${placed.lost} of your earlier items no longer match the draft.` : record.sent ? 'Review sent. Thank you.' : ''
-      this.ports.editor.setText(this.review.applied())
+      this.ports.store.remember(this.key)
     } catch { if (generation === this.generation) this.status = 'Could not load your review.' }
     finally { if (generation === this.generation) { this.loading = false; this.render() } }
   }
+  // Interim S7 saving path; F2 owns timed backups and pending saves.
+  private backup(dirty: boolean): void {
+    if (!this.record || !this.review || !this.key) return
+    this.ports.store.write(this.key, {
+      review: writeReview({ ...this.record, revision: Math.max(1, this.record.revision), items: [...this.review.items(), ...this.record.items.filter(i => i.kind === 'overall')] }),
+      revision: this.record.revision, saved: this.saved, dirty, pending: null, at: this.ports.clock.now(),
+    })
+  }
+  private refusal(failure: Failure, prefix: string): string {
+    if ([403, 404, 410].includes(failure.status)) this.blocked = true
+    if (failure.status === 403) return 'This link is not set up for reviewing.'
+    if (failure.status === 404 || failure.status === 410) return 'This review link no longer works. Your changes are kept in this browser.'
+    if (failure.status === 429) return 'The server is refusing saves for now. Your changes are kept in this browser; reload the page later to try again.'
+    if (failure.status === 413) return 'Your review is over 1 MB and cannot be saved; shorten some comments.'
+    if (failure.status === 409) {
+      if (failure.error === 'conflict') return 'Your review was changed in another window or on another device. Reload the page to continue.'
+      if (failure.error === 'sent') return 'This review has already been sent.'
+      if (failure.error === 'full') return 'This link has reached its limit of 50 reviews. Please write to the person who sent you the link.'
+      if (failure.error === 'reviewsBlocked') return 'The reviews folder is blocked by a file. Please write to the person who sent you the link.'
+    }
+    return prefix + failure.error
+  }
 
-  private editable(): boolean { return !this.disposed && this.ports.reviewable && !!this.record && !this.record.sent && !this.loading }
+  private editable(): boolean { return !this.disposed && !this.blocked && this.ports.reviewable && !!this.record && !this.record.sent && !this.loading }
   private head(): void {
     if (this.disposed) return
     const editable = this.editable()
     this.ports.editor.setEditable(editable)
     const countText = `${this.count.changes} ${this.count.changes === 1 ? 'change' : 'changes'}, ${this.count.comments} ${this.count.comments === 1 ? 'comment' : 'comments'}`
-    this.ports.panel.setHead({ name: this.record?.name ?? this.pendingName, title: this.file, hasPdf: this.ports.hasPdf !== false, view: this.view, editable, canSend: editable && this.order.length > 0, status: this.status, countText, form: this.form })
+    this.ports.panel.setHead({ reviewable: this.ports.reviewable, name: this.record?.name ?? this.pendingName, title: this.file, hasPdf: this.ports.hasPdf !== false, view: this.view, editable, canSend: editable && this.order.length > 0, status: this.status, countText, form: this.form })
   }
 
   private render(): void {
@@ -165,7 +228,7 @@ export class ReviewSession {
   }
   private changed(): void {
     if (!this.record) return
-    this.record.updatedAt = this.ports.clock.now(); this.status = 'Saving…'; this.render()
+    this.record.updatedAt = this.ports.clock.now(); this.status = 'Saving…'; this.backup(true); this.render()
     this.cancelSave?.(); this.cancelSave = this.ports.scheduler.after(600, () => { this.cancelSave = null; void this.save() })
   }
   openForm(target: Target, focus = true): void {
@@ -236,7 +299,7 @@ export class ReviewSession {
     })
   }
   private async save(): Promise<void> {
-    if (this.disposed) return
+    if (this.disposed || !this.ports.reviewable || this.blocked) return
     if (this.pending) { await this.pending; return this.save() }
     if (!this.record || !this.review || !this.key) return
     const record = this.record, review = this.review, key = this.key
@@ -248,13 +311,18 @@ export class ReviewSession {
     }
     const savingSent = record.sent
     const body = writeReview({ ...record, revision: record.revision + 1, draft: { file: this.file, etag: this.etag }, items: [...review.items(), ...record.items.filter(i => i.kind === 'overall')] })
+    let bytes = 0
+    for (const character of body) {
+      const point = character.codePointAt(0)!
+      bytes += point < 0x80 ? 1 : point < 0x800 ? 2 : point < 0x10000 ? 3 : 4
+    }
     const task = async () => {
       try {
-        const result = await this.ports.api.save(key, body, record.revision)
+        const result = bytes > 1_048_576 ? await Promise.resolve({ status: 413, error: 'tooLarge' }) : await this.ports.api.save(key, body, record.revision)
         if ('status' in result) {
-          if (savingSent) { record.sent = false; record.sentAt = null; this.status = `Not sent: ${result.error}` }
-          else this.status = `Not saved: ${result.error}`
-        } else { record.revision = result.revision; this.status = savingSent ? 'Review sent. Thank you.' : record.sent ? 'Sending…' : 'Saved' }
+          if (savingSent) { record.sent = false; record.sentAt = null; this.status = this.refusal(result, 'Not sent: ') }
+          else this.status = this.refusal(result, 'Not saved: ')
+        } else { record.revision = result.revision; this.saved = true; this.backup(false); this.status = savingSent ? 'Review sent. Thank you.' : record.sent ? 'Sending…' : 'Saved' }
       } catch {
         this.status = savingSent ? 'Not sent: network' : 'Not saved: network'
         if (savingSent) { record.sent = false; record.sentAt = null }
