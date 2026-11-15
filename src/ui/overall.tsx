@@ -1,3 +1,4 @@
+import { entersText } from '../app/text-input'
 import type { PanelCommands, PanelModel } from './panel-model'
 
 export function Overall({ model, session }: { model: PanelModel; session: PanelCommands }) {
@@ -8,7 +9,8 @@ export function Overall({ model, session }: { model: PanelModel; session: PanelC
   return <div class="gr-form">
     <label for="gr-overall">Overall comment
       <textarea id="gr-overall" rows={5} value={model.overall.value} readOnly={!model.head.value.editable}
-        onKeyDown={() => { if (!editable) session.requestName?.() }}
+        onPaste={() => { if (!editable) session.requestName?.() }}
+        onKeyDown={event => { if (!editable && entersText(event)) session.requestName?.() }}
         onInput={event => { if (model.head.value.editable) session.setOverall(event.currentTarget.value) }} />
     </label>
   </div>

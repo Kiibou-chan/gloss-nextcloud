@@ -45,11 +45,13 @@ export interface BackupStore {
   view(): ViewMode | null
   setView(v: ViewMode): void
 }
+export interface CommentDraftStore { read(key: string): string | null; write(key: string, value: string): void; clear(key: string): void }
 export interface Clock { now(): string; local?(at: string): string }
 export interface Ids { item(): string; key(): string }
 export interface Scheduler { after(ms: number, run: () => void): () => void }
 export type ReviewLinkView = { url: string; message: string }
 export interface PanelPort {
+  setCommentDraft?(text: string): void
   focusName?(): void
   hasCommentDraft?(): boolean
   clearCommentDraft?(): void
@@ -63,4 +65,4 @@ export interface PanelPort {
   setConflictView(view: { text: string; show: boolean }): void
 }
 export interface Clipboard { write(text: string): Promise<boolean> }
-export type Ports = { editor: EditorPort; pdf: PdfPort; api: ReviewApi; store: BackupStore; clock: Clock; ids: Ids; scheduler: Scheduler; clipboard: Clipboard; panel: PanelPort; reviewable: boolean; hasPdf: boolean; diagnostic(message: string): void }
+export type Ports = { draftStore: CommentDraftStore; editor: EditorPort; pdf: PdfPort; api: ReviewApi; store: BackupStore; clock: Clock; ids: Ids; scheduler: Scheduler; clipboard: Clipboard; panel: PanelPort; reviewable: boolean; hasPdf: boolean; diagnostic(message: string): void }

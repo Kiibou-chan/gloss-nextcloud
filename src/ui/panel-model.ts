@@ -6,7 +6,7 @@ import type { CardView, HeadView } from '../app/view'
 import { flushIslands } from './island'
 
 /** Only the public session commands are available to the islands and their fakes. */
-export type PanelCommands = Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges'> & Pick<ReviewSession, 'copyReviewLink'> & Partial<Pick<ReviewSession, 'requestName' | 'commentSelection'>>
+export type PanelCommands = Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges'> & Pick<ReviewSession, 'copyReviewLink'> & Partial<Pick<ReviewSession, 'requestName' | 'commentSelection' | 'setCommentDraft'>>
 export interface PanelModel extends PanelPort {
   readonly commentDraft: Signal<string>
   readonly overall: Signal<string>
@@ -31,6 +31,7 @@ export function createPanelModel(): PanelModel {
   return {
     link, commentDraft,
     focusName() { document.getElementById('gr-name')?.focus() },
+    setCommentDraft(text) { commentDraft.value = text; flushIslands() },
     hasCommentDraft() { return commentDraft.value.length > 0 },
     clearCommentDraft() { commentDraft.value = ''; flushIslands() },
     setLink(view) { link.value = view; flushIslands() },

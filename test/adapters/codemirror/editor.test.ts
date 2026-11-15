@@ -150,3 +150,22 @@ it('lets a read-only editor receive keys so it can explain refused input', () =>
   editor.setEditable(false)
   expect(view.contentDOM.tabIndex).toBe(0)
 })
+it.each(['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Escape', 'Shift', 'Control', 'Alt', 'Meta'])('does not report editor navigation key %s as refused input', navigation => {
+  const attempt = vi.fn(); editor.onAttempt?.(attempt); editor.setEditable(false)
+  key(navigation); key(navigation, { shiftKey: true })
+  expect(attempt).not.toHaveBeenCalled()
+})
+it.each(['x', 'Enter', 'Backspace', 'Delete'])('reports editor text key %s as refused input', textKey => {
+  const attempt = vi.fn(); editor.onAttempt?.(attempt); editor.setEditable(false)
+  key(textKey)
+  expect(attempt).toHaveBeenCalled()
+})
+it.each([['Backspace', 'alphabeta'], ['Delete', 'alpha eta']])('keeps normal editable %s and undo working', (textKey, expected) => {
+  const attempt = vi.fn(); editor.onAttempt?.(attempt)
+  editor.setText('alpha beta'); view.dispatch({ selection: { anchor: 6 } })
+  key(textKey)
+  expect(editor.text()).toBe(expected)
+  expect(attempt).not.toHaveBeenCalled()
+  expect(undo(view)).toBe(true)
+  expect(editor.text()).toBe('alpha beta')
+})

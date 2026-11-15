@@ -1,3 +1,4 @@
+import { CommentDraft } from './comment-draft'
 import type { ReviewRecord } from '../domain/format/record'
 import type { DraftReview } from '../domain/review/draft-review'
 import type { sourceKey } from '../domain/pdf/match'
@@ -27,6 +28,7 @@ export interface SessionActions {
 
 /** Shared review data; each job owns its timers and presentation caches. */
 export class SessionState {
+  readonly commentDraft: CommentDraft
   disposed = false
   listeners: (() => void)[] = []
   saved = false
@@ -50,5 +52,5 @@ export class SessionState {
   conflictText: string | null = null
   source: ReturnType<typeof sourceKey> | null = null
   ops: ReturnType<typeof plainOps> = []
-  constructor(readonly ports: Ports, readonly page = { address: '', fragment: '' }, readonly main?: MainDraft) {}
+  constructor(readonly ports: Ports, readonly page = { address: '', fragment: '' }, readonly main?: MainDraft) { this.commentDraft = new CommentDraft(this, ports.clock) }
 }

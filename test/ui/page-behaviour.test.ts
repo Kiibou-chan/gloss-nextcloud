@@ -103,3 +103,26 @@ it('keeps an unfinished comment visible when Send is attempted', async () => {
   expect(box.value).toBe('Unfinished thought')
   expect(model.head.value.sent).toBe(false)
 })
+it.each(['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Escape', 'Shift', 'Control', 'Alt', 'Meta'])('does not request a name for Overall navigation key %s', async key => {
+  const { root, model } = await setup(false)
+  const box = root.querySelector<HTMLTextAreaElement>('#gr-overall')!
+  box.focus()
+  act(() => { box.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })) })
+  expect(model.head.value.status).toBe('Enter your name to start.')
+  expect(document.activeElement).toBe(box)
+})
+it('requests a name for an Overall paste before a name is supplied', async () => {
+  const { root, model } = await setup(false)
+  act(() => { root.querySelector('#gr-overall')!.dispatchEvent(new Event('paste', { bubbles: true })) })
+  expect(model.head.value.status).toBe('Enter your name first.')
+})
+it.each(['x', 'Enter', 'Backspace', 'Delete'])('requests a name for Overall text key %s', async key => {
+  const { root, model } = await setup(false)
+  act(() => { root.querySelector('#gr-overall')!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })) })
+  expect(model.head.value.status).toBe('Enter your name first.')
+})
+it('does not request a name for Overall Shift+Tab', async () => {
+  const { root, model } = await setup(false)
+  act(() => { root.querySelector('#gr-overall')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true })) })
+  expect(model.head.value.status).toBe('Enter your name to start.')
+})

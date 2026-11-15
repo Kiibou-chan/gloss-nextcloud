@@ -64,6 +64,9 @@ try {
     };
     await page.goto('http://gloss.invalid/r/review', { waitUntil: 'networkidle' });
     await expect(page.locator('#gr-status')).toHaveText('Enter your name to start.'); await capture('initial');
+    await page.locator('#gr-overall').focus(); await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Comment on selection', exact: true })).toBeFocused();
+    await expect(page.locator('#gr-status')).toHaveText('Enter your name to start.'); await capture('overall-tab');
     await content.click(); await page.keyboard.press('x');
     await expect(page.locator('#gr-name')).toBeFocused();
     await expect(page.locator('#gr-status')).toHaveText('Enter your name first.'); await capture('name-prompt');
@@ -76,9 +79,17 @@ try {
     await page.getByRole('button', { name: 'Comment on selection', exact: true }).click();
     await expect(page.locator('#gr-form')).toBeVisible();
     await expect(page.locator('#gr-quote')).toHaveText(/^.{200}…$/s); await capture('bounded-quote');
+    await page.locator('#gr-cancel').click(); await content.dispatchEvent('mouseup');
+    await expect(page.locator('#gr-form')).toBeVisible();
     await page.locator('#gr-comment').fill('Half-typed synthetic comment, retained while checking another passage.');
     await content.click(); await content.press('Control+a'); await content.dispatchEvent('mouseup');
     await expect(page.locator('#gr-comment')).toHaveValue('Half-typed synthetic comment, retained while checking another passage.'); await capture('draft-retained');
+    await content.press('ArrowRight'); await page.keyboard.type(' Synthetic editor addition.');
+    await expect(page.locator('#gr-status')).toHaveText('Saved', { timeout: 20_000 });
+    await page.reload({ waitUntil: 'networkidle' });
+    await expect(page.locator('#gr-form')).toBeVisible();
+    await expect(page.locator('#gr-comment')).toHaveValue('Half-typed synthetic comment, retained while checking another passage.');
+    await expect(page.locator('#gr-quote')).toHaveText(/^.{200}…$/s); await capture('draft-reloaded');
     await page.locator('#gr-overall').fill('Synthetic overall comment, shown as plain text after sending.');
     await page.getByRole('button', { name: 'Send review', exact: true }).click();
     await expect(page.locator('#gr-status')).toHaveText('Add or cancel your comment before sending the review.'); await capture('draft-send');

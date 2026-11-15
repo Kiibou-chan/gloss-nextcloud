@@ -61,7 +61,7 @@ export class ReviewSession {
     }))
     this.listen(ports.pdf.onSelect(selection => {
       if (!this.presenter.editable()) { this.requestName(); return }
-      if (!this.s.source || !this.s.review || ports.panel.hasCommentDraft?.()) return
+      if (!this.s.source || !this.s.review || (ports.panel.hasCommentDraft?.() && !this.s.form?.detached)) return
       const range = toSource(this.s.source, selection.text, selection.fraction)
       if (!range) this.s.status = 'That selection could not be placed in the draft. Select a little more, or use the editor.'
       else {
@@ -87,10 +87,11 @@ export class ReviewSession {
     const a = this.s.review.fromApplied(range.from), b = this.s.review.fromApplied(range.to)
     this.items.openForm('inside' in a ? { id: a.inside } : 'inside' in b ? { id: b.inside } : this.s.review.targetFor(a.at, b.at))
   }
-  start(): Promise<void> { return this.lifecycle.start() }
-  setName(name: string): Promise<void> { return this.lifecycle.setName(name) }
+  async start(): Promise<void> { await this.lifecycle.start(); this.s.commentDraft.restore(); this.presenter.head() }
+  async setName(name: string): Promise<void> { await this.lifecycle.setName(name); this.s.commentDraft.restore(); this.presenter.head() }
   pagehide(): void { return this.saving.pagehide() }
   openForm(target: Target, focus = true): void { return this.items.openForm(target, focus) }
+  setCommentDraft(text: string): void { this.s.commentDraft.update(text); this.s.ports.panel.setCommentDraft?.(text) }
   cancelForm(): void { return this.items.cancelForm() }
   commentOn(target: Target, text: string): void { return this.items.commentOn(target, text) }
   deleteComment(id: string, index: number): void { return this.items.deleteComment(id, index) }

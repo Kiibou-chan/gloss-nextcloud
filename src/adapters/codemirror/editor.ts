@@ -1,4 +1,5 @@
-import { Annotation, Compartment, EditorState, StateEffect, StateField, Transaction } from '@codemirror/state'
+import { entersText } from '../../app/text-input'
+import { Annotation, Compartment, EditorState, Prec, StateEffect, StateField, Transaction } from '@codemirror/state'
 import { Decoration, EditorView, WidgetType, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers, type DecorationSet } from '@codemirror/view'
 import { highlightSelectionMatches, search, searchKeymap } from '@codemirror/search'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
@@ -50,7 +51,7 @@ export function createEditor(parent: HTMLElement, options: { text: string; langu
         EditorView.contentAttributes.of({ tabindex: '0', spellcheck: 'true', lang: options.spellLanguage || 'en' }),
         language, syntaxHighlighting(reviewHighlight), decorations,
         editable.of([EditorView.editable.of(false), EditorState.readOnly.of(true)]),
-        EditorView.domEventHandlers({
+        Prec.high(EditorView.domEventHandlers({
           mouseup: (_event, view) => { const range = view.state.selection.main; if (!range.empty) onSelect({ from: range.from, to: range.to }) },
           keydown: (event, view) => {
             if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'm') {
@@ -58,12 +59,12 @@ export function createEditor(parent: HTMLElement, options: { text: string; langu
               if (!range.empty) onSelect({ from: range.from, to: range.to })
               return true
             }
-            if (view.state.readOnly && !event.ctrlKey && !event.metaKey && !event.altKey && (event.key.length === 1 || ['Backspace', 'Delete', 'Enter'].includes(event.key))) onAttempt()
+            if (view.state.readOnly && entersText(event)) onAttempt()
             return false
           },
           paste: (_event, view) => { if (view.state.readOnly) onAttempt(); return false },
           beforeinput: (_event, view) => { if (view.state.readOnly) onAttempt(); return false },
-        }),
+        })),
         EditorState.transactionFilter.of(transaction => {
           if (transaction.docChanged && transaction.startState.readOnly && !transaction.annotation(external) && transaction.isUserEvent('input')) {
             onAttempt(); return []

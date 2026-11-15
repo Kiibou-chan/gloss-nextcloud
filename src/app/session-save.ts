@@ -44,6 +44,7 @@ export class SessionSave {
         } else {
           if (outcome && 'revision' in outcome && this.s.record) {
             this.s.record.revision = outcome.revision; this.s.saved = true
+            if (status === 'Review sent. Thank you.') this.s.commentDraft.clear()
           }
           this.s.status = status === 'Saved' && this.s.record?.sent ? 'Sending…' : status
         }
