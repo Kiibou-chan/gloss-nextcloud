@@ -25,7 +25,8 @@ test('CI regenerates notices and its porcelain gate catches an untracked bundle'
 test('purity probes use a temporary copy of the configuration', () => {
   const source = read('test/structure/purity.test.ts')
   expect(source).toContain('mkdtempSync(')
-  expect(source).toContain("cpSync('tsconfig.pure.json'")
+  expect(source).toContain("fileURLToPath(new URL('../../', import.meta.url))")
+  expect(source).toMatch(/cpSync\(\s*join\(repoRoot, 'tsconfig\.pure\.json'\),\s*join\(root, 'tsconfig\.pure\.json'\)\s*\)/)
   expect(source).not.toContain('const dir = `src/${layer}`')
   expect(JSON.parse(read('tsconfig.pure.json')).include).not.toContain('src/pure-anchor.d.ts')
 })

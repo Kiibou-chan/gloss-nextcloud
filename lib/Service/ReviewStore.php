@@ -134,6 +134,7 @@ class ReviewStore {
 	}
 
 	private function result(File $file, \stdClass $review, bool $sentNow): SaveResult {
-		return new SaveResult($review->revision, $sentNow, $file->getId(), $file->getPath(), $review->name, (string)($review->draft->file ?? ''));
+		$draftFile = $review->draft->file ?? '';
+		return new SaveResult($review->revision, $sentNow, $file->getId(), $file->getPath(), $review->name, is_string($draftFile) ? $draftFile : '');
 	}
 }
