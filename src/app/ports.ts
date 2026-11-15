@@ -1,6 +1,6 @@
 import type { PdfPlacement } from '../domain/pdf/match'
 import type { Change } from '../domain/review/model'
-import type { CardView, DeletedWords, EditorMark, HeadView, ViewMode } from './view'
+import type { UnplacedView, CardView, DeletedWords, EditorMark, HeadView, ViewMode } from './view'
 export type { Change } from '../domain/review/model'
 export interface EditorPort {
   dispose?(): void
@@ -28,10 +28,10 @@ export interface CancelSignal {
 }
 export interface ReviewApi {
   draft(): Promise<{ main: string; files: readonly { file: string; text: string; etag: string }[] }>
-  open(key: string): Promise<{ review: unknown; revision: number } | { review: null } | Failure>
+  open(key: string): Promise<{ review: unknown; revision: number; rawReview?: string } | { review: null } | Failure>
   save(key: string, body: string, baseRevision: number, options?: { keepalive?: boolean; signal?: CancelSignal }): Promise<{ revision: number } | Failure>
 }
-export type Backup = { refusal?: Failure | null; review: string; pending: { body: string; revision: number } | null; revision: number; saved: boolean; dirty: boolean; at: string }
+export type Backup = { review: string; pending: { body: string; revision: number } | null; revision: number; saved: boolean; dirty: boolean; at: string }
 export interface BackupStore {
   rememberedKey(): string | null
   remember(key: string): void
@@ -47,6 +47,7 @@ export interface Ids { item(): string; key(): string }
 export interface Scheduler { after(ms: number, run: () => void): () => void }
 export type ReviewLinkView = { url: string; message: string }
 export interface PanelPort {
+  setUnplaced(items: readonly UnplacedView[]): void
   setLink(view: ReviewLinkView | null): void
   upsertCard(view: CardView): void
   removeCard(id: string): void

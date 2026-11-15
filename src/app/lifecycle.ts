@@ -26,13 +26,18 @@ export class Lifecycle {
       await this.actions.setView(this.s.ports.store.view() ?? 'editor')
       if (!this.s.ports.reviewable) { this.s.status = 'This link is not set up for reviewing.'; this.actions.head(); return }
       const fragment = this.s.page.fragment.startsWith('#') && REVIEW_KEY.test(this.s.page.fragment.slice(1)) ? this.s.page.fragment.slice(1) : null
-      const remembered = fragment ?? this.s.ports.store.rememberedKey()
+      const stored = this.s.ports.store.rememberedKey()
+      if (fragment && stored && fragment !== stored && this.s.ports.store.read(stored)?.dirty) {
+        this.s.blocked = true
+        this.s.status = "Changes for another review in this browser are still waiting; open that review's link to continue."
+        this.actions.head(); return
+      }
+      const remembered = fragment ?? stored
       if (remembered && REVIEW_KEY.test(remembered)) {
         this.s.key = remembered
         const backup = this.s.ports.store.read(remembered)
         this.s.saved = backup?.saved === true
-        if (fragment || this.s.saved) await this.loadReview('', backup)
-        else if (backup) { this.restore(backup); this.actions.createQueue(backup); if (backup.pending) await this.s.queue?.flush() }
+        await this.loadReview('', backup)
       }
     } catch { this.s.status = 'Could not load the draft.'; this.actions.head() }
   }
@@ -85,9 +90,12 @@ export class Lifecycle {
           const result = readBackup(backup.review, this.s.ports.ids)
           if (result && !('error' in result)) name = result.record.name
         }
-        if (name) this.actions.install(this.emptyRecord(name))
+        if (backup && (backup.dirty || backup.saved)) {
+          this.restore({ ...backup, revision: 0 })
+          backup = { ...backup, revision: 0, pending: backup.pending?.revision === 0 ? backup.pending : null, saved: false, dirty: true }
+        } else if (name) this.actions.install(this.emptyRecord(name))
       } else {
-        const result = readReview(opened.review, () => this.s.ports.ids.item())
+        const result = readReview(opened.rawReview ?? opened.review, () => this.s.ports.ids.item())
         if ('error' in result) { this.s.status = result.error; return }
         this.s.saved = true
         if ('revision' in opened) result.record.revision = opened.revision
@@ -104,6 +112,7 @@ export class Lifecycle {
           backup = null
         }
       }
+      if (opened.review === null && name && this.s.record) this.s.record.name = name
       this.actions.createQueue(backup?.dirty ? backup : null)
       this.s.ports.store.remember(this.s.key)
       if (backup?.dirty && backup.pending) await this.s.queue?.flush()

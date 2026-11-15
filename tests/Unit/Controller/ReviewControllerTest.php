@@ -88,6 +88,14 @@ final class ReviewControllerTest extends TestCase {
 		}
 	}
 
+	public function testOpenKeepsExactStoredWhitespaceAndEscapes(): void {
+		$body = '{ "format":1, "revision":2, "name":"Ada", "items":[], "text":"\\u0061" }';
+		$store = $this->createMock(ReviewStore::class);
+		$store->method('open')->willReturn(new StoredReview($body, 2));
+		$response = $this->controller($this->createMock(Folder::class), $store)->open('AbCdEf0123456789');
+		self::assertSame($body, $response->getData()['rawReview'] ?? null);
+	}
+
 	public function testOpenAndSaveDelegate(): void {
 		$share = $this->createMock(IShare::class);
 		$store = $this->createMock(ReviewStore::class);
@@ -96,7 +104,7 @@ final class ReviewControllerTest extends TestCase {
 		$store->expects(self::once())->method('open')->with($share, ReviewKey::parse($key))->willReturn(new StoredReview($body, 2));
 		$store->expects(self::once())->method('save')->with($share, ReviewKey::parse($key), $body, 1)->willReturn(new SaveResult(2, false, 42, '/synthetic/review.json', 'Ada', 'paper.typ'));
 		$controller = $this->controller($this->createMock(Folder::class), $store, $share);
-		self::assertSame(['review' => json_decode($body, true), 'revision' => 2], $controller->open($key)->getData());
+		self::assertSame(['review' => json_decode($body, true), 'revision' => 2, 'rawReview' => $body], $controller->open($key)->getData());
 		$response = $controller->save($key, $body, 1);
 		self::assertSame(200, $response->getStatus());
 		self::assertSame(['revision' => 2], $response->getData());

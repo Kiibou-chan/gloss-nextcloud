@@ -12,7 +12,7 @@ export function fakes() {
   const backups = new Map<string, Backup>()
   const panel = {
     upsertCard: vi.fn<PanelPort['upsertCard']>(), removeCard: vi.fn<PanelPort['removeCard']>(), setOrder: vi.fn<PanelPort['setOrder']>(), setCount: vi.fn<PanelPort['setCount']>(), setHead: vi.fn<(h: HeadView) => void>(),
-    setLink: vi.fn(), setOverallView: vi.fn(), setConflictView: vi.fn(),
+    setUnplaced: vi.fn(), setLink: vi.fn(), setOverallView: vi.fn(), setConflictView: vi.fn(),
   } satisfies PanelPort
   const editor = {
     setText: vi.fn((s: string) => { text = s }), text: vi.fn(() => text),

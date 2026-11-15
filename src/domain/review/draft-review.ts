@@ -28,13 +28,13 @@ export class DraftReview {
       } else proposals.push(p)
     }
     this.current = [...proposals, ...this.current.filter(i => i.kind === 'comment')].sort((a, b) => a.from - b.from)
+    this.map = new AppliedMap(proposals)
     let text = '', pos = 0
-    for (const p of proposals) {
+    for (const { item: p, end } of this.map.spans()) {
       text += draft.slice(pos, p.from) + p.proposal
-      pos = p.from + p.quote.exact.length
+      pos = end
     }
     this.text = text + draft.slice(pos)
-    this.map = new AppliedMap(proposals)
   }
 
   private proposals(): Proposal[] { return this.current.filter(i => i.kind === 'proposal') }
@@ -45,7 +45,7 @@ export class DraftReview {
 
   edit(changes: readonly Change[], newId: NewId, now: string): Edits {
     const ordered = [...changes].sort((a, b) => a.from - b.from)
-    return this.replaceRegions(regions(this.text, ordered, this.proposals()), ordered, newId, now)
+    return this.replaceRegions(regions(this.text, ordered, this.map), ordered, newId, now)
   }
 
   /** N2: the reconciliation path is uncapped, preserving whole-draft identities. */
@@ -57,13 +57,7 @@ export class DraftReview {
   private replaceRegions(areas: readonly Region[], changes: readonly Change[], newId: NewId, now: string, wholeDraft = false): Edits {
     const changed = new Set<string>(), removed = new Set<string>()
     if (!areas.length) return { changed, removed }
-    const old = this.proposals()
-    let delta = 0
-    const spans = old.map(p => {
-      const from = p.from + delta
-      delta += p.proposal.length - p.quote.exact.length
-      return { p, from, to: from + p.proposal.length }
-    })
+    const spans = this.map.spans().map(e => ({ p: e.item, from: e.start, to: e.appliedEnd }))
     const proposals: Proposal[] = []
     const notes = this.current.filter(i => i.kind === 'comment')
     const chunks: string[] = []

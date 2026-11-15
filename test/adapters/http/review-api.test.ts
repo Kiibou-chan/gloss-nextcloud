@@ -28,7 +28,7 @@ describe('review HTTP adapter', () => {
     const { api, fetcher } = setup()
     const review = { name: 'Synthetic Reviewer', items: [] }
     fetcher.mockResolvedValueOnce(reply({ review, revision: 7 }))
-    expect(await api.open('a+b')).toEqual({ review, revision: 7 })
+    expect(await api.open('a+b')).toEqual({ review, revision: 7, rawReview: JSON.stringify(review) })
     expect(fetcher).toHaveBeenCalledWith(base + '/review/open', expect.objectContaining({ method: 'POST', body: new URLSearchParams({ key: 'a+b' }), headers: { requesttoken: 'initial-token' } }))
   })
   it('posts the exact review bytes, key, and baseRevision', async () => {
@@ -74,7 +74,7 @@ describe('review HTTP adapter', () => {
       fetcher.mockResolvedValueOnce(reply({}, 412)).mockResolvedValueOnce(reply({ token: 'fresh-token' })).mockResolvedValueOnce(reply(method === 'draft' ? draft : { saved: true }))
       await call(api)
       expect(fetcher).toHaveBeenCalledTimes(3)
-      expect(fetcher.mock.calls[1]?.[0]).toBe('/index.php/csrftoken')
+      expect(fetcher.mock.calls[1]?.[0]).toBe('/csrftoken')
       expect(fetcher.mock.calls[1]?.[1]?.method ?? 'GET').toBe('GET')
       const first = fetcher.mock.calls[0]!
       const retried = fetcher.mock.calls[2]!
@@ -123,6 +123,24 @@ describe('save request lifetime', () => {
     expect(result).toEqual({ status: 0, error: 'network' })
     expect(fetcher.mock.calls[0]![1]?.signal?.aborted).toBe(true)
     await saving; expect(vi.getTimerCount()).toBe(0)
+  })
+  it('I3 ends the session without retrying when a save times out during token refresh', async () => {
+    vi.useFakeTimers(); const { api, fetcher } = setup(); const f = fakes()
+    fetcher.mockResolvedValueOnce(reply({}, 412)).mockImplementation(() => new Promise(() => {}))
+    const session = new ReviewSession({ ...f.ports, api: { ...f.api, save: api.save } })
+    try {
+      await session.start(); await session.setName('Ada')
+      session.setOverall('A synthetic overall comment'); await f.advance(5000)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(fetcher).toHaveBeenCalledTimes(2)
+      expect(fetcher.mock.calls[1]![0]).toBe('/csrftoken')
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(f.head().status).toBe(ended)
+      expect(fetcher.mock.calls[1]![1]?.signal?.aborted).toBe(true)
+      await f.advance(60_000)
+      expect(fetcher).toHaveBeenCalledTimes(2)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally { session.dispose() }
   })
   it('clears pending and resolves Send after hung saves time out', async () => {
     vi.useFakeTimers(); const { api, fetcher } = setup(); const f = fakes()

@@ -77,3 +77,7 @@ body[data-themes*="dark"] .gr-card-head ins { color: #7ee29b; }
 	border: 1px solid var(--color-border); border-radius: var(--border-radius);
 }
 .gr-text .cm-panels button:hover { background: var(--color-background-hover); }
+
+.gr-unplaced { padding: 1rem; border-top: 1px solid var(--color-border); }
+.gr-unplaced blockquote, .gr-unplaced p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.gr-unplaced ol { padding-left: 1.25rem; }

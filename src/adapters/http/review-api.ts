@@ -1,9 +1,9 @@
+import { utf8Length, reviewUploadLength } from '../../domain/text/utf8'
+import { SESSION_ENDED } from '../../app/messages'
+import { rawValues } from '../../domain/format/raw-json'
 import type { CancelSignal, Failure, ReviewApi } from '../../app/ports'
 
-const sessionEnded: Failure = {
-  status: 412,
-  error: 'Your session ended. Reload the page to continue; your changes are kept in this browser.',
-}
+const sessionEnded: Failure = { status: 412, error: SESSION_ENDED }
 
 async function refusal(response: Response): Promise<Failure> {
   if (response.status === 412) return { ...sessionEnded }
@@ -15,10 +15,10 @@ async function refusal(response: Response): Promise<Failure> {
   }
 }
 
-export function createReviewApi(base: string, requestToken: string): ReviewApi {
+export function createReviewApi(base: string, requestToken: string, webroot = base.split('/apps/gloss/')[0]!.replace(/\/index\.php$/, '')): ReviewApi {
   let token = requestToken
   const root = base.replace(/\/$/, '')
-  async function request(path: string, init: Omit<RequestInit, 'signal'> & { signal?: CancelSignal } = {}): Promise<{ data: unknown } | Failure> {
+  async function request(path: string, init: Omit<RequestInit, 'signal'> & { signal?: CancelSignal } = {}): Promise<{ data: unknown; raw: string } | Failure> {
     const controller = new AbortController()
     const abort = () => controller.abort()
     let rejectAbort!: (reason: Error) => void
@@ -27,27 +27,34 @@ export function createReviewApi(base: string, requestToken: string): ReviewApi {
     controller.signal.addEventListener('abort', fail, { once: true })
     init.signal?.addEventListener('abort', abort, { once: true })
     if (init.signal?.aborted) abort()
-    const timeout = setTimeout(abort, 30_000)
+    const timeout = setTimeout(abort, 30_000 + Math.floor(utf8Length(String(init.body ?? '')) / 20_000) * 1000)
+    let refreshing = false
     const perform = async () => {
       const send = () => fetch(root + path, { ...init, signal: controller.signal, headers: { requesttoken: token } })
       let response = await send()
       if (response.status === 412) {
-        const refreshed = await fetch('/index.php/csrftoken', { method: 'GET', signal: controller.signal })
-        if (!refreshed.ok) return await refusal(refreshed)
-        const fresh: unknown = await refreshed.json()
+        refreshing = true
+        let fresh: unknown
+        try {
+          const refreshed = await fetch(webroot.replace(/\/$/, '') + '/csrftoken', { method: 'GET', signal: controller.signal })
+          if (!refreshed.ok) return { ...sessionEnded }
+          fresh = await refreshed.json()
+        } catch { return { ...sessionEnded } }
         if (!fresh || typeof fresh !== 'object' || !('token' in fresh) || typeof fresh.token !== 'string') {
           return { ...sessionEnded }
         }
         token = fresh.token
+        refreshing = false
         response = await send()
       }
       if (!response.ok) return await refusal(response)
-      return { data: await response.json() }
+      const raw = await response.text()
+      return { data: JSON.parse(raw), raw }
     }
     try {
       return await Promise.race([perform(), aborted])
     } catch {
-      return { status: 0, error: 'network' }
+      return refreshing ? { ...sessionEnded } : { status: 0, error: 'network' }
     } finally {
       clearTimeout(timeout)
       init.signal?.removeEventListener('abort', abort)
@@ -62,11 +69,13 @@ export function createReviewApi(base: string, requestToken: string): ReviewApi {
     },
     async open(key) {
       const result = await request('/review/open', { method: 'POST', body: new URLSearchParams({ key }) })
-      return 'status' in result ? result : result.data as Awaited<ReturnType<ReviewApi['open']>>
+      if ('status' in result) return result
+      const opened = result.data as Exclude<Awaited<ReturnType<ReviewApi['open']>>, Failure>
+      return opened.review === null ? opened : { ...opened, rawReview: 'rawReview' in opened && typeof opened.rawReview === 'string' ? opened.rawReview : rawValues(result.raw).find(v => v.key === 'review')?.raw }
     },
     async save(key, body, baseRevision, options = {}) {
       const encoded = new URLSearchParams({ key, review: body, baseRevision: String(baseRevision) })
-      if (options.keepalive && new TextEncoder().encode(encoded.toString()).byteLength >= 65_536) return { status: 0, error: 'network' }
+      if (options.keepalive && reviewUploadLength(key, body, baseRevision) >= 65_536) return { status: 0, error: 'network' }
       const result = await request('/review', {
         ...options,
         method: 'POST',

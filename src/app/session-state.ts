@@ -1,3 +1,4 @@
+import type { Item } from '../domain/review/model'
 import type { ReviewRecord } from '../domain/format/record'
 import type { DraftReview } from '../domain/review/draft-review'
 import type { sourceKey } from '../domain/pdf/match'
@@ -29,6 +30,10 @@ export interface SessionActions {
 export class SessionState {
   disposed = false
   listeners: (() => void)[] = []
+  unplaced: Item[] = []
+  get unplacedStatus(): string {
+    return this.unplaced.length ? `${this.unplaced.length} of your earlier items could not be placed; they stay in your review file.` : ''
+  }
   saved = false
   blocked = false
   pendingName = ''

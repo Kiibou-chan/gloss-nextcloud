@@ -10,7 +10,7 @@ export class SessionSave {
   constructor(private readonly s: SessionState, private readonly actions: Pick<SessionActions, 'clearLinkMessage' | 'editable' | 'head' | 'keepConflict' | 'overallText' | 'refusal' | 'render'>) {}
   serialise(revision: number): string | null {
     if (!this.s.record || !this.s.review) return null
-    return writeReview({ ...this.s.record, revision: Math.max(1, revision), draft: { file: this.s.file, etag: this.s.etag }, items: [...this.s.review.items(), ...this.s.record.items.filter(i => i.kind === 'overall')] })
+    return writeReview({ ...this.s.record, revision: Math.max(1, revision), draft: { file: this.s.file, etag: this.s.etag }, items: [...this.s.review.items(), ...this.s.record.items.filter(i => i.kind === 'overall')] }, this.s.unplaced)
   }
   body(revision: number): string | null {
     if (this.s.blankName || !this.s.record?.name || !this.s.review || this.s.blocked) return null
@@ -25,9 +25,10 @@ export class SessionSave {
   createQueue(backup: Backup | null = null): void {
     this.s.queue?.dispose()
     this.s.queue = new SaveQueue({
+      key: this.s.key,
       enabled: () => !this.s.blankName && !this.s.blocked,
       scheduler: this.s.ports.scheduler, revision: backup?.revision ?? this.s.record?.revision ?? 0,
-      pending: backup?.pending, refusal: backup?.refusal, dirty: backup?.dirty ?? false,
+      pending: backup?.pending, dirty: backup?.dirty ?? false,
       body: revision => this.body(revision),
       save: (body, base, options) => this.s.ports.api.save(this.s.key, body, base, options),
       onStatus: (status, outcome) => {
@@ -35,6 +36,7 @@ export class SessionSave {
           if (this.s.record?.sent) { this.s.record.sent = false; this.s.record.sentAt = null }
           this.s.status = classify(outcome) === 'session' ? status : this.actions.refusal(outcome, 'Not saved: ')
           if (outcome.status === 409 && outcome.error === 'conflict') {
+            this.s.saved = true
             this.backup(true)
             const backup = this.s.ports.store.read(this.s.key)
             if (backup) {
@@ -45,7 +47,7 @@ export class SessionSave {
           if (outcome && 'revision' in outcome && this.s.record) {
             this.s.record.revision = outcome.revision; this.s.saved = true
           }
-          this.s.status = status === 'Saved' && this.s.record?.sent ? 'Sending…' : status
+          this.s.status = status === 'Saved' ? (this.s.record?.sent ? 'Sending…' : this.s.unplacedStatus || status) : status
         }
         this.actions.render()
       },
@@ -60,7 +62,7 @@ export class SessionSave {
     if (!review || !this.s.key || !this.s.record) return
     this.s.backupFailed = !this.s.ports.store.write(this.s.key, {
       review, revision: this.s.queue?.revision ?? this.s.record.revision, saved: this.s.saved, dirty,
-      pending: this.s.queue?.pending ?? null, refusal: this.s.queue?.refusal ?? null, at: this.s.ports.clock.now(),
+      pending: this.s.queue?.pending ?? null, at: this.s.ports.clock.now(),
     })
   }
   pagehide(): void {

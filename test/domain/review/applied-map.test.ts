@@ -11,3 +11,11 @@ test.each(golden.cases)('agrees with spike offset mapping: %#', ({ input, expect
   expect(input.sourceOffsets.map(p => map.toApplied(p))).toEqual(expected.toApplied)
   expect(input.appliedOffsets.map(q => map.fromApplied(q))).toEqual(expected.fromApplied.map(p => 'inside' in p ? { inside: p.inside.id } : p))
 })
+test('M-b exposes sorted spans with draft and applied bounds, including insertions and deletions', () => {
+  const p = (id: string, from: number, exact: string, proposal: string) => ({ id, kind: 'proposal' as const, file: 'a.txt', from, quote: { exact, prefix: '', suffix: '' }, proposal, comments: [], at: 'then' })
+  const insertion = p('insert', 1, '', 'long'), deletion = p('delete', 3, 'xx', '')
+  expect(new AppliedMap([deletion, insertion]).spans()).toEqual([
+    { item: insertion, end: 1, start: 1, appliedEnd: 5, delta: 4 },
+    { item: deletion, end: 5, start: 7, appliedEnd: 7, delta: 2 },
+  ])
+})

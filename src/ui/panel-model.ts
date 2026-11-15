@@ -2,12 +2,13 @@ import { signal } from '@preact/signals'
 import type { Signal } from '@preact/signals'
 import type { PanelPort, ReviewLinkView } from '../app/ports'
 import type { ReviewSession } from '../app/session'
-import type { CardView, HeadView } from '../app/view'
+import type { UnplacedView, CardView, HeadView } from '../app/view'
 import { flushIslands } from './island'
 
 /** Only the public session commands are available to the islands and their fakes. */
 export type PanelCommands = Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges'> & Pick<ReviewSession, 'copyReviewLink'>
 export interface PanelModel extends PanelPort {
+  readonly unplaced: Signal<readonly UnplacedView[]>
   readonly overall: Signal<string>
   readonly link: Signal<ReviewLinkView | null>
   setLink(view: ReviewLinkView | null): void
@@ -21,13 +22,15 @@ export interface PanelModel extends PanelPort {
 export function createPanelModel(): PanelModel {
   const link = signal<ReviewLinkView | null>(null)
   const overall = signal('')
+  const unplaced = signal<readonly UnplacedView[]>([])
   const cards = new Map<string, Signal<CardView>>()
   const order = signal<readonly string[]>([])
   const count = signal({ changes: 0, comments: 0 })
   const head = signal<HeadView>({ name: '', title: '', hasPdf: false, view: 'editor', editable: false, canSend: false, status: '', form: null })
   const conflict = signal<{ text: string; show: boolean } | null>(null)
   return {
-    link,
+    link, unplaced,
+    setUnplaced(items) { unplaced.value = items; flushIslands() },
     setLink(view) { link.value = view; flushIslands() },
     overall, cards, order, count, head, conflict,
     setOverallView(text) { overall.value = text; flushIslands() },
