@@ -1,5 +1,6 @@
 import { calendarError, readFormat1 } from './format-1'
-import type { NewId, ReadResult } from './record'
+import type { ReadResult } from './record'
+import type { NewId } from '../review/model'
 
 export function readFormat0(json: Record<string, unknown>, newId: NewId): ReadResult {
   const invalid = { error: 'This review is not a valid format 0 review.' }

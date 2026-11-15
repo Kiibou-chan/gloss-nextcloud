@@ -1,6 +1,7 @@
 import { readFormat0 } from './format-0'
 import { readFormat1 } from './format-1'
-import type { NewId, ReviewRecord } from './record'
+import type { ReviewRecord } from './record'
+import type { NewId } from '../review/model'
 
 export function readReview(json: unknown, newId: NewId): { record: ReviewRecord; notes: string[] } | { error: string } {
   if (!json || typeof json !== 'object' || Array.isArray(json)) return { error: 'This review is not a valid review.' }

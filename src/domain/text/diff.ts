@@ -55,7 +55,7 @@ export function changes(sa: string, sb: string, opts: { by?: 'word' | 'line'; ma
   let bEnd = b.length
   while (start < aEnd && start < bEnd && a[start]!.t === b[start]!.t) start++
   while (aEnd > start && bEnd > start && a[aEnd - 1]!.t === b[bEnd - 1]!.t) { aEnd--; bEnd-- }
-  const cap = Math.min(opts.maxEdits ?? 2000, 2000, aEnd + bEnd - 2 * start)
+  const cap = Math.min(opts.maxEdits ?? 2000, aEnd + bEnd - 2 * start)
   if (Math.abs(aEnd - bEnd) > cap) return 'tooMany'
   const steps = script(a.slice(start, aEnd), b.slice(start, bEnd), cap)
   if (steps === 'tooMany') return steps

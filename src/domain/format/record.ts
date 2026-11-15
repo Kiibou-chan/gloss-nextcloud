@@ -1,5 +1,4 @@
-// S4a moves this shared function type to domain/review/model.ts (R34).
-export type NewId = () => string
+import type { Overall } from '../review/model'
 
 interface ReviewComment { text: string; at: string }
 interface ReviewQuote { exact: string; prefix: string; suffix: string }
@@ -14,7 +13,7 @@ interface AnchoredItem {
 }
 interface ProposalItem extends AnchoredItem { kind: 'proposal'; proposal: string }
 interface CommentItem extends AnchoredItem { kind: 'comment' }
-interface OverallItem { id: string; kind: 'overall'; text: string; at: string }
+type OverallItem = Overall
 export type ReviewItem = ProposalItem | CommentItem | OverallItem
 export interface ReviewRecord {
   /** Zero only for a migrated format 0 review that has not been saved yet. */
