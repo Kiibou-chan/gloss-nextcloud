@@ -56,6 +56,7 @@ class ReviewController extends PublicShareController {
 	#[PublicPage]
 	#[NoCSRFRequired]
 	public function page(): PublicTemplateResponse {
+		Util::addScript('gloss', 'typst-view');
 		Util::addScript('gloss', 'review');
 		Util::addStyle('gloss', 'review');
 		$draft = $this->draft();

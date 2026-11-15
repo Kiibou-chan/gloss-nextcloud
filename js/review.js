@@ -7,6 +7,7 @@
 	const textEl = $('gr-text'); const form = $('gr-form'); const items = $('gr-items'); const status = $('gr-status')
 	const CONTEXT = 32
 	let text = ''
+	let ops = []
 	let review = { reviewer: '', items: [], sent: false }
 	let pending = null
 	let saveTimer = 0
@@ -33,24 +34,12 @@
 	}
 
 	const render = () => {
-		const spans = review.items.map((it, n) => ({ n, at: locate(it), len: it.quote.exact.length }))
-			.filter(s => s.at >= 0).sort((a, b) => a.at - b.at)
-		textEl.replaceChildren()
-		let pos = 0
-		for (const s of spans) {
-			if (s.at < pos) continue
-			textEl.append(text.slice(pos, s.at))
-			const m = document.createElement('mark')
-			m.textContent = text.slice(s.at, s.at + s.len)
-			m.dataset.n = String(s.n)
-			textEl.append(m)
-			pos = s.at + s.len
-		}
-		textEl.append(text.slice(pos))
+		const marks = review.items.map((it, n) => ({ n, from: locate(it), to: locate(it) + it.quote.exact.length })).filter(m => m.from >= 0)
+		GlossTypst.render(textEl, text, ops, marks)
 		items.replaceChildren(...review.items.map((it, n) => {
 			const li = document.createElement('li')
 			li.dataset.n = String(n)
-			const q = document.createElement('blockquote'); q.textContent = it.quote.exact
+			const q = document.createElement('blockquote'); q.textContent = it.shown ?? it.quote.exact
 			li.append(q)
 			if (it.comment) { const p = document.createElement('p'); p.textContent = it.comment; li.append(p) }
 			if (it.proposal !== undefined) {
@@ -87,19 +76,20 @@
 		render()
 	}
 
-	const offsetOf = (node, off) => {
-		const r = document.createRange(); r.setStart(textEl, 0); r.setEnd(node, off); return r.toString().length
-	}
+	/** The shown characters of [from, to): the source's characters minus the markup the view hides. */
+	const shownText = (from, to) => ops.filter(o => o.op === 'text' && o.to > from && o.from < to)
+		.map(o => text.slice(Math.max(o.from, from), Math.min(o.to, to))).join('').replace(/\s+/g, ' ').trim()
 	textEl.addEventListener('mouseup', () => {
 		const sel = getSelection()
 		if (review.sent || !sel || sel.isCollapsed || !textEl.contains(sel.anchorNode) || !textEl.contains(sel.focusNode)) return
 		const range = sel.getRangeAt(0)
-		const from = offsetOf(range.startContainer, range.startOffset)
-		const to = offsetOf(range.endContainer, range.endOffset)
-		if (to <= from) return
+		const from = GlossTypst.sourceOffset(range.startContainer, range.startOffset)
+		const to = GlossTypst.sourceOffset(range.endContainer, range.endOffset)
+		if (from === null || to === null || to <= from) return
 		if (!review.reviewer) { $('gr-name').focus(); say('Enter your name first.'); return }
 		pending = { from, quote: { exact: text.slice(from, to), prefix: text.slice(Math.max(0, from - CONTEXT), from), suffix: text.slice(to, to + CONTEXT) } }
-		$('gr-quote').textContent = pending.quote.exact
+		pending.shown = shownText(from, to)
+		$('gr-quote').textContent = pending.shown
 		$('gr-comment').value = ''; $('gr-proposal').value = ''
 		form.hidden = false; $('gr-hint').hidden = true
 		$('gr-comment').focus()
@@ -129,6 +119,8 @@
 	fetch(base + '/text').then(r => r.json()).then(d => {
 		if (d.error) { say(d.error); return }
 		text = d.text
+		ops = /\.typ$/i.test(d.name) ? GlossTypst.parse(text)
+			: [{ op: 'open', tag: 'div', cls: 'gr-plain' }, { op: 'text', from: 0, to: text.length }, { op: 'close' }]
 		render()
 		const name = store.get('gloss-review-name:' + base)
 		if (name) { $('gr-name').value = name; return loadReview(name) }

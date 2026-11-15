@@ -10,7 +10,8 @@ Licence: AGPL-3.0-or-later.
 ## Trying it locally
 
 Spike on branch `spike-review`: a public link to a folder opens a review page at `/apps/gloss/r/<share token>`.
-The page shows the folder's draft (first `.typ`, `.tex`, `.md`, or `.txt` file at its top level) as text.
+The page shows the folder's draft (first `.typ`, `.tex`, `.md`, or `.txt` file at its top level); Typst is shown readable (headings, emphasis, lists, citations; set rules, comments, labels, and code hidden), other files as plain text.
+Comments anchor in the source by the words they quote, with the words before and after, as gloss anchors do.
 A reviewer enters a name, selects words, and adds a comment, a new wording, or both.
 Each change is saved to `reviews/<name>-<id>.json` in the shared folder, so progress is kept between sittings; Send review marks it sent.
 Saving needs a link that allows upload and editing.
