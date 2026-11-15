@@ -108,11 +108,16 @@ async function waiting(args) {
   await requireFeature(page, '#gloss-review[data-reviewable]', 'F1b and F2');
   await ready(page);
   let lost = false;
+  let reviewKey;
   await page.route('**/r/*/review', async route => {
     if (route.request().method() !== 'POST') return route.continue();
     if (!lost) {
       const response = await route.fetch();
       if (!response.ok()) throw new Error('Scene needs a successful F2 save.');
+      reviewKey = new URLSearchParams(route.request().postData() ?? '').get('reviewer');
+      if (!reviewKey || reviewKey.length > 80 || !/^[a-z0-9]+(?:-[a-z0-9]+)+$/.test(reviewKey)) {
+        throw new Error('Scene needs a valid reviewer key in the F2 save.');
+      }
       lost = true;
       await route.abort('failed');
     } else await route.continue();
@@ -125,7 +130,9 @@ async function waiting(args) {
   const owner = await ownerPage(args);
   try {
     await owner.page.goto(`${args.state.base}/index.php/apps/files/?dir=/Review%20reviews`);
-    const review = owner.page.locator('[data-cy-files-list-row-name]').filter({ hasText: /ada-.*\.json/ });
+    const review = owner.page.locator('[data-cy-files-list-row-name]').filter({
+      has: owner.page.getByText(`${reviewKey}.json`, { exact: true }),
+    });
     await expect(review).toHaveCount(1);
     await review.click({ button: 'right' });
     await owner.page.getByText('Details', { exact: true }).click();

@@ -11,8 +11,10 @@ cd "$root"
 container=gloss-dev-nc
 state="$root/.dev-nc.env"
 port=${GLOSS_DEV_NC_PORT:-8090}
-case "$port" in ''|*[!0-9]*|8089) echo 'Choose a local development port other than 8089.' >&2; exit 2;; esac
-if ((port < 1024 || port > 65535)); then echo 'Port must be between 1024 and 65535.' >&2; exit 2; fi
+case "$port" in ''|0*|*[!0-9]*) echo 'Port must be plain decimal without leading zeros.' >&2; exit 2;; esac
+# Bound the length before arithmetic so oversized input cannot wrap into a valid port.
+if ((${#port} > 5)) || ((10#$port < 1024 || 10#$port > 65535)); then echo 'Port must be between 1024 and 65535.' >&2; exit 2; fi
+if ((10#$port == 8089)); then echo 'Choose a local development port other than 8089.' >&2; exit 2; fi
 # This helper never emits credentials, including on failed requests.
 state_action() {
 node --input-type=module - "$@" <<'JS'
