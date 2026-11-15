@@ -143,7 +143,11 @@ class ReviewController extends PublicShareController {
 			$result = $this->reviewStore->save($share, $parsed, $review, $baseRevision);
 			if ($result->sentNow) {
 				$body = json_decode($review, true);
-				$this->sentNotifier->notify($share, $result, (string)($body['draft']['file'] ?? ''));
+				try {
+					$this->sentNotifier->notify($share, $result, (string)($body['draft']['file'] ?? ''));
+				} catch (\Throwable) {
+					// The save has landed, so notification failure must not change its response.
+				}
 			}
 			return new DataResponse(['revision' => $result->revision]);
 		} catch (ReviewRefused $e) {

@@ -65,6 +65,17 @@ final class ReviewControllerTest extends TestCase {
 		self::assertSame(['main' => 'paper.typ', 'files' => [['file' => 'paper.typ', 'text' => 'Synthetic draft.', 'etag' => 'synthetic-etag']]], $response->getData());
 	}
 
+	public function testLandedSendStillSucceedsWhenNotifierThrows(): void {
+		$store = $this->createMock(ReviewStore::class);
+		$store->expects(self::once())->method('save')->willReturn(new SaveResult(2, true, 42, '/synthetic/review.json', 'Ada'));
+		$notifier = $this->createMock(SentNotifier::class);
+		$notifier->expects(self::once())->method('notify')->willThrowException(new \RuntimeException('Synthetic notification failure.'));
+		$controller = $this->controller($this->createMock(Folder::class), $store, null, $notifier);
+		$response = $controller->save('AbCdEf0123456789', '{"draft":{"file":"paper.typ"},"sent":true}', 1);
+		self::assertSame(200, $response->getStatus());
+		self::assertSame(['revision' => 2], $response->getData());
+	}
+
 	public function testMissingDraftAndPdf(): void {
 		$folder = $this->createMock(Folder::class);
 		$folder->method('getDirectoryListing')->willReturn([]);
@@ -112,7 +123,9 @@ final class ReviewControllerTest extends TestCase {
 	public function testMapsRefusal(string $method, int $status, string $code): void {
 		$store = $this->createMock(ReviewStore::class);
 		$store->method($method)->willThrowException(new ReviewRefused($status, $code, $code === 'conflict' ? 7 : null));
-		$controller = $this->controller($this->createMock(Folder::class), $store);
+		$notifier = $this->createMock(SentNotifier::class);
+		$notifier->expects(self::never())->method('notify');
+		$controller = $this->controller($this->createMock(Folder::class), $store, null, $notifier);
 		$response = $method === 'open' ? $controller->open('AbCdEf0123456789') : $controller->save('AbCdEf0123456789', '{}', 0);
 		self::assertSame($status, $response->getStatus());
 		$expected = ['error' => $code];

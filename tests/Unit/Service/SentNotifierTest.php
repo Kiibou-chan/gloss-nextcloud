@@ -11,8 +11,41 @@ use OCP\Notification\IManager;
 use OCP\Notification\INotification;
 use OCP\Share\IShare;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Psr\Log\LoggerInterface;
 
 final class SentNotifierTest extends TestCase {
+	public static function notificationFailures(): array {
+		return [
+			'delivery' => ['notify', new \RuntimeException('Synthetic reviewer text must stay out of the log message.')],
+			'construction' => ['createNotification', new \Error('Synthetic construction failure.')],
+		];
+	}
+
+	#[DataProvider('notificationFailures')]
+	public function testNotificationFailureIsLoggedAndDoesNotEscape(string $method, \Throwable $exception): void {
+		$share = $this->createMock(IShare::class);
+		$share->method('getShareOwner')->willReturn('synthetic-owner');
+		$manager = $this->createMock(IManager::class);
+		if ($method === 'notify') {
+			$notification = $this->createMock(INotification::class);
+			foreach (['setApp', 'setUser', 'setDateTime', 'setObject', 'setSubject'] as $setter) {
+				$notification->method($setter)->willReturnSelf();
+			}
+			$manager->method('createNotification')->willReturn($notification);
+		} else {
+			$manager->expects(self::never())->method('notify');
+		}
+		$manager->expects(self::once())->method($method)->willThrowException($exception);
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects(self::once())->method('error')->with('Failed to send review notification.', ['exception' => $exception]);
+		(new SentNotifier($manager, $this->createMock(ITimeFactory::class), $logger))->notify(
+			$share,
+			new SaveResult(2, true, 42, '/synthetic/review.json', 'Synthetic reviewer'),
+			'paper.typ',
+		);
+	}
+
 	public function testSendsOneNotificationToOwnerWithReviewMetadataAndServerTime(): void {
 		$share = $this->createMock(IShare::class);
 		$share->method('getShareOwner')->willReturn('synthetic-owner');
@@ -30,6 +63,8 @@ final class SentNotifierTest extends TestCase {
 		$manager = $this->createMock(IManager::class);
 		$manager->expects(self::once())->method('createNotification')->willReturn($notification);
 		$manager->expects(self::once())->method('notify')->with($notification);
-		(new SentNotifier($manager, $time))->notify($share, new SaveResult(2, true, 42, '/synthetic-owner/files/Review reviews/ada.json', 'Ada'), 'paper.typ');
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects(self::never())->method('error');
+		(new SentNotifier($manager, $time, $logger))->notify($share, new SaveResult(2, true, 42, '/synthetic-owner/files/Review reviews/ada.json', 'Ada'), 'paper.typ');
 	}
 }
