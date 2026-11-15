@@ -21,6 +21,28 @@ test('overlap retains identity and comments, disappearance keeps a note on old w
   expect(result.removed.size).toBe(0)
 })
 
+test.each([
+  [0, 'a', 0],
+  [10, 'a', 9],
+] as const)('undoing a commented insertion at %s preserves its anchor on reload', (from, exact, anchor) => {
+  const source = 'alpha beta'
+  const review = new DraftReview('a.txt', source)
+  const next = ids()
+  review.edit([{ from, to: from, insert: '! ' }], next, now)
+  review.comment({ id: '0000000001' }, 'Check this', 'unused', now)
+  const result = review.edit([review.undoChange('0000000001')], next, 'later')
+  const reloaded = placeItems(review.items(), from === 0 ? 'alpha gamma' : 'delta beta')
+  expect(reloaded.lost).toBe(0)
+  expect(review.applied()).toBe(source)
+  expect(review.items()[0]).toEqual({
+    kind: 'comment', id: '0000000001', file: 'a.txt', from: anchor,
+    quote: quoteAt(source, anchor, anchor + 1), comments: [{ text: 'Check this', at: now }], at: now,
+  })
+  expect(reloaded.placed[0]).toMatchObject({ kind: 'comment', id: '0000000001', from: anchor, quote: { exact } })
+  expect(result.changed).toEqual(new Set(['0000000001']))
+  expect(result.removed.size).toBe(0)
+})
+
 test('selection targets proposals in draft coordinates and comments obey B8', () => {
   const review = new DraftReview('a.txt', draft)
   review.edit([{ from: 6, to: 10, insert: 'new' }], ids(), now)

@@ -56,7 +56,9 @@ export class DraftReview {
     for (const p of old) if (!taken.has(p.id)) {
       if (p.comments.length) {
         const { proposal: _proposal, ...note } = p
-        notes.push({ ...note, kind: 'comment' })
+        const from = Math.min(p.from, Math.max(0, this.draft.length - 1))
+        const end = p.from + p.quote.exact.length
+        notes.push({ ...note, kind: 'comment', from, quote: quoteAt(this.draft, from, Math.max(end, from + 1)) })
         changed.add(p.id)
       } else removed.add(p.id)
     }
