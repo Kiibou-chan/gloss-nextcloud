@@ -20,6 +20,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run ci
+      - name: Check generated bundles and notices
+        run: |
+          node scripts/third-party.mjs
+          test -z "$(git status --porcelain -- js css THIRD-PARTY.md)"
 
   php:
     runs-on: ubuntu-latest

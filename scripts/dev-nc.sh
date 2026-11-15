@@ -30,7 +30,48 @@ try {
   } else {
     if (!ownerOnly(statSync(path).mode)) throw Error();
     const state = JSON.parse(readFileSync(path, 'utf8'));
-    if (action === 'url') {
+    if (action === 'empty-reviews') {
+      // Only the disposable fixture endpoint is eligible, even in socket-free runners.
+      if (state.base !== 'http://127.0.0.1:8090' || state.owner !== 'gloss-owner') throw Error();
+      const folder = '/remote.php/dav/files/gloss-owner/Review%20reviews/';
+      const config = `user = ${JSON.stringify(`${state.owner}:${state.password}`)}\n`;
+      const request = (method, path, extra = []) => spawnSync('curl', [
+        '--silent', '--fail', '--config', '-', '-X', method, ...extra,
+        `${state.base}${path}`,
+      ], { input: config, encoding: 'utf8' });
+      const listing = request('PROPFIND', folder, ['-H', 'Depth: 1', '--write-out', '\n%{http_code}',
+        '--data', '<d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/></d:prop></d:propfind>']);
+      // A fresh instance has no review folder until its first save.
+      if (listing.status === 22 && listing.stdout.trim() === '404') process.exit(0);
+      if (listing.status !== 0 || !listing.stdout.endsWith('\n207')) throw Error();
+      // Python's standard XML parser handles DAV namespace prefixes and escaped names.
+      const parsed = spawnSync('python3', ['-c', `
+import json, sys, xml.etree.ElementTree as ET
+root = ET.fromstring(sys.stdin.read())
+if root.tag != '{DAV:}multistatus': raise ValueError()
+print(json.dumps([{'href': r.findtext('{DAV:}href'), 'collection': r.find('.//{DAV:}collection') is not None}
+    for r in root.findall('{DAV:}response')]))
+`], { input: listing.stdout.slice(0, -4), encoding: 'utf8' });
+      if (parsed.status !== 0) throw Error();
+      const files = [];
+      const decodedFolder = decodeURIComponent(folder);
+      for (const entry of JSON.parse(parsed.stdout)) {
+        if (typeof entry.href !== 'string') throw Error();
+        const url = new URL(entry.href, state.base);
+        const path = decodeURIComponent(url.pathname);
+        if (url.origin !== state.base || url.search || url.hash || !path.startsWith(decodedFolder)) throw Error();
+        const name = path.slice(decodedFolder.length);
+        if (!name && entry.collection) continue;
+        if (entry.collection) {
+          if (name.replace(/\/$/, '').includes('/')) throw Error();
+          continue;
+        }
+        if (!name || name.includes('/')) throw Error();
+        files.push(url.pathname);
+      }
+      // Validate the complete listing before issuing any deletion; leave folders intact.
+      for (const file of files) if (request('DELETE', file).status !== 0) throw Error();
+    } else if (action === 'url') {
       if (!state.links[arg]) throw Error();
       console.log(state.links[arg]);
     } else if (action === 'share') {
@@ -150,6 +191,7 @@ case "${1:-}" in
   down) down;;
   reset) down; up;;
   sync) sync_app;;
+  empty-reviews) state_action empty-reviews;;
   url) sync_app; state_action url "${2:-Review}";;
-  *) echo 'Usage: scripts/dev-nc.sh up|down|reset|sync|url <folder>' >&2; exit 2;;
+  *) echo 'Usage: scripts/dev-nc.sh up|down|reset|sync|empty-reviews|url <folder>' >&2; exit 2;;
 esac

@@ -3,7 +3,7 @@
 The author ruled on the review design on 2026-11-15.
 The quoted words below come from the brief or the recorded answer; the numbered R-rulings supply the implementation decisions and rationale.
 The implementation plan is [2026-11-15-step0-and-features.md](plans/2026-11-15-step0-and-features.md).
-These decisions describe the target across the plan, whose tasks land separately.
+These decisions describe the implemented review page.
 
 ## RVW-1: a Nextcloud app
 
@@ -93,7 +93,9 @@ The server holds an exclusive named lock from reading through writing, refuses s
 That retry rule also applies to a landed Send, so a lost answer does not create another file, report a false conflict, or send a second notification (R21).
 There is at most one save in flight; retryable failures resend the same bytes before newer edits are saved.
 R23 saves 5 s after the last change, immediately on Send and `pagehide`, and retries after 2, 5, and 15 s, then every 15 s, or immediately when the browser comes online.
-Non-retryable 400, 403, 404, 409, 410, 413, and 429 responses stop retries and keep the browser backup.
+Non-retryable 400, 403, 404, 409, 410, and 413 responses stop retries and keep the browser backup.
+A 429 stops retries within the current page.
+A 412 refreshes the request token once.
 The browser backs up 300 ms after the last change and immediately on leaving, preserving the pending body and known revision.
 A dirty backup is restored when its revision matches the server's or its pending save carries the server's revision, with that pending body resent first.
 Otherwise it is kept separately and offered through "Show the changes from this browser" as read-only text for copying.

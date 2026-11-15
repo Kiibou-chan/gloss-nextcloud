@@ -1,9 +1,13 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-import { join, matchesGlob } from 'node:path'
+import { tmpdir } from 'node:os'
+import { join, matchesGlob, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import config from '../../vitest.config'
 import ts from 'typescript'
 import { expect, test } from 'vitest'
+
+const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 
 function sources(dir: string): string[] {
   if (!existsSync(dir)) return []
@@ -50,7 +54,7 @@ function violationsIn(file: string, text: string): string[] {
 }
 
 test('domain and app receive time, randomness, and browser services as parameters', () => {
-  const violations = ['src/domain', 'src/app'].flatMap(sources).flatMap(file => violationsIn(file, readFileSync(file, 'utf8')))
+  const violations = ['src/domain', 'src/app'].flatMap(dir => sources(join(repoRoot, dir))).flatMap(file => violationsIn(file, readFileSync(file, 'utf8')))
   expect(violations, violations.join('\n')).toEqual([])
 })
 
@@ -68,29 +72,37 @@ test('purity distinguishes global services from local names and document fields'
   `)).toEqual([])
 })
 
-for (const layer of ['domain', 'app']) {
-  test.each([
-    ['document', 'document.title'],
-    ['window', 'window.innerWidth'],
-    ['setTimeout', 'setTimeout(() => 0, 1)'],
-    ['performance', 'performance.now()'],
-    ['HTMLElement', 'let element: HTMLElement'],
-  ])(`pure typecheck rejects %s in ${layer}`, (name, code) => {
-    const dir = `src/${layer}`
-    const probe = `${dir}/s1-purity-probe.ts`
-    mkdirSync(dir, { recursive: true })
-    expect(existsSync(probe)).toBe(false)
-    try {
-      writeFileSync(probe, `${code};\nexport {};\n`)
-      const result = spawnSync(process.execPath, ['node_modules/typescript/bin/tsc', '--noEmit', '-p', 'tsconfig.pure.json', '--pretty', 'false'], { encoding: 'utf8' })
-      expect(result.error).toBeUndefined()
-      expect(result.status, result.stdout + result.stderr).not.toBe(0)
-      expect(result.stdout).toContain(name)
-      expect(result.stdout).toContain(probe)
-    } finally {
-      rmSync(probe, { force: true })
-    }
-  })
+for (const cwd of ['repository', 'probe']) {
+  for (const layer of ['domain', 'app']) {
+    test.each([
+      ['document', 'document.title'],
+      ['window', 'window.innerWidth'],
+      ['setTimeout', 'setTimeout(() => 0, 1)'],
+      ['performance', 'performance.now()'],
+      ['HTMLElement', 'let element: HTMLElement'],
+    ])(`pure typecheck rejects %s in ${layer} from ${cwd}`, (name, code) => {
+      const root = mkdtempSync(join(tmpdir(), 'gloss-purity-'))
+      const dir = join(root, 'src', layer)
+      cpSync(join(repoRoot, 'tsconfig.pure.json'), join(root, 'tsconfig.pure.json'))
+      cpSync(join(repoRoot, 'tsconfig.json'), join(root, 'tsconfig.json'))
+      const probe = `${dir}/s1-purity-probe.ts`
+      mkdirSync(dir, { recursive: true })
+      expect(existsSync(probe)).toBe(false)
+      try {
+        writeFileSync(probe, `${code};\nexport {};\n`)
+        const tscCwd = cwd === 'repository' ? repoRoot : root
+        const result = spawnSync(process.execPath, [join(repoRoot, 'node_modules/typescript/bin/tsc'), '--noEmit', '-p', join(root, 'tsconfig.pure.json'), '--pretty', 'false'], { encoding: 'utf8', cwd: tscCwd })
+        expect(result.error).toBeUndefined()
+        expect(result.status, result.stdout + result.stderr).not.toBe(0)
+        expect(result.stdout).toContain(name)
+        const diagnosticPaths = [...result.stdout.matchAll(/^(.+)\(\d+,\d+\): error TS\d+:/gm)]
+          .map(match => resolve(tscCwd, match[1]!))
+        expect(diagnosticPaths, result.stdout).toContain(probe)
+      } finally {
+        rmSync(root, { recursive: true, force: true })
+      }
+    })
+  }
 }
 
 test('Vitest includes root and future test folders, alongside structure tests', async () => {

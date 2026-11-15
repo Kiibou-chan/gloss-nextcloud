@@ -138,6 +138,35 @@ final class ReviewStoreTest extends TestCase {
 		self::assertSame($row['expected']['written'] ? 1 : 0, $this->writes);
 	}
 
+	public function testSaveResultCarriesDraftFileForInitialSaveAndRetry(): void {
+		$store = $this->store();
+		$key = ReviewKey::parse(self::KEY);
+		$body = json_encode(array_merge(json_decode($this->body(), true), ['draft' => ['file' => 'chapter.typ']]));
+		foreach ([0, 1] as $attempt) {
+			$result = $store->save($this->share, $key, $body, 0);
+			self::assertSame('chapter.typ', $result->draftFile);
+		}
+	}
+
+	public static function nonStringDraftFiles(): array {
+		return [[(object) []], [[]], [42], [true], [null]];
+	}
+
+	#[DataProvider('nonStringDraftFiles')]
+	public function testNonStringDraftFileOnlyClearsNotificationMetadata(mixed $draftFile): void {
+		$store = $this->store();
+		$key = ReviewKey::parse(self::KEY);
+		$body = json_encode(array_merge(json_decode($this->body(name: 'Synthetic reviewer'), true), ['draft' => ['file' => $draftFile]]));
+		foreach ([0, 1] as $attempt) {
+			$result = $store->save($this->share, $key, $body, 0);
+			self::assertSame(1, $result->revision);
+			self::assertFalse($result->sentNow);
+			self::assertSame('', $result->draftFile);
+			self::assertSame($body, $store->open($this->share, $key)->content);
+			self::assertSame(1, $this->writes);
+		}
+	}
+
 	public function testFolderCreatedOnlyOnSaveAndOpenUsesSuffix(): void {
 		$store = $this->store(exists: false);
 		$key = ReviewKey::parse(self::KEY);

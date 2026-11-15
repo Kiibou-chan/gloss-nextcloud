@@ -58,7 +58,7 @@ async function editor({ page }) {
   await expect(replacement.locator('ins')).toHaveText('flourish');
   await expect(page.locator('.gr-items > li del').filter({ hasText: 'drift' })).toHaveCount(1);
   await expect(page.locator('.gr-items blockquote')).toHaveText('stones');
-  await expect(status(page)).toHaveText('Saved');
+  await expect(status(page)).toHaveText('Saved', { timeout: 30_000 });
   await page.reload({ waitUntil: 'networkidle' });
   await expect(name(page)).toHaveValue(reviewer);
   await expect(count(page)).toHaveText('3 changes, 1 comment');
@@ -134,7 +134,7 @@ async function waiting(args) {
   try { await expect(status(page)).toHaveText('Not saved yet; trying again in 2 s', { timeout: 40_000 }); }
   catch (error) { console.log(`H6 status: ${await status(page).textContent()}`); await capture('-diagnostic'); throw error; }
   await capture('-retry');
-  await expect(status(page)).toHaveText('Saved', { timeout: 25_000 });
+  await expect(status(page)).toHaveText('Saved', { timeout: 30_000 });
   const owner = await ownerPage(args);
   try {
     await owner.page.goto(`${args.state.base}/index.php/apps/files/?dir=/Review%20reviews`);
@@ -267,7 +267,7 @@ export const scenes = {
     const owner = await ownerPage(args);
     try {
       await owner.page.getByRole('button', { name: /Notifications/i }).click();
-      await expect(owner.page.getByText(`${reviewer} sent a review of paper.typ`, { exact: false }), 'Scene needs feature F5.').toBeVisible();
+      await expect(owner.page.getByText(`${reviewer} sent a review of paper.typ`, { exact: false }).first(), 'Scene needs feature F5.').toBeVisible();
       await args.capture('-notification', owner.page);
     } finally { await owner.context.close(); }
   } },

@@ -47,6 +47,7 @@ async function main() {
   const browser = await browserType.launch({ headless: true });
   try {
     for (const colour of ['light', 'dark']) {
+      if (!fixture) execFileSync(new URL('./dev-nc.sh', import.meta.url).pathname, ['empty-reviews'], { stdio: ['ignore', 'ignore', 'ignore'] });
       const options = { colorScheme: colour, viewport: { width: 1600, height: 1000 } };
       const context = await browser.newContext(options);
       try {

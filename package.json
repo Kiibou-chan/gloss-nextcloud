@@ -7,7 +7,7 @@
     "test": "vitest run",
     "structure": "depcruise src test --config .dependency-cruiser.cjs && knip",
     "check": "npm run build && npm run typecheck && npm run structure && npm test",
-    "ci": "npm run typecheck && npm test && npm run structure && npm run build && git diff --exit-code -- js css"
+    "ci": "npm run typecheck && npm test && npm run structure && npm run build && node scripts/third-party.mjs && test -z \"$(git status --porcelain -- js css THIRD-PARTY.md)\""
   },
   "devDependencies": {
     "@codemirror/commands": "^6.11.1",
