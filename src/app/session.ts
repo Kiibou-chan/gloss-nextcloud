@@ -82,6 +82,10 @@ export class ReviewSession {
   async setName(name: string): Promise<void> {
     if (!this.review || this.record?.sent) return
     name = name.trim()
+    if ([...name].length > 100) {
+      this.status = 'Your name must be 100 characters or fewer.'
+      this.head(); return
+    }
     this.cancelSave?.(); this.cancelSave = null
     const generation = ++this.generation
     this.record = null; this.form = null
@@ -162,6 +166,11 @@ export class ReviewSession {
   cancelForm(): void { this.form = null; this.head() }
   commentOn(target: Target, text: string): void {
     if (!this.editable() || !text.trim()) return
+    if ('id' in target && !this.review!.items().some(item => item.id === target.id)) {
+      this.form = null
+      this.status = 'That item no longer exists, so the comment form has been closed.'
+      this.head(); return
+    }
     this.review!.comment(target, text, this.ports.ids.item(), this.ports.clock.now()); this.form = null; this.changed()
   }
   deleteComment(id: string, index: number): void { if (this.editable()) { this.review!.deleteComment(id, index); this.changed() } }
