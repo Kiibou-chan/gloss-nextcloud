@@ -27,7 +27,7 @@
     "pdfjs-dist": "6.5.438",
     "preact": "10.29.8",
     "@preact/signals": "2.11.4",
-    "@types/node": "^26.0.0"
+    "@types/node": "26.6.6"
   },
   "type": "module"
 }
