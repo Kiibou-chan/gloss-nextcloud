@@ -61,3 +61,19 @@ body[data-themes*="dark"] .gr-text { --gr-c-keyword: #c79bf0; --gr-c-string: #6c
 .gr-text .cm-panel.cm-search { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 6px 8px; }
 .gr-text .cm-panel.cm-search input, .gr-text .cm-panel.cm-search button { margin: 0; min-height: 30px; }
 .gr-text .cm-panel.cm-search label { display: inline-flex; align-items: center; gap: 2px; font-size: 0.9em; }
+
+/* Keep PDF pages in the adapter's observed scroll viewport. */
+.gr-pdf { max-height: calc(100vh - 140px); overflow-y: auto; }
+body[data-themes*="dark"] .gr-text del, body[data-themes*="dark"] .gr-card-head del { color: #ff9090; opacity: 1; }
+body[data-themes*="dark"] .gr-card-head ins { color: #7ee29b; }
+@media (prefers-color-scheme: dark) {
+	body:not([data-themes*="light"]) .gr-text del, body:not([data-themes*="light"]) .gr-card-head del { color: #ff9090; opacity: 1; }
+	body:not([data-themes*="light"]) .gr-card-head ins { color: #7ee29b; }
+}
+
+/* CodeMirror's default controls use light gradients even in a dark Nextcloud theme. */
+.gr-text .cm-panels input, .gr-text .cm-panels button {
+	background: var(--color-main-background); color: var(--color-main-text);
+	border: 1px solid var(--color-border); border-radius: var(--border-radius);
+}
+.gr-text .cm-panels button:hover { background: var(--color-background-hover); }

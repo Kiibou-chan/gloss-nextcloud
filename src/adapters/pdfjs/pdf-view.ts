@@ -210,6 +210,12 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
       const mark = [...page.marks.children].find(child => (child as HTMLElement).dataset.id === id)
       ;(mark ?? page.box).scrollIntoView({ block: 'center', behavior: 'smooth' })
     },
-    onSelect(listener) { selected = listener },
+    dispose() {
+      observer?.disconnect(); viewportObserver?.disconnect()
+      el.removeEventListener('mouseup', reportSelection); el.removeEventListener('keyup', reportSelection)
+      selected = undefined
+      for (const page of pages) release(page)
+    },
+    onSelect(listener) { selected = listener; return () => { if (selected === listener) selected = undefined } },
   }
 }

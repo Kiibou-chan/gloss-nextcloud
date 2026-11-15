@@ -12,15 +12,12 @@ import { placeItems } from '../domain/text/quote'
 import type { Ports } from './ports'
 import type { CardView, HeadView, ViewMode } from './view'
 
-/** The step 0 key keeps the spike's slug and the browser's stable reviewer id. */
-function nameKey(name: string, id: string): string {
-  const slug = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'reviewer'
-  return `${slug}-${id}`
-}
-
 function brief(text: string): string { return text.replace(/\s+/g, ' ').trim() }
 
 export class ReviewSession {
+  private disposed = false
+  private listeners: (() => void)[] = []
+  private named = false
   private draft = ''
   private file = ''
   private etag = ''
@@ -47,14 +44,14 @@ export class ReviewSession {
 
   constructor(private readonly ports: Ports) {
     ports.editor.setEditable(false)
-    ports.editor.onEdit(changes => this.edit(changes))
-    ports.editor.onSelect(range => {
+    this.listen(ports.editor.onEdit(changes => this.edit(changes)))
+    this.listen(ports.editor.onSelect(range => {
       if (!this.editable() || !this.review || range.to <= range.from) return
       const a = this.review.fromApplied(range.from), b = this.review.fromApplied(range.to)
       const target = 'inside' in a ? { id: a.inside } : 'inside' in b ? { id: b.inside } : this.review.targetFor(a.at, b.at)
       this.openForm(target, false)
-    })
-    ports.pdf.onSelect(selection => {
+    }))
+    this.listen(ports.pdf.onSelect(selection => {
       if (!this.editable() || !this.source || !this.review) return
       const range = toSource(this.source, selection.text, selection.fraction)
       if (!range) this.status = 'That selection could not be placed in the draft. Select a little more, or use the editor.'
@@ -63,12 +60,25 @@ export class ReviewSession {
         ports.editor.scrollTo(this.review.toApplied(range.from))
       }
       this.head()
-    })
+    }))
   }
 
+  private listen(unsubscribe: void | (() => void)): void {
+    if (unsubscribe) this.listeners.push(unsubscribe)
+  }
+  dispose(): void {
+    if (this.disposed) return
+    this.disposed = true; this.generation++
+    this.cancelSave?.(); this.cancelPdf?.()
+    this.cancelSave = this.cancelPdf = null
+    for (const unsubscribe of this.listeners) unsubscribe()
+    this.listeners = []
+  }
   async start(): Promise<void> {
     try {
-      const d = await this.ports.api.draft(), main = d.files.find(f => f.file === d.main)
+      const d = await this.ports.api.draft()
+      if (this.disposed) return
+      const main = d.files.find(f => f.file === d.main)
       if (!main) { this.status = 'The draft could not be found.'; this.head(); return }
       this.file = main.file; this.draft = main.text; this.etag = main.etag
       this.ops = languageOf(this.file) === 'typst' ? parseTypst(this.draft) : plainOps(this.draft)
@@ -80,7 +90,7 @@ export class ReviewSession {
   }
 
   async setName(name: string): Promise<void> {
-    if (!this.review || this.record?.sent) return
+    if (this.disposed || !this.review || this.record?.sent) return
     name = name.trim()
     if ([...name].length > 100) {
       this.status = 'Your name must be 100 characters or fewer.'
@@ -91,8 +101,8 @@ export class ReviewSession {
     this.record = null; this.form = null
     if (!name) { this.render(); return }
     const remembered = this.ports.store.rememberedKey()
-    const id = remembered ? remembered.slice(remembered.lastIndexOf('-') + 1) : this.ports.ids.key()
-    this.key = nameKey(name, id); this.ports.store.remember(this.key)
+    this.key = !this.named && remembered && /^[A-Za-z0-9]{16}$/.test(remembered) ? remembered : this.ports.ids.key()
+    this.named = true; this.ports.store.remember(this.key)
     this.loading = true; this.render()
     try {
       const opened = await this.ports.api.open(this.key)
@@ -113,8 +123,9 @@ export class ReviewSession {
     finally { if (generation === this.generation) { this.loading = false; this.render() } }
   }
 
-  private editable(): boolean { return this.ports.reviewable && !!this.record && !this.record.sent && !this.loading }
+  private editable(): boolean { return !this.disposed && this.ports.reviewable && !!this.record && !this.record.sent && !this.loading }
   private head(): void {
+    if (this.disposed) return
     const editable = this.editable()
     this.ports.editor.setEditable(editable)
     const countText = `${this.count.changes} ${this.count.changes === 1 ? 'change' : 'changes'}, ${this.count.comments} ${this.count.comments === 1 ? 'comment' : 'comments'}`
@@ -122,6 +133,7 @@ export class ReviewSession {
   }
 
   private render(): void {
+    if (this.disposed) return
     if (!this.review) { this.head(); return }
     const next = new Map<string, string>(), ids: string[] = []
     const marks = [], deleted = []
@@ -182,21 +194,22 @@ export class ReviewSession {
     if (item && item.kind !== 'overall') { this.ports.editor.scrollTo(this.review!.toApplied(item.from)); this.ports.pdf.scrollToMark(id) }
   }
   async setView(view: ViewMode): Promise<void> {
+    if (this.disposed) return
     if (this.ports.hasPdf === false) view = 'editor'
     this.view = view; this.ports.store.setView(view); this.head()
     if (view === 'editor') { this.cancelPdf?.(); this.pdfScheduledSignature = null; return }
     this.pdfLoading ??= this.ports.pdf.show().then(({ pages }) => { this.pdfIndex = pdfKey(pages) })
-    try { await this.pdfLoading; this.deferPdf() }
-    catch { this.status = 'Could not load the PDF.'; this.head() }
+    try { await this.pdfLoading; if (this.status === 'Could not load the PDF.') { this.status = ''; this.head() }; this.deferPdf() }
+    catch { this.pdfLoading = null; this.status = 'Could not load the PDF.'; this.head() }
   }
   private deferPdf(): void {
-    if (this.view === 'editor' || !this.pdfIndex || !this.review) return
+    if (this.disposed || this.view === 'editor' || !this.pdfIndex || !this.review) return
     const signature = JSON.stringify(this.review.items().map(i => i.kind === 'overall' ? null : [i.id, i.from, i.quote, i.kind === 'proposal' ? i.proposal : '']))
     if (signature === this.pdfScheduledSignature) return
     this.pdfScheduledSignature = signature
     this.cancelPdf?.()
     this.cancelPdf = this.ports.scheduler.after(400, () => {
-      if (this.view === 'editor' || !this.pdfIndex || !this.review) return
+      if (this.disposed || this.view === 'editor' || !this.pdfIndex || !this.review) return
       const next = new Map<string, { signature: string; placements: PdfPlacement[] }>()
       let changed = false
       for (const item of this.review.items()) {
@@ -215,6 +228,7 @@ export class ReviewSession {
     })
   }
   private async save(): Promise<void> {
+    if (this.disposed) return
     if (this.pending) { await this.pending; return this.save() }
     if (!this.record || !this.review || !this.key) return
     const record = this.record, review = this.review, key = this.key

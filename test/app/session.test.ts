@@ -106,9 +106,39 @@ describe('ReviewSession', () => {
     await s.setName('Ada'); expect(f.editor.setEditable).toHaveBeenLastCalledWith(true)
     const g = fakes(); const t = new ReviewSession({ ...g.ports, reviewable: false }); await t.start(); await t.setName('Ada'); expect(g.editor.setEditable).toHaveBeenLastCalledWith(false)
   })
-  it.each([['Éva Smith', 'e-va-smith'], [' A & B ', 'a-b'], ['中文', 'reviewer'], ['A'.repeat(70), 'a'.repeat(60)]])('uses the spike slug for %s', async (name, slug) => {
-    const { f, s } = await ready(name); expect(f.api.open).toHaveBeenLastCalledWith(`${slug}-Abcdef1234567890`)
-    await s.setName('Other'); expect(f.store.rememberedKey()).toBe('other-Abcdef1234567890')
+  it('passes server-shaped keys to open and save and replaces invalid remembered keys', async () => {
+    const { f, s } = await ready('Éva Smith')
+    expect(f.api.open.mock.lastCall![0]).toMatch(/^[A-Za-z0-9]{16}$/)
+    f.editor.replace(change); await f.advance(600)
+    expect(f.api.save.mock.lastCall![0]).toMatch(/^[A-Za-z0-9]{16}$/)
+    f.store.remember('invalid-key')
+    const t = new ReviewSession(f.ports); await t.start(); await t.setName('Other')
+    expect(f.api.open.mock.lastCall![0]).toMatch(/^[A-Za-z0-9]{16}$/)
+  })
+  it('reuses a valid remembered key initially and makes a fresh key when the name changes', async () => {
+    const f = fakes(); f.store.remember('KnownReview12345')
+    const s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
+    expect(f.api.open).toHaveBeenLastCalledWith('KnownReview12345')
+    await s.setName('Bob')
+    expect(f.api.open).toHaveBeenLastCalledWith('Abcdef1234567890')
+  })
+  it('retries a failed PDF load on the next request', async () => {
+    const { f, s } = await ready()
+    f.pdf.show.mockRejectedValueOnce(new Error('temporary'))
+    await s.setView('pdf'); expect(f.head().status).toBe('Could not load the PDF.')
+    await s.setView('pdf'); expect(f.pdf.show).toHaveBeenCalledTimes(2)
+    expect(f.head().status).not.toBe('Could not load the PDF.')
+  })
+  it('disposes pending saves and PDF marks and unsubscribes all listeners', async () => {
+    const { f, s } = await ready()
+    await s.setView('both'); f.editor.replace(change)
+    s.dispose(); const calls = f.panel.setHead.mock.calls.length
+    await f.advance(1000)
+    f.select(0, 5); f.pdfSelect('alpha'); f.editor.replace(change)
+    expect(f.api.save).not.toHaveBeenCalled()
+    expect(f.pdf.setMarks).not.toHaveBeenCalled()
+    expect(f.panel.setHead).toHaveBeenCalledTimes(calls)
+    expect(f.unsubscribed()).toBe(3)
   })
   it('renders typing, singular counts, and only changed cards', async () => {
     const { f } = await ready(); f.editor.replace(change)

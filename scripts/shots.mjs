@@ -23,7 +23,10 @@ async function main() {
   if (!browserType) throw new Error('Choose chromium, firefox, or webkit.');
   // This is the generated, ignored fixture state, never the real instance's credentials.
   const script = new URL('./dev-nc.sh', import.meta.url);
-  execFileSync(script.pathname, ['sync'], { stdio: ['ignore', 'ignore', 'ignore'] });
+  // Container runners sync on the host before starting, without a Docker socket.
+  if (process.env.GLOSS_SHOTS_SKIP_SYNC !== '1') {
+    execFileSync(script.pathname, ['sync'], { stdio: ['ignore', 'ignore', 'ignore'] });
+  }
   if (((await stat(new URL('../.dev-nc.env', import.meta.url))).mode & 0o077) !== 0) throw new Error('Development state must be owner-only.');
   const state = JSON.parse(await readFile(new URL('../.dev-nc.env', import.meta.url), 'utf8'));
   if (!/^http:\/\/127\.0\.0\.1:\d+$/.test(state.base) || new URL(state.base).port === '8089') {
@@ -43,6 +46,9 @@ async function main() {
         page.setDefaultTimeout(15_000);
         const prefix = `${sceneName}${browserName === 'chromium' ? '' : `-${browserName}`}-${colour}`;
         const capture = async (suffix = '', target = page) => {
+          await target.bringToFront();
+          // Let the browser paint after focus and layout changes before photographing a canvas.
+          await target.evaluate(() => new Promise(resolvePaint => requestAnimationFrame(() => requestAnimationFrame(resolvePaint))));
           await target.screenshot({ path: resolve(out, `${prefix}${suffix}.png`), fullPage: true });
           console.log(`Wrote ${prefix}${suffix}.png`);
         };

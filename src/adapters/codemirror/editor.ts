@@ -69,6 +69,7 @@ export function createEditor(parent: HTMLElement, options: { text: string; langu
     }),
   })
   return {
+    dispose: () => view.destroy(),
     text: () => view.state.doc.toString(),
     setText(text) {
       view.dispatch({
@@ -93,7 +94,7 @@ export function createEditor(parent: HTMLElement, options: { text: string; langu
     scrollTo(pos) {
       view.dispatch({ effects: EditorView.scrollIntoView(Math.max(0, Math.min(pos, view.state.doc.length)), { y: 'center' }) })
     },
-    onEdit(listener) { onEdit = listener },
-    onSelect(listener) { onSelect = listener },
+    onEdit(listener) { onEdit = listener; return () => { if (onEdit === listener) onEdit = () => {} } },
+    onSelect(listener) { onSelect = listener; return () => { if (onSelect === listener) onSelect = () => {} } },
   }
 }

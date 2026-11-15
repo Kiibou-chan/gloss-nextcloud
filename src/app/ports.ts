@@ -3,20 +3,22 @@ import type { Change } from '../domain/review/model'
 import type { CardView, DeletedWords, EditorMark, HeadView, ViewMode } from './view'
 export type { Change } from '../domain/review/model'
 export interface EditorPort {
+  dispose?(): void
   setText(text: string): void
   text(): string
   replace(change: Change): void
   setMarks(marks: readonly EditorMark[], deleted: readonly DeletedWords[]): void
   setEditable(on: boolean): void
   scrollTo(pos: number): void
-  onEdit(listener: (changes: readonly Change[]) => void): void
-  onSelect(listener: (range: { from: number; to: number }) => void): void
+  onEdit(listener: (changes: readonly Change[]) => void): void | (() => void)
+  onSelect(listener: (range: { from: number; to: number }) => void): void | (() => void)
 }
 export interface PdfPort {
+  dispose?(): void
   show(): Promise<{ pages: readonly (readonly string[])[] }>
   setMarks(placements: readonly PdfPlacement[]): void
   scrollToMark(id: string): void
-  onSelect(listener: (s: { text: string; fraction: number }) => void): void
+  onSelect(listener: (s: { text: string; fraction: number }) => void): void | (() => void)
 }
 export type Failure = { status: number; error: string }
 export interface ReviewApi {

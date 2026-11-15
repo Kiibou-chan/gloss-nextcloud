@@ -3,13 +3,11 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { textLayerCss } from './text-layer-css.mjs'
 
 await build({
-  entryPoints: ['src/editor.mjs'],
+  entryPoints: ['src/main.ts'],
   bundle: true,
-  // Preserve the spike's output while the new strict TypeScript config is in place.
-  tsconfigRaw: {},
   minify: true,
   format: 'iife',
-  outfile: 'js/vendor/editor.bundle.js',
+  outfile: 'js/gloss-review.js',
 })
 
 await build({
