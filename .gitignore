@@ -1,2 +1,6 @@
 .local-nc.env
 node_modules/
+shots/
+build/
+.dev-nc.env
+/vendor/

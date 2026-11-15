@@ -1,0 +1,289 @@
+{
+  "seed": 87105574,
+  "cases": [
+    {
+      "input": {
+        "name": "ligature",
+        "text": "Alpha ﬁnite beta.",
+        "selected": "finite",
+        "fraction": 0.5,
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 17
+          },
+          {
+            "op": "close"
+          }
+        ]
+      },
+      "expected": {
+        "sourceKey": {
+          "key": "alphafinitebeta",
+          "at": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6,
+            6,
+            7,
+            8,
+            9,
+            10,
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        "selectionKey": {
+          "key": "finite",
+          "at": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "toSource": {
+          "from": 6,
+          "to": 11
+        }
+      }
+    },
+    {
+      "input": {
+        "name": "line-end hyphen",
+        "text": "Alpha hyphenated beta.",
+        "selected": "hyphen-\nated",
+        "fraction": 0.5,
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 22
+          },
+          {
+            "op": "close"
+          }
+        ]
+      },
+      "expected": {
+        "sourceKey": {
+          "key": "alphahyphenatedbeta",
+          "at": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            17,
+            18,
+            19,
+            20
+          ]
+        },
+        "selectionKey": {
+          "key": "hyphenated",
+          "at": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "toSource": {
+          "from": 6,
+          "to": 16
+        }
+      }
+    },
+    {
+      "input": {
+        "name": "markup between words",
+        "text": "Alpha *beta* gamma.",
+        "selected": "Alpha beta gamma",
+        "fraction": 0.5,
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 11
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 12,
+            "to": 19
+          },
+          {
+            "op": "close"
+          }
+        ]
+      },
+      "expected": {
+        "sourceKey": {
+          "key": "alphabetagamma",
+          "at": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            7,
+            8,
+            9,
+            10,
+            13,
+            14,
+            15,
+            16,
+            17
+          ]
+        },
+        "selectionKey": {
+          "key": "alphabetagamma",
+          "at": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "toSource": {
+          "from": 0,
+          "to": 18
+        }
+      }
+    },
+    {
+      "input": {
+        "name": "repeated words on different pages",
+        "text": "Alpha beta. Gamma delta. Alpha beta.",
+        "selected": "Alpha beta",
+        "fraction": 0.9,
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ]
+      },
+      "expected": {
+        "sourceKey": {
+          "key": "alphabetagammadeltaalphabeta",
+          "at": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6,
+            7,
+            8,
+            9,
+            12,
+            13,
+            14,
+            15,
+            16,
+            18,
+            19,
+            20,
+            21,
+            22,
+            25,
+            26,
+            27,
+            28,
+            29,
+            31,
+            32,
+            33,
+            34
+          ]
+        },
+        "selectionKey": {
+          "key": "alphabeta",
+          "at": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "toSource": {
+          "from": 25,
+          "to": 35
+        }
+      }
+    }
+  ]
+}
