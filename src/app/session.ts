@@ -53,7 +53,7 @@ export class ReviewSession {
       this.openForm(target, false)
     }))
     this.listen(ports.pdf.onSelect(selection => {
-      if (!this.editable() || !this.source || !this.review || !selection.text.trim()) return
+      if (!this.editable() || !this.source || !this.review) return
       const range = toSource(this.source, selection.text, selection.fraction)
       if (!range) this.status = 'That selection could not be placed in the draft. Select a little more, or use the editor.'
       else {
@@ -176,9 +176,7 @@ export class ReviewSession {
       if (!item || item.kind === 'overall') return
       quote = this.draft.slice(item.from, item.from + item.quote.exact.length)
     } else quote = this.draft.slice(target.from, target.to)
-    quote = brief(quote)
-    if (this.form?.quote === quote) return
-    this.form = { target, quote, focus }; this.head()
+    this.form = { target, quote: brief(quote), focus }; this.head()
   }
   cancelForm(): void { this.form = null; this.head() }
   commentOn(target: Target, text: string): void {

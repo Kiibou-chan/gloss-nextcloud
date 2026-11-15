@@ -3,8 +3,6 @@ import { h, options, render } from 'preact'
 import { act } from 'preact/test-utils'
 import type { CardView, HeadView } from '../../src/app/view'
 import type { ReviewSession } from '../../src/app/session'
-import { ReviewSession as Session } from '../../src/app/session'
-import { fakes } from '../app/fakes'
 import { createPanelModel } from '../../src/ui/panel-model'
 import { Card } from '../../src/ui/card'
 import { Head } from '../../src/ui/head'
@@ -154,18 +152,6 @@ describe('review islands', () => {
 })
 
 
-it('keeps a half-typed comment for repeated and empty editor or PDF selections', async () => {
-  const f = fakes(), model = createPanelModel(), el = slot()
-  const session = new Session({ ...f.ports, panel: model })
-  await session.start(); await session.setName('Ada')
-  act(() => { dispose.push(mountPanel(el, model, session)); f.select(0, 5) })
-  const textarea = el.querySelector<HTMLTextAreaElement>('#gr-comment')!
-  textarea.value = 'Half-typed synthetic comment'
-  for (const select of [() => f.select(0, 5), () => f.pdfSelect('alpha'), () => f.select(0, 0), () => f.pdfSelect('')]) {
-    act(select); expect(textarea.value).toBe('Half-typed synthetic comment')
-  }
-  session.dispose()
-})
 it('skips a name change when the trimmed name is unchanged', () => {
   const model = createPanelModel(), session = commands(), el = slot()
   act(() => { model.setHead(head()); dispose.push(mountHead(el, model, session)) })

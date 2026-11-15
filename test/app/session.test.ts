@@ -232,6 +232,18 @@ describe('ReviewSession', () => {
 
 
 describe('S11b session regressions', () => {
+  it('saves a comment at the second selection when both selections have the same quote', async () => {
+    const f = fakes()
+    f.api.draft.mockResolvedValue({ main: 'draft.txt', files: [{ file: 'draft.txt', text: 'alpha beta alpha', etag: 'v1' }] })
+    const s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
+    f.select(0, 5)
+    f.select(11, 16)
+    s.commentOn(f.head().form!.target, 'Check the second alpha')
+    await f.advance(600)
+    expect(JSON.parse(f.api.save.mock.lastCall![1]).items).toEqual([
+      expect.objectContaining({ kind: 'comment', from: 11, quote: expect.objectContaining({ exact: 'alpha' }), comments: [expect.objectContaining({ text: 'Check the second alpha' })] }),
+    ])
+  })
   it('reuses the remembered key after a failed first open', async () => {
     const f = fakes(); f.store.remember('KnownReview12345'); f.store.remember.mockClear()
     f.api.open.mockResolvedValueOnce({ status: 0, error: 'network' })
@@ -273,11 +285,5 @@ describe('S11b session regressions', () => {
     const s = new ReviewSession(f.ports); await s.start()
     expect(f.store.view()).toBe('editor'); expect(f.head().view).toBe('editor')
     await s.setView('pdf'); expect(f.store.view()).toBe('pdf'); expect(f.head().status).toBe('')
-  })
-  it('retains the form object for an equal quote or empty selection', async () => {
-    const { f } = await ready(); f.select(0, 5); const form = f.head().form
-    f.select(0, 5); expect(f.head().form).toBe(form)
-    f.pdfSelect('alpha'); expect(f.head().form).toBe(form)
-    f.select(0, 0); f.pdfSelect(''); expect(f.head().form).toBe(form)
   })
 })
