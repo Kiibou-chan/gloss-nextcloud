@@ -1,0 +1,8245 @@
+{
+  "seed": 87105574,
+  "cases": [
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 10,
+        "to": 12
+      },
+      "expected": "g"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 26,
+        "to": 29
+      },
+      "expected": "gra"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 5,
+        "to": 6
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 0,
+        "to": 7
+      },
+      "expected": "Alpha"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 25,
+        "to": 28
+      },
+      "expected": "ha"
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 26,
+        "to": 50
+      },
+      "expected": "beta gamma"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 7,
+        "to": 23
+      },
+      "expected": "raw beta and x"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 18,
+        "to": 19
+      },
+      "expected": "a"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 42
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 11,
+        "to": 12
+      },
+      "expected": "φ"
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 2,
+        "to": 9
+      },
+      "expected": "pha bet"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 9,
+        "to": 22
+      },
+      "expected": "eadingBeta"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 34
+      },
+      "expected": "lpha strong beta and quiet gam"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 19,
+        "to": 28
+      },
+      "expected": "item"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 7,
+        "to": 24
+      },
+      "expected": "Al"
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 25,
+        "to": 26
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 5,
+        "to": 8
+      },
+      "expected": "r"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 15,
+        "to": 18
+      },
+      "expected": "lph"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 14,
+        "to": 21
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 0,
+        "to": 23
+      },
+      "expected": "Grüsse αλφαAlpha *"
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 4,
+        "to": 10
+      },
+      "expected": "a beta"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 10,
+        "to": 23
+      },
+      "expected": "adingBeta p"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 37,
+        "to": 38
+      },
+      "expected": "."
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 15,
+        "to": 16
+      },
+      "expected": "B"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 10,
+        "to": 14
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 38,
+        "to": 40
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 28,
+        "to": 35
+      },
+      "expected": "gamma."
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 20,
+        "to": 30
+      },
+      "expected": "@beta and"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 41,
+        "to": 50
+      },
+      "expected": "Alpha"
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 20,
+        "to": 51
+      },
+      "expected": "* beta."
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 7,
+        "to": 13
+      },
+      "expected": "eta ga"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 20
+      },
+      "expected": "Alpha headingBet"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 2,
+        "to": 9
+      },
+      "expected": "pha st"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 11,
+        "to": 36
+      },
+      "expected": "mBeta itemGamma it"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 11,
+        "to": 23
+      },
+      "expected": "A"
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 39,
+        "to": 45
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 3,
+        "to": 7
+      },
+      "expected": "ha"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 5,
+        "to": 24
+      },
+      "expected": "Alpha @bet"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 22,
+        "to": 61
+      },
+      "expected": "Alpha beta gamma"
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 0,
+        "to": 15
+      },
+      "expected": "Grüsse αλφα"
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 7,
+        "to": 15
+      },
+      "expected": "eta gamm"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 28
+      },
+      "expected": "Alpha headingBeta paragr"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 5,
+        "to": 22
+      },
+      "expected": "strong beta an"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 7,
+        "to": 16
+      },
+      "expected": "itemB"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 22,
+        "to": 23
+      },
+      "expected": "A"
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 18,
+        "to": 50
+      },
+      "expected": "beta gamma"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 23
+      },
+      "expected": "lpha raw beta and x"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 7,
+        "to": 26
+      },
+      "expected": "Alpha @beta"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 17,
+        "to": 58
+      },
+      "expected": "Alpha beta ga"
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 11,
+        "to": 12
+      },
+      "expected": "φ"
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 5,
+        "to": 6
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 4,
+        "to": 11
+      },
+      "expected": "pha hea"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 26
+      },
+      "expected": "lpha strong beta and q"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 12,
+        "to": 27
+      },
+      "expected": "Beta item"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 12,
+        "to": 33
+      },
+      "expected": "Alpha beta."
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 35,
+        "to": 50
+      },
+      "expected": "gamma"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 11,
+        "to": 28
+      },
+      "expected": "beta and x + y"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 2,
+        "to": 31
+      },
+      "expected": "Alpha @beta and"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 30,
+        "to": 37
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 8,
+        "to": 47
+      },
+      "expected": "αλφαAlpha * beta."
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 14,
+        "to": 17
+      },
+      "expected": "ma."
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 14,
+        "to": 25
+      },
+      "expected": "gBeta par"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 5,
+        "to": 38
+      },
+      "expected": "strong beta and quiet gamma."
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 15,
+        "to": 16
+      },
+      "expected": "B"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 7,
+        "to": 31
+      },
+      "expected": "Alpha bet"
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 11,
+        "to": 32
+      },
+      "expected": "beta"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 3,
+        "to": 13
+      },
+      "expected": "ha raw be"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 13,
+        "to": 45
+      },
+      "expected": "Alpha @beta and gamma."
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 2,
+        "to": 57
+      },
+      "expected": "Alpha beta g"
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 19,
+        "to": 44
+      },
+      "expected": "a * beta."
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 12,
+        "to": 16
+      },
+      "expected": "amma"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 6
+      },
+      "expected": "Alph"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 9,
+        "to": 34
+      },
+      "expected": "rong beta and quiet gam"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 3,
+        "to": 12
+      },
+      "expected": "lpha item"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 12,
+        "to": 16
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 3,
+        "to": 21
+      },
+      "expected": "ha"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 7,
+        "to": 20
+      },
+      "expected": "raw beta and"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 0,
+        "to": 24
+      },
+      "expected": "Alpha @bet"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 13,
+        "to": 38
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 24,
+        "to": 31
+      },
+      "expected": "beta."
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 9,
+        "to": 11
+      },
+      "expected": "a"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 14,
+        "to": 23
+      },
+      "expected": "gBeta p"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 13,
+        "to": 14
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 7,
+        "to": 16
+      },
+      "expected": "itemB"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 28,
+        "to": 28
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 0,
+        "to": 50
+      },
+      "expected": "Alpha beta gamma"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 19,
+        "to": 36
+      },
+      "expected": "d x + y gamma."
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 4,
+        "to": 37
+      },
+      "expected": "Alpha @beta and"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 10,
+        "to": 33
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 28,
+        "to": 35
+      },
+      "expected": "."
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 5,
+        "to": 12
+      },
+      "expected": "beta g"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 16
+      },
+      "expected": "Alpha heading"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 17,
+        "to": 18
+      },
+      "expected": "a"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 20,
+        "to": 27
+      },
+      "expected": "item"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 17,
+        "to": 24
+      },
+      "expected": "Al"
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 5,
+        "to": 50
+      },
+      "expected": "beta gamma"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 22,
+        "to": 26
+      },
+      "expected": "x +"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 8,
+        "to": 34
+      },
+      "expected": "Alpha @beta and"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 46,
+        "to": 53
+      },
+      "expected": "pha bet"
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 16,
+        "to": 47
+      },
+      "expected": "lpha * beta."
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 3,
+        "to": 10
+      },
+      "expected": "ha beta"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 9,
+        "to": 12
+      },
+      "expected": "ead"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 13,
+        "to": 14
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 8,
+        "to": 39
+      },
+      "expected": "itemBeta itemGamma item"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 19
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 7,
+        "to": 45
+      },
+      "expected": "beta"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 13,
+        "to": 13
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 19,
+        "to": 44
+      },
+      "expected": "@beta and gamma"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 9,
+        "to": 18
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 28,
+        "to": 43
+      },
+      "expected": "."
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 5,
+        "to": 10
+      },
+      "expected": "beta"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 0,
+        "to": 15
+      },
+      "expected": "Alpha heading"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 10,
+        "to": 25
+      },
+      "expected": "ong beta and"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 3,
+        "to": 20
+      },
+      "expected": "lpha itemBeta"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 23,
+        "to": 33
+      },
+      "expected": "lpha beta."
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 2,
+        "to": 34
+      },
+      "expected": "pha beta"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 27,
+        "to": 28
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 41,
+        "to": 44
+      },
+      "expected": "a"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 29,
+        "to": 54
+      },
+      "expected": "Alpha beta"
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 8,
+        "to": 47
+      },
+      "expected": "αλφαAlpha * beta."
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 12,
+        "to": 18
+      },
+      "expected": "amma."
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 14,
+        "to": 15
+      },
+      "expected": "g"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 6,
+        "to": 21
+      },
+      "expected": "strong beta a"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 8,
+        "to": 15
+      },
+      "expected": "item"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 19,
+        "to": 33
+      },
+      "expected": "Alpha beta."
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 3,
+        "to": 40
+      },
+      "expected": "ha beta"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 12,
+        "to": 33
+      },
+      "expected": "eta and x + y gamm"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 25,
+        "to": 27
+      },
+      "expected": "a"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 26,
+        "to": 49
+      },
+      "expected": "Alpha"
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 19,
+        "to": 44
+      },
+      "expected": "a * beta."
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 0,
+        "to": 15
+      },
+      "expected": "Alpha beta gamm"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 10,
+        "to": 27
+      },
+      "expected": "adingBeta parag"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 26,
+        "to": 33
+      },
+      "expected": "uiet ga"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 12,
+        "to": 35
+      },
+      "expected": "Beta itemGamma i"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 8,
+        "to": 30
+      },
+      "expected": "Alpha be"
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 39,
+        "to": 46
+      },
+      "expected": "g"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 22,
+        "to": 35
+      },
+      "expected": "x + y gamma."
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 11,
+        "to": 32
+      },
+      "expected": "Alpha @beta and"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 5,
+        "to": 62
+      },
+      "expected": "Alpha beta gamma."
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 0,
+        "to": 47
+      },
+      "expected": "Grüsse αλφαAlpha * beta."
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 3,
+        "to": 12
+      },
+      "expected": "ha beta g"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 13,
+        "to": 28
+      },
+      "expected": "ngBeta paragr"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 6,
+        "to": 13
+      },
+      "expected": "strong"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 7,
+        "to": 16
+      },
+      "expected": "itemB"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 21,
+        "to": 31
+      },
+      "expected": "Alpha bet"
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 29,
+        "to": 51
+      },
+      "expected": "ta gamma."
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 22,
+        "to": 26
+      },
+      "expected": "x +"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 2,
+        "to": 6
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 25,
+        "to": 34
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 27,
+        "to": 52
+      },
+      "expected": "a."
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 3,
+        "to": 10
+      },
+      "expected": "ha beta"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 30,
+        "to": 33
+      },
+      "expected": "h."
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 2
+      },
+      "expected": "l"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 11,
+        "to": 36
+      },
+      "expected": "mBeta itemGamma it"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 15,
+        "to": 34
+      },
+      "expected": "Alpha beta."
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 6,
+        "to": 33
+      },
+      "expected": "beta"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 12,
+        "to": 36
+      },
+      "expected": "eta and x + y gamma."
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 44,
+        "to": 44
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 6,
+        "to": 45
+      },
+      "expected": "A"
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 15,
+        "to": 32
+      },
+      "expected": "Alpha * beta."
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 8,
+        "to": 16
+      },
+      "expected": "ta gamma"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 6,
+        "to": 17
+      },
+      "expected": "a heading"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 5,
+        "to": 38
+      },
+      "expected": "strong beta and quiet gamma."
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 0,
+        "to": 15
+      },
+      "expected": "Alpha item"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 3,
+        "to": 16
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 15,
+        "to": 48
+      },
+      "expected": "beta gam"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 14,
+        "to": 17
+      },
+      "expected": "a"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 11
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 42
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 20,
+        "to": 27
+      },
+      "expected": "* bet"
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 15,
+        "to": 17
+      },
+      "expected": "a."
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 12,
+        "to": 33
+      },
+      "expected": "ingBeta paragraph."
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 10,
+        "to": 17
+      },
+      "expected": "ong bet"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 11,
+        "to": 20
+      },
+      "expected": "mBeta"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 2,
+        "to": 5
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 42,
+        "to": 50
+      },
+      "expected": "gamma"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 16,
+        "to": 21
+      },
+      "expected": "and"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 5,
+        "to": 30
+      },
+      "expected": "Alpha @beta and"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 14,
+        "to": 21
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 23,
+        "to": 48
+      },
+      "expected": "beta."
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 0,
+        "to": 1
+      },
+      "expected": "A"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 16
+      },
+      "expected": "Alpha heading"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 6,
+        "to": 13
+      },
+      "expected": "strong"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 7,
+        "to": 32
+      },
+      "expected": "itemBeta itemGamm"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 25,
+        "to": 34
+      },
+      "expected": "ha beta."
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 10,
+        "to": 40
+      },
+      "expected": "beta"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 8,
+        "to": 20
+      },
+      "expected": "aw beta and"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 13,
+        "to": 43
+      },
+      "expected": "Alpha @beta and gamma"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 41,
+        "to": 50
+      },
+      "expected": "Alpha"
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 19,
+        "to": 20
+      },
+      "expected": "a"
+    },
+    {
+      "input": {
+        "text": "Alpha beta gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 18
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 8,
+        "to": 10
+      },
+      "expected": "ta"
+    },
+    {
+      "input": {
+        "text": "= Alpha heading\n\nBeta paragraph.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 17,
+            "to": 33
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 11,
+        "to": 16
+      },
+      "expected": "ding"
+    },
+    {
+      "input": {
+        "text": "Alpha *strong beta* and _quiet gamma_.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "strong"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 18
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 19,
+            "to": 24
+          },
+          {
+            "op": "open",
+            "tag": "em"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 36
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 39
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 10,
+        "to": 33
+      },
+      "expected": "ong beta and quiet ga"
+    },
+    {
+      "input": {
+        "text": "- Alpha item\n+ Beta item\n1. Gamma item\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 12
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 24
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "div",
+            "cls": "gr-li"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 38
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 12,
+        "to": 19
+      },
+      "expected": "Beta"
+    },
+    {
+      "input": {
+        "text": "#set text(lang: \"en\")\nAlpha beta.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 34
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 7,
+        "to": 10
+      },
+      "expected": ""
+    },
+    {
+      "input": {
+        "text": "Alpha // synthetic comment\nbeta /* hidden */ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "text",
+            "from": 26,
+            "to": 32
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 52
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 14,
+        "to": 42
+      },
+      "expected": "beta"
+    },
+    {
+      "input": {
+        "text": "Alpha `raw beta` and $x + y$ gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 0,
+            "to": 6
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-raw"
+          },
+          {
+            "op": "text",
+            "from": 7,
+            "to": 15
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 16,
+            "to": 21
+          },
+          {
+            "op": "open",
+            "tag": "code",
+            "cls": "gr-math"
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 27
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 28,
+            "to": 36
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 1,
+        "to": 4
+      },
+      "expected": "lph"
+    },
+    {
+      "input": {
+        "text": "<alpha-label>\nAlpha @beta and #cite(<gamma>).\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 13,
+            "to": 20
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 20,
+            "to": 25
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 25,
+            "to": 30
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-ref"
+          },
+          {
+            "op": "text",
+            "from": 37,
+            "to": 42
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 46
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 21,
+        "to": 28
+      },
+      "expected": "beta an"
+    },
+    {
+      "input": {
+        "text": "#let synthetic(x) = (\n  \"hidden\",\n)\n#strong[Alpha beta] gamma.\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "open",
+            "tag": "span",
+            "cls": "gr-fn-strong"
+          },
+          {
+            "op": "text",
+            "from": 44,
+            "to": 54
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "text",
+            "from": 55,
+            "to": 63
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 22,
+        "to": 61
+      },
+      "expected": "Alpha beta gamma"
+    },
+    {
+      "input": {
+        "text": "= Grüsse αλφα\n\nAlpha \\* beta.\n#figure(\"synthetic.svg\")\n",
+        "ops": [
+          {
+            "op": "open",
+            "tag": "h2",
+            "cls": "gr-h"
+          },
+          {
+            "op": "text",
+            "from": 2,
+            "to": 13
+          },
+          {
+            "op": "close"
+          },
+          {
+            "op": "open",
+            "tag": "p"
+          },
+          {
+            "op": "text",
+            "from": 15,
+            "to": 21
+          },
+          {
+            "op": "text",
+            "from": 22,
+            "to": 30
+          },
+          {
+            "op": "text",
+            "from": 54,
+            "to": 55
+          },
+          {
+            "op": "close"
+          }
+        ],
+        "from": 0,
+        "to": 15
+      },
+      "expected": "Grüsse αλφα"
+    }
+  ]
+}

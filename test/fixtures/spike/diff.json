@@ -1,0 +1,150 @@
+{
+  "seed": 87105574,
+  "cases": [
+    {
+      "input": {
+        "a": "",
+        "b": ""
+      },
+      "expected": []
+    },
+    {
+      "input": {
+        "a": "",
+        "b": "alpha"
+      },
+      "expected": [
+        {
+          "aFrom": 0,
+          "aTo": 0,
+          "bFrom": 0,
+          "bTo": 5
+        }
+      ]
+    },
+    {
+      "input": {
+        "a": "alpha",
+        "b": ""
+      },
+      "expected": [
+        {
+          "aFrom": 0,
+          "aTo": 5,
+          "bFrom": 0,
+          "bTo": 0
+        }
+      ]
+    },
+    {
+      "input": {
+        "a": "alpha beta",
+        "b": "gamma beta"
+      },
+      "expected": [
+        {
+          "aFrom": 0,
+          "aTo": 5,
+          "bFrom": 0,
+          "bTo": 5
+        }
+      ]
+    },
+    {
+      "input": {
+        "a": "alpha beta",
+        "b": "alpha gamma beta"
+      },
+      "expected": [
+        {
+          "aFrom": 6,
+          "aTo": 6,
+          "bFrom": 6,
+          "bTo": 12
+        }
+      ]
+    },
+    {
+      "input": {
+        "a": "alpha beta",
+        "b": "alpha"
+      },
+      "expected": [
+        {
+          "aFrom": 5,
+          "aTo": 10,
+          "bFrom": 5,
+          "bTo": 5
+        }
+      ]
+    },
+    {
+      "input": {
+        "a": "alpha beta gamma",
+        "b": "delta beta epsilon"
+      },
+      "expected": [
+        {
+          "aFrom": 0,
+          "aTo": 5,
+          "bFrom": 0,
+          "bTo": 5
+        },
+        {
+          "aFrom": 11,
+          "aTo": 16,
+          "bFrom": 11,
+          "bTo": 18
+        }
+      ]
+    },
+    {
+      "input": {
+        "a": "alpha beta",
+        "b": "gamma delta"
+      },
+      "expected": [
+        {
+          "aFrom": 0,
+          "aTo": 10,
+          "bFrom": 0,
+          "bTo": 11
+        }
+      ]
+    },
+    {
+      "input": {
+        "a": "Grüsse für αλφα 123.",
+        "b": "Grüsse für βητα 123!"
+      },
+      "expected": [
+        {
+          "aFrom": 11,
+          "aTo": 15,
+          "bFrom": 11,
+          "bTo": 15
+        },
+        {
+          "aFrom": 19,
+          "aTo": 20,
+          "bFrom": 19,
+          "bTo": 20
+        }
+      ]
+    },
+    {
+      "input": {
+        "a": "alpha\nbeta\ngamma",
+        "b": "alpha\ndelta\ngamma"
+      },
+      "expected": [
+        {
+          "aFrom": 6,
+          "aTo": 10,
+          "bFrom": 6,
+          "bTo": 11
+        }
+      ]
+    }
+  ]
+}
