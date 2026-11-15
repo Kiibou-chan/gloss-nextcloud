@@ -1,0 +1,47 @@
+{
+  "name": "Robin",
+  "draft": "paper.typ",
+  "sent": true,
+  "reviewer": "synthetic",
+  "items": [
+    {
+      "id": "old0",
+      "kind": "proposal",
+      "from": 3,
+      "quote": {
+        "exact": "alpha",
+        "prefix": "🦉 ",
+        "suffix": " beta"
+      },
+      "proposal": "gamma",
+      "comments": [
+        {
+          "text": "Please clarify these synthetic words.",
+          "at": "2026-11-15T11:00:00.000Z"
+        }
+      ],
+      "at": "2026-11-15T10:00:00.000Z",
+      "shown": "alpha",
+      "proposalShown": "gamma"
+    },
+    {
+      "id": "old1",
+      "kind": "comment",
+      "from": 9,
+      "quote": {
+        "exact": "beta",
+        "prefix": "alpha ",
+        "suffix": ""
+      },
+      "comments": [
+        {
+          "text": "A synthetic comment.",
+          "at": "2026-11-15T10:00:00.000Z"
+        }
+      ],
+      "at": "2026-11-15T10:00:00.000Z",
+      "shown": "alpha",
+      "proposalShown": "gamma"
+    }
+  ]
+}

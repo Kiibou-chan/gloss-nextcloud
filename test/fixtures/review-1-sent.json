@@ -1,0 +1,51 @@
+{
+  "format": 1,
+  "revision": 1,
+  "name": "Robin",
+  "draft": {
+    "file": "paper.typ",
+    "etag": "synthetic-etag"
+  },
+  "sent": true,
+  "sentAt": "2026-11-15T10:00:00.000Z",
+  "updatedAt": "2026-11-15T10:00:00.000Z",
+  "items": [
+    {
+      "id": "abc123def4",
+      "kind": "proposal",
+      "file": "paper.typ",
+      "from": 3,
+      "quote": {
+        "exact": "alpha",
+        "prefix": "🦉 ",
+        "suffix": " beta"
+      },
+      "proposal": "gamma",
+      "comments": [
+        {
+          "text": "Please clarify these synthetic words.",
+          "at": "2026-11-15T10:00:00.000Z"
+        }
+      ],
+      "at": "2026-11-15T10:00:00.000Z"
+    },
+    {
+      "id": "abc123def5",
+      "kind": "comment",
+      "file": "paper.typ",
+      "from": 9,
+      "quote": {
+        "exact": "beta",
+        "prefix": "alpha ",
+        "suffix": ""
+      },
+      "comments": [
+        {
+          "text": "A synthetic comment.",
+          "at": "2026-11-15T10:00:00.000Z"
+        }
+      ],
+      "at": "2026-11-15T10:00:00.000Z"
+    }
+  ]
+}
