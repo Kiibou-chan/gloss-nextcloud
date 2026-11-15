@@ -153,15 +153,31 @@ window.GlossTypst = (() => {
 		return out
 	}
 
-	/** The view in el, with [from, to) source ranges in marks drawn as <mark data-n>. */
-	const render = (el, src, ops, marks) => {
+	/**
+	 * The view in el. marks: [{from, to, n, cls}] source ranges, drawn as classes and data-items on the text pieces they
+	 * cover; dels: [{at, text}] struck text shown before source offset at, not editable and not part of the source.
+	 */
+	const render = (el, src, ops, marks = [], dels = []) => {
 		el.replaceChildren()
 		const parents = [el]
-		const sorted = [...marks].sort((a, b) => a.from - b.from)
+		const pendingDels = [...dels].sort((a, b) => a.at - b.at)
+		const emitDels = (top, upTo) => {
+			while (pendingDels.length && pendingDels[0].at <= upTo) {
+				const d = pendingDels.shift()
+				const e = document.createElement('del'); e.contentEditable = 'false'; e.textContent = d.text
+				if (d.n !== undefined) e.dataset.items = String(d.n)
+				top.append(e)
+			}
+		}
 		const piece = (from, to) => {
 			const span = document.createElement('span')
-			span.dataset.from = String(from)
+			span.dataset.from = String(from); span.dataset.to = String(to)
 			span.textContent = src.slice(from, to)
+			const on = marks.filter(m => m.from < to && m.to > from)
+			if (on.length) {
+				span.className = [...new Set(on.map(m => m.cls || 'gr-m'))].join(' ')
+				span.dataset.items = on.map(m => m.n).join(' ')
+			}
 			return span
 		}
 		for (const o of ops) {
@@ -171,18 +187,17 @@ window.GlossTypst = (() => {
 				top.append(e); parents.push(e)
 			} else if (o.op === 'close') parents.pop()
 			else {
-				let at = o.from
-				for (const m of sorted) {
-					if (m.to <= at || m.from >= o.to) continue
-					if (m.from > at) top.append(piece(at, m.from))
-					const mk = document.createElement('mark'); mk.dataset.n = String(m.n)
-					const end = Math.min(m.to, o.to)
-					mk.append(piece(Math.max(m.from, at), end)); top.append(mk)
-					at = end
+				const cuts = new Set([o.from, o.to])
+				for (const m of marks) for (const c of [m.from, m.to]) if (c > o.from && c < o.to) cuts.add(c)
+				for (const d of pendingDels) if (d.at > o.from && d.at < o.to) cuts.add(d.at)
+				const points = [...cuts].sort((a, b) => a - b)
+				for (let i = 0; i + 1 < points.length; i++) {
+					emitDels(top, points[i])
+					top.append(piece(points[i], points[i + 1]))
 				}
-				if (at < o.to) top.append(piece(at, o.to))
 			}
 		}
+		emitDels(el.lastElementChild || el, Infinity)
 	}
 
 	/** The source offset of a DOM position inside a view render() drew; null outside shown text. */
