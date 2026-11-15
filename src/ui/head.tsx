@@ -1,0 +1,20 @@
+import { useComputed, useSignal } from '@preact/signals'
+import type { PanelCommands, PanelModel } from './panel-model'
+
+export function Head({ model, session }: { model: PanelModel; session: PanelCommands }) {
+  const view = model.head.value
+  const draft = useSignal({ saved: view.name, name: view.name })
+  const draftName = useComputed(() => draft.value.saved === model.head.value.name ? draft.value.name : model.head.value.name)
+  return <>
+    <div id="gr-title" class="gr-title">{view.title}</div>
+    <div class="gr-views" role="group" aria-label="View" hidden={!view.hasPdf}>
+      {(['editor', 'pdf', 'both'] as const).map(mode => <button type="button" id={`gr-view-${mode}`} key={mode} aria-pressed={view.view === mode} onClick={() => void session.setView(mode)}>{mode === 'pdf' ? 'PDF' : mode === 'editor' ? 'Editor' : 'Both'}</button>)}
+    </div>
+    <label class="gr-who">Your name <input id="gr-name" type="text" autoComplete="name" value={draftName.value} onInput={event => { draft.value = { saved: model.head.value.name, name: event.currentTarget.value } }} onChange={event => {
+      const name = event.currentTarget.value.trim()
+      if (name) void session.setName(name)
+    }} /></label>
+    <span id="gr-status" class="gr-status" role="status">{view.status}</span>
+    <button id="gr-send" type="button" class="primary" disabled={!view.canSend} onClick={() => void session.send()}>Send review</button>
+  </>
+}

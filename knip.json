@@ -12,8 +12,5 @@
     "scripts/*.mjs",
     "test/**/*.{ts,tsx}"
   ],
-  "ignoreDependencies": [
-    "preact",
-    "@preact/signals"
-  ]
+  "ignoreDependencies": []
 }
