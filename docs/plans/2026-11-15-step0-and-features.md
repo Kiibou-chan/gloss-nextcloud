@@ -294,3 +294,202 @@ Nothing in format 1 changes for it: `file` already names the file, and `draft.fi
 - **A4, the server.** PHPUnit: R16 to R22's cases (task F1a), R26's notification (task F5), and B1's draft and PDF choice (task S12).
 - **A5, the bundles.** A fresh build equals the committed files; neither bundle holds `new Function(` or `eval(`.
 - **A6, the release archive.** It holds the allowlist and none of the forbidden paths (R31).
+
+## Tasks
+
+Commands: `npx vitest run <files> --maxWorkers=8` for the tests a task names, `npm run typecheck`, `npm run structure`, `npm run build`, and `scripts/php.sh test`; the full `npm test`, the typecheck, and the build go through the lock the build dispatch names (`flock -w 3600 <lock> <command>`).
+Every task ends with the typecheck, `npm run structure`, and the tests it names passing, and commits with explicit paths.
+A task marked UI ends with its hand checks (see "Hand checks"), light and dark, looked at.
+
+### Task S1: tooling and the layer rules (lane T, first)
+
+**Files:** `package.json`, `package-lock.json`, `tsconfig.json`, `tsconfig.pure.json`, `vitest.config.ts`, `.dependency-cruiser.cjs`, `knip.json`, `scripts/build.mjs`, `test/structure/purity.test.ts`, `.gitignore` (`shots/`, `build/`, `.dev-nc.env`, `vendor/`).
+**Interfaces:** scripts `build` (`node scripts/build.mjs`, today's editor bundle only), `typecheck` (`tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.pure.json`), `test` (`vitest run --maxWorkers=8`), `structure` (`depcruise src test --config .dependency-cruiser.cjs && knip`), `check` (all four); dev dependencies pinned to gloss's versions (P8).
+
+- [ ] Write `purity.test.ts` (R2's names in `src/domain/` and `src/app/`), add a throwaway `src/domain/probe.ts` holding `Date.now()`; run `npx vitest run test/structure/purity.test.ts --maxWorkers=8`; expect FAIL naming the file.
+- [ ] Write R2's rules; add a throwaway `src/domain/a.ts` importing a throwaway `src/adapters/b.ts`; run `npm run structure`; expect FAIL on the rule `domain-pure`; then a throwaway `src/ui/c.ts` importing the adapter; expect FAIL on `ui-no-adapters`.
+- [ ] Delete the throwaways; run the purity test and `npm run structure`; expect PASS.
+- [ ] Run `npm run build`; expect `js/vendor/editor.bundle.js` byte-equal to the committed one (`git diff --exit-code`).
+- [ ] Commit.
+
+### Task S2: format 1, its schema, and its readers (lane T, after S1; parallel with S3, S5, S6, S12, S14, S15)
+
+**Files:** `src/domain/format/{record.ts,format-0.ts,format-1.ts,read.ts,write.ts}`, `schema/review-1.schema.json`, `test/fixtures/review-1-{small,overall,sent}.json`, `test/fixtures/review-0-spike.json` (synthetic words, in the spike's shape), `test/domain/format/{read,write,schema}.test.ts`; dev dependency ajv 8.20.0.
+**Interfaces:** `type ReviewRecord` (format 1 without `format`), `readReview(json: unknown): { record: ReviewRecord; notes: string[] } | { error: string }`, `writeReview(r: ReviewRecord): string`.
+
+- [ ] Write the tests: each format 1 fixture validates and reads to itself; the writer's output of each validates and round-trips; `review-0-spike.json` reads to the record R11 describes (`file` set, `shown` dropped, `updatedAt` the latest `at`); `{ format: 2 }` gives "This review was saved by a newer gloss."; a `comment` item with no comments, an `overall` item with a `quote`, two `overall` items, and a 101-character name are refused by the schema; 2,000 items of P4's shape write under 1,048,576 bytes; run them; expect FAIL on the missing modules.
+- [ ] Write the schema, the record type, and the modules.
+- [ ] Run the tests; expect PASS.
+- [ ] Commit and push at once (R33), and tell the coordinator the schema's commit so the import can start.
+
+### Task S3: the word diff (lane T, after S1; parallel with S2, S5, S6)
+
+**Files:** `src/domain/text/diff.ts`, `test/domain/text/diff.test.ts`.
+**Interfaces:** `tokens(s: string): Token[]`, `changes(a: string, b: string, maxEdits?: number): DiffChange[] | 'tooMany'` with `DiffChange = { aFrom, aTo, bFrom, bTo }`.
+
+- [ ] Write the tests: equal strings give `[]`; an insertion, a deletion, and a replacement at the start, the middle, and the end; two changes one space apart are one change and two changes a word apart are two (B4, `js/diff.js:57`); letters beyond ASCII form one token; `maxEdits` 5 on six separate changes gives `'tooMany'`; the spike's output on ten seeded pairs, taken by loading `js/diff.js` in the test through `new Function`, equals the port's; run; expect FAIL.
+- [ ] Port `js/diff.js` with R6's prefix and suffix trimming and band-only trace.
+- [ ] Run; expect PASS.
+- [ ] Commit.
+
+### Task S4: the edit model (lane T, after S3; parallel with S5, S6 if they are not done)
+
+**Files:** `src/domain/review/{model.ts,applied-map.ts,region.ts,draft-review.ts}`, `test/domain/review/{applied-map,draft-review,edit-property,edit-timing}.test.ts`.
+**Interfaces:** `class DraftReview { constructor(file, draft, items?); applied(): string; edit(changes, ids: () => string, now: string): { changed: Set<string>; removed: Set<string> }; toApplied(p); fromApplied(q): { at: number } | { inside: string }; targetFor(from, to): Target; comment(target, text, id, now); deleteComment(itemId, index); undoChange(id): Change; items(): readonly Item[] }`.
+
+- [ ] Write the tests: `AppliedMap` agrees with the spike's `toApplied` and `fromApplied` (`js/review.js:54-74`) on 200 seeded proposal sets; B5 (an overlapping proposal keeps its id and comments; a vanished one's comments become a comment on its old words); B6's `targetFor`; B8's comment rules; B9's `undoChange` gives the change that restores the old words; `edit-property`: 500 seeded sequences of 1 to 20 random insertions, deletions, and replacements keep `apply(draft, proposals) === editor text`; `edit-timing`: a 10,000-line seeded draft with 2,000 proposals, 30 one-character keystrokes at random places, every sample logged before the assertion; run; expect FAIL on the missing modules.
+- [ ] Write the modules as R6 and R7 say.
+- [ ] Run the timing test five times; set its bound to three times the worst sample and write the five runs' worst and median into the test's comment; run the whole set; expect PASS.
+- [ ] Commit.
+
+### Task S5: quotes (lane T, after S1; parallel with S2, S3, S6)
+
+**Files:** `src/domain/text/quote.ts`, `test/domain/text/quote.test.ts`.
+**Interfaces:** `type Quote`, `quoteAt(text, start, end)`, `refind(text, q, start)`, `placeItems(records, draft): { placed; lost: number }`.
+
+- [ ] Write the tests: the cases of gloss's tests for `refind` and `quoteAt` (gloss `test/platform/text/text.test.ts` at `8fc93e7eb`, those that name either), ported with synthetic text; an item whose words moved 3,000 characters lands there; two equal occurrences resolve to the nearer; an item whose words are gone counts as lost (B14); run; expect FAIL.
+- [ ] Port R9's functions with a comment naming gloss's file and commit.
+- [ ] Run; expect PASS; commit.
+
+### Task S6: the Typst parse, readable text, language, and PDF matching (lane T, after S1; parallel with S2, S3, S5)
+
+**Files:** `src/domain/source/{typst-parse.ts,shown.ts,language.ts}`, `src/domain/pdf/match.ts`, `test/domain/source/*.test.ts`, `test/domain/pdf/match.test.ts`.
+**Interfaces:** `parseTypst(src): Op[]`, `plainOps(src): Op[]`, `shown(text, ops, from, to)` by binary search, `languageOf(fileName)`, `spellLanguage(src)` (B3), `keyOf`, `sourceKey(file, text, ops)`, `pdfKey(pages: readonly (readonly string[])[])`, `toSource(sk, selected, fraction): { file, from, to } | null`, `placeMarks(pk, items: { id; shown; fraction }[]): PdfPlacement[]` with `PdfPlacement = { id; page; startItem; startOffset; endItem; endOffset }`.
+
+- [ ] Write the tests with expected values taken from the spike: ten synthetic Typst sources through `js/typst-view.js`'s `parse` (loaded through `new Function`) give the same ops; `shown` agrees with `js/review.js:38-39` on 200 seeded ranges; `toSource` agrees with `js/pdf-view.js:31-37` on ligatures (`ﬁ`), a hyphen at a line's end, markup between words, and two occurrences on different pages; `placeMarks` on page strings finds the item's words across two text items; B3's four spell cases; run; expect FAIL.
+- [ ] Move `parse` and `dropBlankParagraphs`, write the rest.
+- [ ] Run; expect PASS; commit.
+
+### Task S7: the session and its ports (lane T, after S2, S4, S5, S6)
+
+**Files:** `src/app/{ports.ts,view.ts,session.ts}`, `test/app/session.test.ts`, `test/app/fakes.ts`.
+**Interfaces:** the ports of "Layers and interfaces"; `new ReviewSession({ editor, pdf, api, store, clock, ids, scheduler, head, panel, reviewable })`; saving as the spike does for now: the spike's name-derived key through `api.save` 600 ms after the last change (R38; feature 2 replaces it).
+
+- [ ] Write the tests with fakes for every port: typing gives marks and cards (B4); a selection gives the form's target (B6); a PDF selection gives the target, focuses the form, and scrolls the editor, and an unplaceable one says B7's sentence; comments and undo (B8, B9); a card's focus scrolls both views (B10); the count line and card order (B11); the view choice is kept and the PDF shown once (B12); PDF marks are placed once 400 ms after typing stops and only while the PDF shows (R8); editing waits for a name and stops after Send (B13); opening places saved items and says how many are lost (B14); only the cards of changed items get a new version (R8); run; expect FAIL.
+- [ ] Write the session.
+- [ ] Run; expect PASS; commit.
+
+### Task S8: the CodeMirror adapter (lane T, after S7; parallel with S9, S10)
+
+**Files:** `src/adapters/codemirror/{editor.ts,typst-language.ts,highlight.ts}`, `test/adapters/codemirror/editor.test.ts` (jsdom).
+**Interfaces:** `createEditor(parent: HTMLElement, { text, language, spellLanguage }): EditorPort`.
+
+- [ ] Write the tests: a typed change reaches `onEdit` as old-text coordinates and `setText` does not; `setMarks` draws `.gr-ins` marks and `del` widgets with `data-items`; `setEditable(false)` refuses input; `scrollTo` past the end clamps; the extensions of B2 are present (search panel opens on Mod-f, go to line on Mod-Alt-g); run; expect FAIL.
+- [ ] Port `src/editor.mjs` into the three files, reporting changes through `iterChanges` (R6).
+- [ ] Run; expect PASS; commit.
+
+### Task S9: pdf.js from npm and the PDF adapter (lane T, after S7; parallel with S8, S10)
+
+**Files:** `package.json` (`pdfjs-dist` 6.5.438), `scripts/build.mjs` (worker and text-layer CSS), `scripts/text-layer-css.mjs`, `js/pdf.worker.js`, `css/pdf-text-layer.css`, `src/adapters/pdfjs/{pdf-view.ts,worker-entry.ts}`, `test/adapters/pdfjs/pdf-view.test.ts` (jsdom, pdf.js mocked at its `getDocument` boundary), `test/structure/no-eval.test.ts`.
+**Interfaces:** `createPdfView(el: HTMLElement, { url, workerUrl }): PdfPort` (R36).
+
+- [ ] Write `no-eval.test.ts` over `js/*.js`; run it; expect PASS today on the editor bundle and FAIL when a throwaway `js/x.js` holds `new Function(`; delete the throwaway.
+- [ ] Write the adapter tests: pages laid out at their sizes before drawing; a page drawn when observed and released when far (a fake `IntersectionObserver`); `show()` answers every page's text items; `setMarks` draws a mark over the right text divs on a drawn page and later on a page drawn after; a selection reports its text and page fraction; run; expect FAIL.
+- [ ] Write the adapter and the build steps; run `npm run build`; run the tests and `no-eval.test.ts`; expect PASS.
+- [ ] Commit (the vendored pdf.js stays until S11 switches the page).
+
+### Task S10: the server and storage adapters (lane T, after S7; parallel with S8, S9)
+
+**Files:** `src/adapters/http/review-api.ts`, `src/adapters/storage/browser-store.ts`, `src/adapters/browser/{clock.ts,ids.ts,scheduler.ts}`, `test/adapters/*.test.ts` (jsdom).
+**Interfaces:** `createReviewApi(base: string, requestToken: string): ReviewApi` (on `/draft` and, until F1b, the spike's review routes), `createBrowserStore(shareToken: string): BackupStore`, `browserClock`, `browserIds`, `browserScheduler`.
+
+- [ ] Write the tests: requests carry `requesttoken`; `/draft` parses to `{ main, files }`; an error answer becomes `{ status, error }`; storage keys are R22's; a storage that throws on write makes `write` return false; `ids.key()` gives 16 characters of `[A-Za-z0-9]` and `ids.item()` 10 of `[a-z0-9]` over 1,000 draws; run; expect FAIL.
+- [ ] Write the adapters; run; expect PASS; commit.
+
+### Task S11: the panel, the wiring, and the spike's scripts gone (lane T, after S8, S9, S10, S12; UI)
+
+**Files:** `src/ui/{head.tsx,panel.tsx,card.tsx,comment-form.tsx,mount.ts}`, `src/main.ts`, `scripts/build.mjs` (entry `src/main.ts`, output `js/gloss-review.js`), `templates/review.php` (R37's slots), `lib/Controller/ReviewController.php` (`page()` loads `gloss-review` and both styles, worker URL `js/pdf.worker.js`), `css/review.css`, `test/ui/*.test.ts` (jsdom, vnodes built with `h()`); deleted: `js/review.js`, `js/diff.js`, `js/pdf-view.js`, `js/typst-view.js`, `src/editor.mjs`, `js/vendor/`.
+**Interfaces:** `mountHead(el, session)`, `mountPanel(el, session)` returning `dispose()`.
+
+- [ ] Write the tests: a card for each kind with today's markup (classes, `data-id`, the buttons' words); changing one item re-renders only its card (a render counter); the form's quote and focus rules (B6, B7); the head's view buttons' `aria-pressed` and Send's disabled state (B11, B13); run; expect FAIL.
+- [ ] Write the islands and `main.ts`; switch the template and `page()`; delete the old files; run `npm run build`.
+- [ ] Run `npx vitest run test --maxWorkers=8` through the lock, `npm run typecheck`, and `npm run structure` (knip reports nothing unused); `git grep -n "window.Gloss\|sourceOffset\|renderTextLayer" -- src js templates` prints nothing; expect PASS.
+- [ ] Hand checks H1, H2, H3, and H4; commit.
+
+### Task S12: the PHP services and PHPUnit (lane P, first; parallel with every lane T task up to S10)
+
+**Files:** `composer.json`, `composer.lock`, `phpunit.xml`, `tests/bootstrap.php`, `tests/Unit/Service/{DraftLocatorTest,ReviewStoreTest}.php`, `tests/Unit/Controller/ReviewControllerTest.php`, `lib/Service/{DraftLocator,Draft,ReviewStore}.php`, `lib/Controller/ReviewController.php`, `appinfo/routes.php` (adds `review#draft`), `scripts/php.sh`.
+**Interfaces:** `DraftLocator::locate(Folder): ?Draft`; `ReviewStore` with the spike's behaviour (`reviews/` in the shared folder, the create permission, 1 MiB) behind `load(IShare, string $reviewer): array` and `save(IShare, string $reviewer, string $review): void` throwing `ReviewRefused` with a status; the controller only maps.
+
+- [ ] Write `scripts/php.sh` (`composer install`, `test` = `vendor/bin/phpunit`, `lint` = `php -l` over R14's folders) and the tests: B1's choices (first by name, extension case ignored, folders ignored, the PDF of the same base name, the only PDF, two other PDFs give none); the spike's save and load rules; the controller's `draft` answer of R15; run `scripts/php.sh test`; expect FAIL on the missing classes.
+- [ ] Move the code out of the controller; add `draft`.
+- [ ] Run `scripts/php.sh test` and `scripts/php.sh lint`; expect PASS; run H1 once on `scripts/dev-nc.sh` if S14 has landed; commit.
+
+### Task S13: CI and Dependabot (lane I, after S1 and S12)
+
+**Files:** `.github/workflows/ci.yml`, `.github/dependabot.yml`, `package.json` (script `ci`: typecheck, test, structure, then `npm run build && git diff --exit-code -- js css`).
+**Interfaces:** two jobs, `node` (Node 24, `npm ci`, `npm run ci`) and `php` (`shivammathur/setup-php` on 8.2 and 8.4, `composer install`, lint, PHPUnit); Dependabot monthly for `npm` and `composer` at `/`.
+
+- [ ] Change one byte of `js/vendor/editor.bundle.js` (or `js/gloss-review.js` after S11); run `npm run ci`; expect FAIL at the diff; restore it; run again; expect PASS.
+- [ ] Write the workflow and Dependabot file; push; read the run's result on GitHub; commit any fix.
+
+### Task S14: the disposable Nextcloud and the screenshots (lane I, first; parallel with everything)
+
+**Files:** `scripts/dev-nc.sh`, `scripts/shots.mjs`, `scripts/shots/scenes.mjs`, `test/fixtures/nc/Review/{paper.typ,paper.pdf,.gloss-review}`, `test/fixtures/nc/Plain/{notes.typ}` (no marker), `scripts/make-long-draft.mjs` (the 10,000-line seeded draft of P1, written at start, not committed); dev dependency `@playwright/test` 1.63.0.
+**Interfaces:** `scripts/dev-nc.sh up|down|reset|url <folder>`: container `gloss-dev-nc` from `nextcloud:33-apache` on `127.0.0.1:${GLOSS_DEV_NC_PORT:-8090}`, the repository mounted read-only at `custom_apps/gloss`, the app enabled, an owner user with a generated password, the fixture folders copied into its files and scanned, read-only public links made through the OCS API with `curl -K -` reading the credentials from standard input, and the links and generated passwords written to `.dev-nc.env` (mode 600, gitignored) and never printed; it does not touch `gloss-nc`, its port 8089, or `.local-nc.env`.
+`node scripts/shots.mjs <scene> [--out shots/]` writes `<scene>-light.png` and `<scene>-dark.png`.
+
+- [ ] Run `scripts/dev-nc.sh url Review` before writing it; expect FAIL (no script).
+- [ ] Write the fixtures (synthetic words only; `paper.pdf` made by `typst compile paper.typ`), the script, and the scenes of "Hand checks".
+- [ ] Run `scripts/dev-nc.sh up`, then `scripts/dev-nc.sh url Review` (prints a URL with no password), then `node scripts/shots.mjs editor`; look at both pictures; run `scripts/dev-nc.sh down`; commit.
+
+### Task S15: the documents (lane I, after S1; parallel with S2 to S10)
+
+**Files:** `README.md` (an Architecture section: the layers and their rule, the ports, the bundles, the server's classes, and the reviews' location; "Trying it locally" replaced by `scripts/dev-nc.sh`), `CLAUDE.md`, `docs/decisions.md`.
+**Interfaces:** `CLAUDE.md` holds the commands, the layer rule (R2), the islands rule (R8, R37), and the hard rules: no real credentials, `.local-nc.env` and `.dev-nc.env` never read into a session or printed, synthetic fixtures only, no signing key ever read, stored, or used, British English, no em-dashes, one sentence per line; `docs/decisions.md` holds RVW-1, RVW-2, RVW-3, RAW-1 (raw source, with the PDF beside it), TS-1 (TypeScript strict with esbuild, R3), TEST-1 (Vitest, R4), FORMAT-1 (R10, R11, R33), PLACE-1 (R16, R17), KEY-1 (R18, R20), and SAVE-1 (R22, R23), each with the words quoted in the brief and the why.
+
+- [ ] Write the three files; `grep -n "—" README.md CLAUDE.md docs/decisions.md` prints nothing; commit.
+
+### Task F1a: reviews beside the shared folder, server side (lane P, after S12; merged with F1b; security review)
+
+**Files:** `lib/Service/{ReviewKey,ReviewStore,StoredReview}.php`, `lib/Exception/ReviewRefused.php`, `lib/Controller/ReviewController.php`, `appinfo/routes.php` (R20's table; the spike's review routes and `/text` go), `templates/review.php` (`data-reviewable`), `tests/Unit/Service/{ReviewKeyTest,ReviewStoreTest}.php`, `tests/Unit/Controller/ReviewControllerTest.php`.
+**Interfaces:** `ReviewKey::parse(string): ?ReviewKey`, `->fileSuffix(): string`; `ReviewStore::isReviewable(IShare): bool`, `open(IShare, ReviewKey): ?StoredReview` (`content`, `etag`), `save(IShare, ReviewKey, string $review, string $baseEtag): SaveResult` (`etag`, `sentNow`, `fileId`, `path`, `name`); refusals as `ReviewRefused(status, code)`.
+
+- [ ] Write the tests: R16 (no marker, a 5 KiB marker, a marker holding `[1]` are not reviewable; an empty marker and `{}` are; the reviews folder is `Review reviews` beside `Review` in the owner's folder, looked up through a mocked `IRootFolder` with the share's owner and node id, made on the first save; a file of that name answers `reviewsBlocked`); R18 (keys of 15 and 17 characters, with `/`, `.`, and non-ASCII are refused; the file name's slug from "Ada Lovelace" is `ada`, from "" is `reviewer`; open finds the file by its suffix and not another reviewer's); R19 (1,048,577 bytes, depth 17, `format` 0, and a 51st file are refused); R21 (a save over a sent review is refused; false to true gives `sentNow`, true to true is refused); R22 (a stale `baseEtag` gives `conflict` with the stored etag; an empty one on an existing file gives `conflict`); the controller maps each code to R20's status, throttles an unknown key on `open`, carries `BruteForceProtection` on `open` (read by reflection), and sets `data-reviewable`; run `scripts/php.sh test`; expect FAIL.
+- [ ] Write the services and the controller's new actions.
+- [ ] Run `scripts/php.sh test` and `lint`; expect PASS; commit; hand off to F1b for the joint merge.
+
+### Task F1b: read-only links and keys, page side (lane T, after S11 and F1a; merged with F1a; UI)
+
+**Files:** `src/adapters/http/review-api.ts` (R20's routes), `src/app/session.ts`, `src/ui/head.tsx`, `src/ui/panel.tsx`, `test/app/session-reviewable.test.ts`, `test/adapters/http/review-api.test.ts`.
+
+- [ ] Write the tests: with `reviewable` false the page shows "This link is not set up for reviewing.", the editor is read-only, there is no name field and no Send, and `api.save` and `api.open` are never called; with it true, the first name makes a key through `ids.key()`, remembers it for the link, and saves to it; a remembered key opens its review on load; 403, 409 (`conflict`, `sent`, `full`, `reviewsBlocked`), and 413 each show their sentence (R16, R19, R21, R22); run; expect FAIL.
+- [ ] Write the changes; run the tests and S7's; expect PASS.
+- [ ] Hand checks H1 (saving on a read-only link with the marker) and H5; commit; merge F1a and F1b together after their reviews.
+
+### Task F2: saving that survives (lane T, after F1b; UI)
+
+**Files:** `src/app/save-queue.ts`, `src/app/session.ts`, `src/adapters/storage/browser-store.ts`, `src/main.ts` (`beforeunload`, `pagehide`, `online`), `src/ui/head.tsx` (status), `test/app/save-queue.test.ts`, `test/app/session-backup.test.ts`.
+**Interfaces:** `new SaveQueue({ save, scheduler, onStatus })` with `changed()`, `flush()`, `online()`, `dirty`.
+
+- [ ] Write the tests on a fake scheduler: one save 1 s after a burst; retries at 2, 5, and 15 s, then every 15 s; `online()` retries at once; 400, 403, 409, and 413 stop retrying; the four status texts of R23; dirty until the save that carried the last change succeeds; R22's three restore cases and the full-storage case; the leave-page question while dirty only; run; expect FAIL.
+- [ ] Write the queue and the restore; replace S7's interim saving.
+- [ ] Run; expect PASS; hand check H6; commit.
+
+### Task F3: the review link (lane T, after F1b; after F2 or beside it on separate files; UI)
+
+**Files:** `src/ui/review-link.tsx`, `src/ui/panel.tsx`, `src/app/session.ts`, `src/main.ts` (reads `location.hash`), `test/app/session-link.test.ts`, `test/ui/review-link.test.ts`.
+
+- [ ] Write the tests: no link before the first successful save, then the page's address plus `#<key>`; Copy writes it to the clipboard port; a page opened with a valid fragment opens that review, fills the name, and remembers the key; an invalid fragment is ignored; run; expect FAIL.
+- [ ] Write it; run; expect PASS; hand check H7; commit.
+
+### Task F4: the overall comment (lane T, after S11; beside F2 or F3, on separate files except `session.ts` and `panel.tsx`; UI)
+
+**Files:** `src/ui/overall.tsx`, `src/ui/panel.tsx`, `src/app/session.ts`, `test/app/session-overall.test.ts`, `test/ui/overall.test.ts`.
+
+- [ ] Write the tests: typing in the box makes or updates the one `overall` item and marks the review changed; clearing it removes the item; Send is enabled by an overall comment alone; the count line is unchanged; the box is read-only after Send and on an unreviewable link; run; expect FAIL.
+- [ ] Write it; run; expect PASS; hand check H8; commit.
+
+### Task F5: the notification on Send (lane P, after F1a)
+
+**Files:** `lib/AppInfo/Application.php`, `lib/Notification/Notifier.php`, `lib/Service/SentNotifier.php`, `lib/Controller/ReviewController.php` (calls `SentNotifier` on `sentNow`), `tests/Unit/Notification/NotifierTest.php`, `tests/Unit/Service/SentNotifierTest.php`, `tests/Unit/Controller/ReviewControllerTest.php`.
+
+- [ ] Write the tests: one notification to the owner with R26's app, object, subject, and parameters when `sentNow`, none otherwise; `prepare` gives the rich subject "{reviewer} sent a review of {draft}" with a `highlight` and a `file` parameter and the link to the file; another app's notification raises `UnknownNotificationException`; a deleted review file raises `AlreadyProcessedException`; run `scripts/php.sh test`; expect FAIL.
+- [ ] Write the classes; run; expect PASS; hand check H9; commit.
+
+### Task R1: the release archive (lane I, last)
+
+**Files:** `scripts/package.sh`, `test/structure/package.test.ts`, `THIRD-PARTY.md`, `appinfo/info.xml` (`<version>0.1.0</version>`).
+
+- [ ] Write the test: it runs `scripts/package.sh` into a temporary folder and lists the archive: every path under `gloss/`, the allowlist present, none of R31's forbidden paths; run; expect FAIL.
+- [ ] Write the script and `THIRD-PARTY.md`; run; expect PASS; commit; tell the coordinator the archive's path for your signing.
