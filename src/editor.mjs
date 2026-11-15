@@ -3,9 +3,10 @@
  * Exposed as window.GlossEditor.create(parent, {doc, lang, onChange}).
  */
 import { EditorState, StateEffect, StateField, Compartment, Annotation } from '@codemirror/state'
-import { EditorView, Decoration, WidgetType, keymap, lineNumbers } from '@codemirror/view'
+import { EditorView, Decoration, WidgetType, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view'
+import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search'
 import { history, historyKeymap, defaultKeymap } from '@codemirror/commands'
-import { StreamLanguage, HighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { StreamLanguage, HighlightStyle, syntaxHighlighting, bracketMatching } from '@codemirror/language'
 import { stex } from '@codemirror/legacy-modes/mode/stex'
 import { tags as t } from '@lezer/highlight'
 
@@ -70,14 +71,17 @@ const decoField = StateField.define({
 })
 const external = Annotation.define()
 
-const create = (parent, { doc, lang, onChange }) => {
+const create = (parent, { doc, lang, spellLang, onChange }) => {
 	const editable = new Compartment()
 	const view = new EditorView({
 		parent,
 		state: EditorState.create({
 			doc,
 			extensions: [
-				lineNumbers(), history(), keymap.of([...defaultKeymap, ...historyKeymap]), EditorView.lineWrapping,
+				lineNumbers(), highlightActiveLine(), highlightActiveLineGutter(), history(), bracketMatching(),
+				search({ top: true }), highlightSelectionMatches(),
+				keymap.of([...searchKeymap, ...defaultKeymap, ...historyKeymap]), EditorView.lineWrapping,
+				EditorView.contentAttributes.of({ spellcheck: 'true', lang: spellLang || 'en' }),
 				(languages[lang] || languages.plain)(), syntaxHighlighting(style), decoField,
 				editable.of([EditorView.editable.of(false), EditorState.readOnly.of(true)]),
 				EditorView.updateListener.of(u => {

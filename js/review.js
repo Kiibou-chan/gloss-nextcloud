@@ -300,7 +300,8 @@
 		srcOps = parse(src)
 		apply()
 		const lang = isTypst ? 'typst' : /\.tex$/i.test(d.name) ? 'latex' : /\.md$/i.test(d.name) ? 'markdown' : 'plain'
-		cm = GlossEditor.create(editorEl, { doc: applied, lang, onChange: setApplied })
+		const spellLang = (src.match(/#set\s+text\([^)]*\blang:\s*"([a-z]{2,3})"/) || src.match(/\\usepackage\[[^\]]*\b(english|ngerman|german)\b/))?.[1]
+		cm = GlossEditor.create(editorEl, { doc: applied, lang, spellLang: { english: 'en', ngerman: 'de', german: 'de' }[spellLang] || spellLang, onChange: setApplied })
 		redraw()
 		setView(root.dataset.hasPdf ? (store.get('gloss-review-view:' + base) || 'editor') : 'editor')
 		const name = store.get('gloss-review-name:' + base)

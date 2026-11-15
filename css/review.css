@@ -50,3 +50,14 @@ body[data-themes*="dark"] .gr-text { --gr-c-keyword: #c79bf0; --gr-c-string: #6c
 .gr-card-actions button { min-height: 28px; padding: 2px 10px; font-size: 0.9em; }
 .gr-link { background: none !important; border: none !important; padding: 0 !important; min-height: 0 !important; color: var(--color-text-maxcontrast); text-decoration: underline; font-size: 0.85em; cursor: pointer; }
 .gr-items li { cursor: pointer; }
+
+.gr-text .cm-activeLine, .gr-text .cm-activeLineGutter { background: var(--color-background-hover); }
+.gr-text .cm-matchingBracket { background: var(--color-primary-element-light); outline: 1px solid var(--color-primary-element); }
+.gr-text .cm-nonmatchingBracket { outline: 1px solid #c23b3b; }
+.gr-text .cm-searchMatch { background: rgba(255, 200, 0, 0.35); }
+.gr-text .cm-searchMatch-selected { background: rgba(255, 150, 0, 0.6); }
+.gr-text .cm-selectionMatch { background: rgba(120, 160, 255, 0.22); }
+.gr-text .cm-panels { background: var(--color-main-background); color: var(--color-main-text); border-color: var(--color-border); }
+.gr-text .cm-panel.cm-search { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 6px 8px; }
+.gr-text .cm-panel.cm-search input, .gr-text .cm-panel.cm-search button { margin: 0; min-height: 30px; }
+.gr-text .cm-panel.cm-search label { display: inline-flex; align-items: center; gap: 2px; font-size: 0.9em; }
