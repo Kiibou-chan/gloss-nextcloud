@@ -26,6 +26,30 @@ function setup() {
 }
 
 describe('review islands', () => {
+  it('returns drawn from every model update, including card insertion, replacement, and removal', () => {
+    const model = createPanelModel(), session = commands(), el = slot(), header = slot()
+    model.setHead(head()); model.upsertCard(card('a')); model.upsertCard(card('b')); model.setOrder(['a', 'b'])
+    dispose.push(mountPanel(el, model, session), mountHead(header, model, session))
+    act(() => {})
+    const updates = [
+      ['setHead', () => model.setHead(head({ status: 'Saved' }))],
+      ['upsertCard inserts', () => model.upsertCard(card('c'))],
+      ['upsertCard replaces', () => model.upsertCard(card('a', { proposalShown: 'changed' }))],
+      ['removeCard', () => model.removeCard('b')],
+      ['setOrder', () => model.setOrder(['c', 'a'])],
+      ['setCount', () => model.setCount({ changes: 2, comments: 0 })],
+    ] as const
+    for (const [label, update] of updates) {
+      // Even map-only updates must flush work queued by hand-built callers.
+      model.head.value = head({ status: label === 'setHead' ? 'Pending' : 'Saved' })
+      update()
+      expect.soft(header.querySelector('#gr-status')?.textContent, label).toBe('Saved')
+      act(() => { model.head.value = head({ status: '' }) })
+    }
+    expect(el.querySelector('[data-id="a"] ins')?.textContent).toBe('changed')
+    expect([...el.querySelectorAll('li')].map(item => item.dataset.id)).toEqual(['c', 'a'])
+    expect(el.querySelector('#gr-count')?.textContent).toBe('2 changes, 0 comments')
+  })
   it('renders proposal and comment markup, safe text, and public card commands', () => {
     const { el, session } = setup()
     const a = el.querySelector('[data-id="a"]')!, b = el.querySelector('[data-id="b"]')!
@@ -79,6 +103,29 @@ describe('review islands', () => {
     expect(session.commentOn).toHaveBeenCalledTimes(1)
     click(el.querySelector('#gr-cancel')); expect(session.cancelForm).toHaveBeenCalledOnce()
     act(() => model.setHead(head())); expect(el.querySelector('#gr-form')?.hasAttribute('hidden')).toBe(true)
+  })
+  it('keeps an unfinished name through head updates and commits non-blank names on change', () => {
+    const model = createPanelModel(), session = commands(), el = slot()
+    act(() => { model.setHead(head()); dispose.push(mountHead(el, model, session)) })
+    const name = el.querySelector<HTMLInputElement>('#gr-name')!
+    act(() => { name.value = 'Grace'; name.dispatchEvent(new Event('input', { bubbles: true })) })
+    expect(session.setName).not.toHaveBeenCalled()
+    act(() => model.setHead(head({ status: 'Saved' })))
+    expect(name.value).toBe('Grace')
+    act(() => { name.dispatchEvent(new Event('change', { bubbles: true })) })
+    expect(session.setName).toHaveBeenCalledExactlyOnceWith('Grace')
+    act(() => model.setHead(head({ name: 'Katherine' })))
+    expect(name.value).toBe('Katherine')
+    act(() => {
+      name.value = '  Mary  '; name.dispatchEvent(new Event('input', { bubbles: true }))
+      name.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(session.setName).toHaveBeenLastCalledWith('Mary')
+    act(() => {
+      name.value = '   '; name.dispatchEvent(new Event('input', { bubbles: true }))
+      name.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(session.setName).toHaveBeenCalledTimes(2)
   })
   it('renders the head, view aria state, name and Send commands, and disabled Send', () => {
     const model = createPanelModel(), session = commands(), el = slot()

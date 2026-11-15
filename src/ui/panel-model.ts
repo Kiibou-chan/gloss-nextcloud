@@ -3,6 +3,7 @@ import type { Signal } from '@preact/signals'
 import type { PanelPort } from '../app/ports'
 import type { ReviewSession } from '../app/session'
 import type { CardView, HeadView } from '../app/view'
+import { flushIslands } from './island'
 
 /** Only the public session commands are available to the islands and their fakes. */
 export type PanelCommands = Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges'>
@@ -24,10 +25,11 @@ export function createPanelModel(): PanelModel {
       const existing = cards.get(view.id)
       if (existing) existing.value = view
       else cards.set(view.id, signal(view))
+      flushIslands()
     },
-    removeCard(id) { cards.delete(id) },
-    setOrder(ids) { order.value = [...ids] },
-    setCount(value) { count.value = { ...value } },
-    setHead(view) { head.value = view },
+    removeCard(id) { cards.delete(id); flushIslands() },
+    setOrder(ids) { order.value = [...ids]; flushIslands() },
+    setCount(value) { count.value = { ...value }; flushIslands() },
+    setHead(view) { head.value = view; flushIslands() },
   }
 }
