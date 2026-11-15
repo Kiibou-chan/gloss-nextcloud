@@ -82,7 +82,7 @@
       },
       "minContains": 0,
       "maxContains": 1,
-      "description": "Review items, with unique ids and at most one overall comment."
+      "description": "Review items, with unique ids and at most one overall comment. readReview enforces id uniqueness; importers must apply both schema validation and readReview checks."
     }
   },
   "required": [
@@ -100,7 +100,7 @@
     "time": {
       "type": "string",
       "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(\\.\\d+)?(Z|[+-]([01]\\d|2[0-3]):[0-5]\\d)$",
-      "description": "ISO 8601 timestamp, including a time-zone offset."
+      "description": "ISO 8601 timestamp, including a time-zone offset. readReview additionally rejects impossible calendar dates."
     },
     "quote": {
       "type": "object",
@@ -150,7 +150,7 @@
         "id": {
           "type": "string",
           "pattern": "^[a-z0-9]{10}$",
-          "description": "Item identifier, unique within this review."
+          "description": "Item identifier, unique within this review. readReview enforces uniqueness; importers must apply both schema validation and readReview checks."
         },
         "at": {
           "$ref": "#/$defs/time"
@@ -190,7 +190,7 @@
         "id": {
           "type": "string",
           "pattern": "^[a-z0-9]{10}$",
-          "description": "Item identifier, unique within this review."
+          "description": "Item identifier, unique within this review. readReview enforces uniqueness; importers must apply both schema validation and readReview checks."
         },
         "at": {
           "$ref": "#/$defs/time"
@@ -239,7 +239,7 @@
         "id": {
           "type": "string",
           "pattern": "^[a-z0-9]{10}$",
-          "description": "Item identifier, unique within this review."
+          "description": "Item identifier, unique within this review. readReview enforces uniqueness; importers must apply both schema validation and readReview checks."
         },
         "at": {
           "$ref": "#/$defs/time"
@@ -284,7 +284,7 @@
         "id": {
           "type": "string",
           "pattern": "^[a-z0-9]{10}$",
-          "description": "Item identifier, unique within this review."
+          "description": "Item identifier, unique within this review. readReview enforces uniqueness; importers must apply both schema validation and readReview checks."
         },
         "at": {
           "$ref": "#/$defs/time"

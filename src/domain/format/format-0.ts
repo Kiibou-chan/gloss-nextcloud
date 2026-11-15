@@ -1,9 +1,11 @@
-import { readFormat1 } from './format-1'
+import { calendarError, readFormat1 } from './format-1'
 import type { NewId, ReadResult } from './record'
 
 export function readFormat0(json: Record<string, unknown>, newId: NewId): ReadResult {
   const invalid = { error: 'This review is not a valid format 0 review.' }
   if (typeof json.draft !== 'string' || !Array.isArray(json.items)) return invalid
+  const error = calendarError(json)
+  if (error) return { error }
   const items: Record<string, unknown>[] = []
   const times: string[] = []
   for (const entry of json.items) {

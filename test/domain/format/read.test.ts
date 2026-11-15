@@ -63,3 +63,44 @@ test('format 1 refuses ids with a trailing newline', () => {
   json.items[0].id += '\n'
   expect(readReview(json, newId)).toHaveProperty('error')
 })
+
+const timestampFields = [
+  'updatedAt', 'sentAt', 'items.0.at', 'items.0.comments.0.at',
+  'items.1.at', 'items.1.comments.0.at', 'items.2.at',
+]
+function setField(json: any, field: string, value: string): void {
+  const parts = field.split('.')
+  const key = parts.pop()!
+  const parent = parts.reduce((current, part) => current[part], json)
+  parent[key] = value
+}
+
+for (const field of timestampFields) {
+  test(`format 1 checks calendar dates in ${field} and accepts leap days`, () => {
+    const json = fixture(field === 'updatedAt' ? 'review-1-small' : 'review-1-overall')
+    for (const invalid of ['2026-02-30T10:00:00.000Z', '1900-02-29T10:00:00.000Z', '2026-04-31T10:00:00.000+02:00']) {
+      setField(json, field, invalid)
+      const result = readReview(json, newId)
+      expect(result).toHaveProperty('error')
+      if ('error' in result) expect(result.error).toContain(field)
+    }
+    for (const valid of ['2028-02-29T10:00:00.000Z', '2000-02-29T23:30:00.000-02:00']) {
+      setField(json, field, valid)
+      expect(readReview(json, newId)).toHaveProperty('record')
+    }
+  })
+}
+
+for (const field of ['items.0.at', 'items.0.comments.0.at', 'items.1.at', 'items.1.comments.0.at']) {
+  test(`legacy checks calendar dates in ${field} and accepts leap days`, () => {
+    const json = fixture('review-0-spike')
+    setField(json, field, '2026-02-30T10:00:00.000Z')
+    let id = 0
+    const result = readReview(json, () => `new000000${++id}`)
+    expect(result).toHaveProperty('error')
+    if ('error' in result) expect(result.error).toContain(field)
+    setField(json, field, '2028-02-29T10:00:00.000Z')
+    id = 0
+    expect(readReview(json, () => `new000000${++id}`)).toHaveProperty('record')
+  })
+}
