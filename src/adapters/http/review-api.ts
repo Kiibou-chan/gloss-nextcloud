@@ -28,10 +28,12 @@ export function createReviewApi(base: string, requestToken: string, webroot = ba
     init.signal?.addEventListener('abort', abort, { once: true })
     if (init.signal?.aborted) abort()
     const timeout = setTimeout(abort, 30_000 + Math.floor(utf8Length(String(init.body ?? '')) / 20_000) * 1000)
+    let refreshing = false
     const perform = async () => {
       const send = () => fetch(root + path, { ...init, signal: controller.signal, headers: { requesttoken: token } })
       let response = await send()
       if (response.status === 412) {
+        refreshing = true
         let fresh: unknown
         try {
           const refreshed = await fetch(webroot.replace(/\/$/, '') + '/csrftoken', { method: 'GET', signal: controller.signal })
@@ -42,6 +44,7 @@ export function createReviewApi(base: string, requestToken: string, webroot = ba
           return { ...sessionEnded }
         }
         token = fresh.token
+        refreshing = false
         response = await send()
       }
       if (!response.ok) return await refusal(response)
@@ -51,7 +54,7 @@ export function createReviewApi(base: string, requestToken: string, webroot = ba
     try {
       return await Promise.race([perform(), aborted])
     } catch {
-      return { status: 0, error: 'network' }
+      return refreshing ? { ...sessionEnded } : { status: 0, error: 'network' }
     } finally {
       clearTimeout(timeout)
       init.signal?.removeEventListener('abort', abort)

@@ -108,11 +108,9 @@ describe('placing saved items', () => {
     // Empty quotes need surviving context to be attached.
     if (!first) a.quote.suffix = draft;
     if (!second) b.quote.suffix = draft;
-    const { proposal: _removed, ...rest } = b;
     expect(placeItems([a, b], draft)).toEqual({
       placed: [
         { ...a, quote: quoteAt(draft, 0, first.length) },
-        { ...rest, kind: 'comment', from: draft.indexOf(second), quote: quoteAt(draft, draft.indexOf(second), draft.indexOf(second) + second.length) },
       ], lost: 1,
     });
   });
@@ -122,7 +120,7 @@ describe('placing saved items', () => {
     const b = { ...proposal('second', '', at), quote: quoteAt('alpha', at, at) };
     const result = placeItems([a, b], 'alpha');
     expect(result.lost).toBe(at === 5 ? 0 : 1);
-    expect(result.placed.map(item => item.kind)).toEqual(['proposal', at === 5 ? 'proposal' : 'comment']);
+    expect(result.placed.map(item => item.id)).toEqual(at === 5 ? ['first', 'second'] : ['first']);
   });
 
   it('also detects a range overlapping an earlier insertion', () => {
@@ -130,7 +128,7 @@ describe('placing saved items', () => {
     expect(placeItems([insertion, proposal('second', 'alpha')], 'alpha').lost).toBe(1);
   });
 
-  it('drops an overlapping proposal without comments and retains touching ranges', () => {
+  it('leaves an overlapping proposal without comments unplaced and retains touching ranges', () => {
     const a = proposal('first', 'alpha');
     const b = proposal('second', 'alpha', 0, []);
     const c = proposal('third', 'beta', 5);

@@ -124,6 +124,24 @@ describe('save request lifetime', () => {
     expect(fetcher.mock.calls[0]![1]?.signal?.aborted).toBe(true)
     await saving; expect(vi.getTimerCount()).toBe(0)
   })
+  it('I3 ends the session without retrying when a save times out during token refresh', async () => {
+    vi.useFakeTimers(); const { api, fetcher } = setup(); const f = fakes()
+    fetcher.mockResolvedValueOnce(reply({}, 412)).mockImplementation(() => new Promise(() => {}))
+    const session = new ReviewSession({ ...f.ports, api: { ...f.api, save: api.save } })
+    try {
+      await session.start(); await session.setName('Ada')
+      session.setOverall('A synthetic overall comment'); await f.advance(5000)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(fetcher).toHaveBeenCalledTimes(2)
+      expect(fetcher.mock.calls[1]![0]).toBe('/csrftoken')
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(f.head().status).toBe(ended)
+      expect(fetcher.mock.calls[1]![1]?.signal?.aborted).toBe(true)
+      await f.advance(60_000)
+      expect(fetcher).toHaveBeenCalledTimes(2)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally { session.dispose() }
+  })
   it('clears pending and resolves Send after hung saves time out', async () => {
     vi.useFakeTimers(); const { api, fetcher } = setup(); const f = fakes()
     fetcher.mockImplementation(() => new Promise(() => {}))

@@ -1,7 +1,7 @@
-import type { Item, Proposal, Quote } from '../review/model'
+import type { Item, Quote } from '../review/model'
 /** Ported from gloss src/platform/text/logic/text.ts at 8fc93e7eb.
  * R9 differences: an empty quote without joined context is detached;
- * placeItems rejects overlapping proposals in saved order, retaining their comments.
+ * placeItems leaves overlapping proposals unplaced so their saved records can be retained.
  */
 export type { Quote } from '../review/model'
 
@@ -92,9 +92,6 @@ export function quoteAt(text: string, start: number, end: number): Quote {
 }
 
 
-type Placed<T> = T extends Proposal
-  ? T | (Omit<T, 'kind' | 'proposal'> & { kind: 'comment' }) : T;
-
 /** Half-open ranges, with an insertion conflicting at the start or inside a range.
  * Two insertions at the same point also conflict.
  */
@@ -104,7 +101,7 @@ function overlaps(a: number, aEnd: number, b: number, bEnd: number): boolean {
 }
 
 /** Place in saved order, preserving metadata and leaving the saved input untouched. */
-export function placeItems<T extends Item>(records: readonly T[], draft: string): { placed: Placed<T>[]; lost: number } {
+export function placeItems<T extends Item>(records: readonly T[], draft: string): { placed: T[]; lost: number } {
   const placed: Item[] = [];
   const proposals: { start: number; end: number }[] = [];
   let lost = 0;
@@ -122,16 +119,12 @@ export function placeItems<T extends Item>(records: readonly T[], draft: string)
     if (record.kind === 'proposal') {
       if (proposals.some(prior => overlaps(prior.start, prior.end, range.start, range.end))) {
         lost++;
-        if (record.comments.length) {
-          const { proposal: _proposal, ...comment } = refreshed as Proposal;
-          placed.push({ ...comment, kind: 'comment' });
-        }
         continue;
       }
       proposals.push(range);
     }
     placed.push(refreshed);
   }
-  // Each output is its original T with refreshed anchoring, or the specified comment conversion.
-  return { placed: placed as Placed<T>[], lost };
+  // Each output is its original T with refreshed anchoring.
+  return { placed: placed as T[], lost };
 }
