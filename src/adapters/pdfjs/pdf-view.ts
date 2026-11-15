@@ -1,5 +1,5 @@
 import { getDocument, GlobalWorkerOptions, TextLayer } from 'pdfjs-dist'
-import type { PDFPageProxy, PageViewport } from 'pdfjs-dist'
+import type { PDFPageProxy, PageViewport, RenderTask } from 'pdfjs-dist'
 import type { PdfPort } from '../../app/ports'
 import type { PdfPlacement } from '../../domain/pdf/match'
 
@@ -12,6 +12,10 @@ type Page = {
   marks: HTMLElement
   layer?: TextLayer
   drawing?: Promise<void>
+  canvas?: HTMLCanvasElement
+  text?: HTMLElement
+  render?: RenderTask
+  generation: number
 }
 
 /** The host is the PDF scroll container; matching uses cached text, never the DOM. */
@@ -20,6 +24,8 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
   let pages: Page[] = []
   let placements: readonly PdfPlacement[] = []
   let observer: IntersectionObserver | undefined
+  let viewportObserver: IntersectionObserver | undefined
+  const visible = new Set<number>()
   let selected: Parameters<PdfPort['onSelect']>[0] | undefined
 
   function drawMarks(page: Page) {
@@ -58,8 +64,34 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
     }
   }
 
+  function release(page: Page) {
+    if (!page.canvas) return
+    // A cancelled render may settle after this page has started drawing again.
+    page.generation++
+    page.render?.cancel()
+    page.layer?.cancel()
+    page.canvas.width = page.canvas.height = 0
+    page.canvas.remove()
+    page.text?.remove()
+    page.marks.replaceChildren()
+    page.canvas = undefined
+    page.text = undefined
+    page.layer = undefined
+    page.render = undefined
+    page.drawing = undefined
+    page.pdf.cleanup()
+  }
+
+  function releaseDistant() {
+    if (!visible.size) return
+    for (const page of pages) {
+      if ([...visible].every(number => Math.abs(number - page.number) > 10)) release(page)
+    }
+  }
+
   function draw(page: Page): Promise<void> {
     if (page.drawing) return page.drawing
+    const generation = ++page.generation
     page.drawing = (async () => {
       const canvas = document.createElement('canvas')
       const ratio = window.devicePixelRatio || 1
@@ -74,20 +106,23 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
       layer.style.setProperty('--total-scale-factor', String(page.viewport.scale))
       layer.style.setProperty('--scale-round-x', '1px')
       layer.style.setProperty('--scale-round-y', '1px')
+      page.canvas = canvas
+      page.text = layer
       page.box.prepend(canvas)
       page.box.append(layer)
       try {
-        await page.pdf.render({ canvas, viewport: page.viewport, transform: ratio === 1 ? undefined : [ratio, 0, 0, ratio, 0, 0] }).promise
+        page.render = page.pdf.render({ canvas, viewport: page.viewport, transform: ratio === 1 ? undefined : [ratio, 0, 0, ratio, 0, 0] })
+        await page.render.promise
+        if (generation !== page.generation) return
+        page.render = undefined
         const textLayer = new TextLayer({ textContentSource: page.content, container: layer, viewport: page.viewport })
-        await textLayer.render()
         page.layer = textLayer
+        await textLayer.render()
+        if (generation !== page.generation) return
         drawMarks(page)
       } catch (error) {
-        canvas.width = canvas.height = 0
-        canvas.remove()
-        layer.remove()
-        page.layer = undefined
-        page.drawing = undefined
+        if (generation !== page.generation) return
+        release(page)
         throw error
       }
     })()
@@ -112,7 +147,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
       const marks = document.createElement('div')
       marks.className = 'gr-pdf-marks'
       box.append(marks)
-      next.push({ number, pdf, viewport, content: await pdf.getTextContent(), box, marks })
+      next.push({ number, pdf, viewport, content: await pdf.getTextContent(), box, marks, generation: 0 })
     }
     pages = next
     el.replaceChildren(...pages.map(page => page.box))
@@ -123,7 +158,19 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
         if (page) void draw(page).catch(error => console.error('Could not draw PDF page', error))
       }
     }, { root: el, rootMargin: `${el.clientHeight || window.innerHeight}px 0px` })
-    for (const page of pages) observer.observe(page.box)
+    viewportObserver = new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        const page = pages.find(p => p.box === entry.target)
+        if (!page) continue
+        if (entry.isIntersecting) visible.add(page.number)
+        else visible.delete(page.number)
+      }
+      releaseDistant()
+    }, { root: el, rootMargin: '0px' })
+    for (const page of pages) {
+      observer.observe(page.box)
+      viewportObserver.observe(page.box)
+    }
     return { pages: pages.map(page => page.content.items.flatMap(item => 'str' in item ? [item.str] : [])) }
   }
 
@@ -145,6 +192,8 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
     show() {
       loading ??= load().catch(error => {
         observer?.disconnect()
+        viewportObserver?.disconnect()
+        visible.clear()
         loading = undefined
         throw error
       })

@@ -204,3 +204,76 @@ describe('PDF view', () => {
     await expect(view.show()).resolves.toHaveProperty('pages')
   })
 })
+
+describe('distant canvas releasing', () => {
+  function visible(index: number, on = true) {
+    const observer = Observer.instances.find(o => o.options.rootMargin === '0px')
+    expect(observer, 'a viewport observer tracks the pages actually in view').toBeDefined()
+    observer!.emit(boxes()[index]!, on)
+  }
+
+  it('releases pages more than ten pages away, retaining their layout and cached text for redrawing', async () => {
+    pages = Array.from({ length: 24 }, (_, index) => makePage(index + 1))
+    const view = create()
+    await view.show()
+    view.setMarks([placement(1)])
+    observe(0)
+    observe(1)
+    await settle()
+    const firstBox = boxes()[0]!
+    const canvas = firstBox.querySelector('canvas')!
+    expect(firstBox.querySelector('.gr-pdf-mark')).not.toBeNull()
+    visible(11)
+    expect(firstBox.querySelector('canvas')).toBeNull()
+    expect([canvas.width, canvas.height]).toEqual([0, 0])
+    expect(firstBox.querySelector('.textLayer')).toBeNull()
+    expect(firstBox.querySelector('.gr-pdf-mark')).toBeNull()
+    expect(firstBox.style.height).toBe('800px')
+    expect(boxes()).toHaveLength(24)
+    expect(pages[0]!.cleanup).toHaveBeenCalledTimes(1)
+    // Page 2 is exactly ten pages from page 12, so its canvas stays.
+    expect(boxes()[1]!.querySelector('canvas')).not.toBeNull()
+    visible(11, false)
+    visible(0)
+    observe(0)
+    await settle()
+    expect(pages[0]!.render).toHaveBeenCalledTimes(2)
+    expect(pages[0]!.getTextContent).toHaveBeenCalledTimes(1)
+    expect(firstBox.querySelector('.gr-pdf-mark')).not.toBeNull()
+  })
+
+  it('keeps a page while any visible page is within ten pages of it', async () => {
+    pages = Array.from({ length: 24 }, (_, index) => makePage(index + 1))
+    await create().show()
+    observe(0)
+    await settle()
+    visible(0)
+    visible(23)
+    expect(boxes()[0]!.querySelector('canvas')).not.toBeNull()
+    visible(0, false)
+    expect(boxes()[0]!.querySelector('canvas')).toBeNull()
+  })
+
+  it('cancels distant in-flight drawing without letting its completion remove a new canvas', async () => {
+    pages = Array.from({ length: 24 }, (_, index) => makePage(index + 1))
+    let finish!: () => void
+    const cancel = vi.fn()
+    pages[0]!.render.mockReturnValueOnce({ promise: new Promise<void>(resolve => { finish = resolve }), cancel })
+    await create().show()
+    observe(0)
+    await settle()
+    visible(23)
+    expect(cancel).toHaveBeenCalledTimes(1)
+    expect(boxes()[0]!.querySelector('canvas')).toBeNull()
+    visible(23, false)
+    visible(0)
+    observe(0)
+    await settle()
+    const newCanvas = boxes()[0]!.querySelector('canvas')!
+    expect(newCanvas).not.toBeNull()
+    finish()
+    await settle()
+    expect(boxes()[0]!.querySelector('canvas')).toBe(newCanvas)
+    expect(boxes()[0]!.querySelectorAll('.textLayer')).toHaveLength(1)
+  })
+})
