@@ -65,6 +65,7 @@ class ReviewController extends PublicShareController {
 		Util::addScript('gloss', 'typst-view');
 		Util::addScript('gloss', 'pdf-view');
 		Util::addScript('gloss', 'diff');
+		Util::addScript('gloss', 'vendor/editor.bundle');
 		Util::addScript('gloss', 'review');
 		Util::addStyle('gloss', 'review');
 		$draft = $this->draft();

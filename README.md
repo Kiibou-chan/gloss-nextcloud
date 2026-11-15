@@ -7,6 +7,11 @@ In development; nothing to install yet.
 
 Licence: AGPL-3.0-or-later.
 
+## Building
+
+The editor is CodeMirror 6, bundled into `js/vendor/editor.bundle.js` from `src/editor.mjs`.
+After changing `src/`, run `npm ci` once and then `npm run build`, and commit the bundle.
+
 ## Trying it locally
 
 Spike on branch `spike-review`: a public link to a folder opens a review page at `/apps/gloss/r/<share token>`.
