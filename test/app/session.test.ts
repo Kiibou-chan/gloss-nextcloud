@@ -16,7 +16,7 @@ describe('ReviewSession', () => {
     const { f } = await ready(` ${name} `)
     expect(f.head()).toMatchObject({ name, editable: true, status: '' })
     f.editor.replace(change)
-    await f.advance(600)
+    await f.advance(5000)
     const result = readReview(JSON.parse(f.api.save.mock.lastCall![1]), f.ids.item)
     expect(result).toMatchObject({ record: { name } })
   })
@@ -27,7 +27,7 @@ describe('ReviewSession', () => {
     expect(f.head()).toMatchObject({ name: 'Ada', editable: true, status: 'Your name must be 100 characters or fewer.' })
     expect(f.api.open).not.toHaveBeenCalled()
     expect(f.store.remember).toHaveBeenCalledTimes(1)
-    await f.advance(600)
+    await f.advance(5000)
     expect(f.api.save).toHaveBeenCalledTimes(1)
     expect(JSON.parse(f.api.save.mock.lastCall![1])).toMatchObject({ name: 'Ada', items: [expect.objectContaining({ proposal: 'brighter' })] })
   })
@@ -38,12 +38,12 @@ describe('ReviewSession', () => {
     s.openForm({ id })
     const target = f.head().form!.target
     s.undoProposal(id)
-    await f.advance(600)
+    await f.advance(5000)
     f.api.save.mockClear()
     s.commentOn(target, 'Please explain this change')
     expect(f.head().form).toBeNull()
     expect(f.head().status).toBe('That item no longer exists, so the comment form has been closed.')
-    await f.advance(600)
+    await f.advance(5000)
     expect(f.api.save).not.toHaveBeenCalled()
     expect(f.head().countText).toBe('0 changes, 0 comments')
   })
@@ -113,7 +113,7 @@ describe('ReviewSession', () => {
   it('passes server-shaped keys to open and save and replaces invalid remembered keys', async () => {
     const { f, s } = await ready('Éva Smith')
     expect(f.store.rememberedKey()).toMatch(/^[A-Za-z0-9]{16}$/); expect(f.api.open).not.toHaveBeenCalled()
-    f.editor.replace(change); await f.advance(600)
+    f.editor.replace(change); await f.advance(5000)
     expect(f.api.save.mock.lastCall![0]).toMatch(/^[A-Za-z0-9]{16}$/)
     f.store.remember('invalid-key')
     const t = new ReviewSession(f.ports); await t.start(); await t.setName('Other')
@@ -186,8 +186,8 @@ describe('ReviewSession', () => {
     await s.setView('editor'); await s.setView('pdf'); expect(f.pdf.show).toHaveBeenCalledTimes(1)
   })
   it('restores the remembered view', async () => { const f = fakes(); f.store.setView('pdf'); const s = new ReviewSession(f.ports); await s.start(); expect(f.pdf.show).toHaveBeenCalledTimes(1) })
-  it('saves after 600 ms and reconciles drift before serialising', async () => {
-    const { f } = await ready(); f.editor.replace(change); await f.advance(599); expect(f.api.save).not.toHaveBeenCalled()
+  it('saves after 5 s and reconciles drift before serialising', async () => {
+    const { f } = await ready(); f.editor.replace(change); await f.advance(4999); expect(f.api.save).not.toHaveBeenCalled()
     f.drift('alpha blue gamma delta'); await f.advance(1); const record = JSON.parse(f.api.save.mock.lastCall![1]); expect(record.items[0].proposal).toBe('blue'); expect(f.editor.text).toHaveBeenCalledTimes(1)
     expect(f.head().status).toBe('Saved')
     expect(f.diagnostic).toHaveBeenCalledWith('The editor and review differed; the review was rebuilt.')
@@ -206,8 +206,8 @@ describe('ReviewSession', () => {
     expect(f.editor.setText).toHaveBeenLastCalledWith('alpha blue gamma delta'); expect(f.head().status).toBe('1 of your earlier items no longer match the draft.'); expect(f.editor.setEditable).toHaveBeenLastCalledWith(false)
   })
   it('can save again after a non-retried refusal', async () => {
-    const { f } = await ready(); f.api.save.mockResolvedValueOnce({ status: 400, error: 'badReview' }); f.editor.replace(change); await f.advance(600)
-    f.editor.replace({ from: 6, to: 14, insert: 'blue' }); await f.advance(600); expect(f.api.save).toHaveBeenCalledTimes(2); expect(f.head().status).toBe('Saved')
+    const { f } = await ready(); f.api.save.mockResolvedValueOnce({ status: 400, error: 'badReview' }); f.editor.replace(change); await f.advance(5000)
+    f.editor.replace({ from: 6, to: 14, insert: 'blue' }); await f.advance(5000); expect(f.api.save).toHaveBeenCalledTimes(2); expect(f.head().status).toBe('Saved')
   })
   it('hides the PDF switch and ignores PDF modes without a PDF', async () => {
     const f = fakes(); const s = new ReviewSession({ ...f.ports, hasPdf: false }); f.store.setView('both'); await s.start(); await s.setView('pdf')
@@ -222,7 +222,7 @@ describe('ReviewSession', () => {
   })
   it('keeps Send read-only while a previous save finishes', async () => {
     const { f, s } = await ready(); let resolve!: (v: { revision: number }) => void
-    f.api.save.mockImplementationOnce(() => new Promise(r => { resolve = r })); f.editor.replace(change); await f.advance(600)
+    f.api.save.mockImplementationOnce(() => new Promise(r => { resolve = r })); f.editor.replace(change); await f.advance(5000)
     let resolveSend!: (v: { revision: number }) => void
     f.api.save.mockImplementationOnce(() => new Promise(r => { resolveSend = r }))
     const sending = s.send(); expect(f.editor.setEditable).toHaveBeenLastCalledWith(false)
@@ -243,7 +243,7 @@ describe('S11b session regressions', () => {
     f.select(0, 5)
     f.select(11, 16)
     s.commentOn(f.head().form!.target, 'Check the second alpha')
-    await f.advance(600)
+    await f.advance(5000)
     expect(JSON.parse(f.api.save.mock.lastCall![1]).items).toEqual([
       expect.objectContaining({ kind: 'comment', from: 11, quote: expect.objectContaining({ exact: 'alpha' }), comments: [expect.objectContaining({ text: 'Check the second alpha' })] }),
     ])
@@ -271,7 +271,7 @@ describe('S11b session regressions', () => {
   })
   it('keeps the editor and key when the current name is re-entered with whitespace', async () => {
     const { f, s } = await ready(); const key = vi.spyOn(f.ids, 'key')
-    f.editor.replace(change); await f.advance(600)
+    f.editor.replace(change); await f.advance(5000)
     await s.setName('  Ada  ')
     expect(f.editor.text()).toBe('alpha brighter gamma delta')
     expect(f.api.open).not.toHaveBeenCalled(); expect(key).not.toHaveBeenCalled()

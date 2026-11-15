@@ -1,4 +1,5 @@
 import { expect, test, vi } from 'vitest';
+import { createHash } from 'node:crypto';
 
 // Keep the scene executable without a browser or server, with assertions on synthetic DOM rows.
 vi.mock('@playwright/test', () => {
@@ -38,19 +39,21 @@ function element(text = '') {
 
 test.each(['1111111111111111', '2222222222222222'])(
   'H6 opens only the current review when two Ada files exist: %s', async id => {
-    const key = `ada-${id}`;
+    const key = id;
+    const filename = key => `ada-${createHash('sha256').update(key).digest('hex').slice(0, 16)}.json`;
     const clicked = [];
-    const rows = ['ada-1111111111111111.json', 'ada-2222222222222222.json'].map(filename => {
+    const rows = ['1111111111111111', '2222222222222222'].map(filename).map(filename => {
       const row = element();
+      row.setAttribute('data-cy-files-list-row-name', filename);
       row.append(element(filename));
       return row;
     });
     const ownerPage = {
       goto: async () => {},
       waitForURL: async () => {},
-      locator: selector => locator(selector === '[data-cy-files-list-row-name]' ? rows : [element()], clicked),
-      getByRole: () => locator([element()]),
-      getByText: (text, options) => locator(text === 'Details' ? [element(text)]
+      locator: selector => locator(selector.startsWith('tr[data-cy-files-list-row-name=') ? rows.filter(row => row.getAttribute('data-cy-files-list-row-name') === selector.split('"')[1]) : [element()], selector.startsWith('tr[') ? clicked : undefined),
+      getByRole: role => locator(role === 'row' ? rows : [element()], role === 'row' ? clicked : undefined),
+      getByText: (text, options) => locator(['Details', 'Current version'].includes(text) ? [element(text)]
         : rows.flatMap(row => [...row.children]).filter(node => options?.exact
           ? node.textContent === text : node.textContent.includes(text))),
     };
@@ -67,7 +70,7 @@ test.each(['1111111111111111', '2222222222222222'])(
       keyboard: {
         press: async () => {},
         insertText: async () => {
-          const request = { method: () => 'POST', postData: () => new URLSearchParams({ reviewer: key }).toString() };
+          const request = { method: () => 'POST', postData: () => new URLSearchParams({ key }).toString() };
           await routeHandler({
             request: () => request,
             fetch: async () => ({ ok: () => true }),
@@ -89,7 +92,7 @@ test.each(['1111111111111111', '2222222222222222'])(
         }
       },
     });
-    expect(clicked).toEqual([`${key}.json`]);
+    expect(clicked).toEqual([filename(key)]);
     expect({ aborted, continued, captures, closed }).toEqual({ aborted: true, continued: true, captures: 2, closed: true });
   },
 );

@@ -125,7 +125,7 @@ describe('review islands', () => {
       name.value = '   '; name.dispatchEvent(new Event('input', { bubbles: true }))
       name.dispatchEvent(new Event('change', { bubbles: true }))
     })
-    expect(session.setName).toHaveBeenCalledTimes(2)
+    expect(session.setName).toHaveBeenCalledTimes(3); expect(session.setName).toHaveBeenLastCalledWith('')
   })
   it('renders the head, view aria state, name and Send commands, and disabled Send', () => {
     const model = createPanelModel(), session = commands(), el = slot()

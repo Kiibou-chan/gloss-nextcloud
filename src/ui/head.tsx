@@ -12,7 +12,7 @@ export function Head({ model, session }: { model: PanelModel; session: PanelComm
     </div>
     {view.reviewable !== false && <label class="gr-who">Your name <input id="gr-name" type="text" autoComplete="name" value={draftName.value} onInput={event => { draft.value = { saved: model.head.value.name, name: event.currentTarget.value } }} onChange={event => {
       const name = event.currentTarget.value.trim()
-      if (name && name !== model.head.value.name) void session.setName(name)
+      if (name !== model.head.value.name) void session.setName(name)
     }} /></label>}
     <span id="gr-status" class="gr-status" role="status">{view.status}</span>
     {view.reviewable !== false && <button id="gr-send" type="button" class="primary" disabled={!view.canSend} onClick={() => void session.send()}>Send review</button>}

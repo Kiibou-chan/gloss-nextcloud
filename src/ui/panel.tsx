@@ -1,3 +1,4 @@
+import { Conflict } from './conflict'
 import { Card } from './card'
 import { CommentForm } from './comment-form'
 import type { PanelCommands, PanelModel } from './panel-model'
@@ -13,5 +14,5 @@ function Cards({ model, session }: { model: PanelModel; session: PanelCommands }
   })}</ol>
 }
 export function Panel({ model, session }: { model: PanelModel; session: PanelCommands }) {
-  return <><CommentForm model={model} session={session} /><Count model={model} /><Cards model={model} session={session} /></>
+  return <>{model.conflict.value && <Conflict {...model.conflict.value} onShow={() => session.showKeptChanges()} />}<CommentForm model={model} session={session} /><Count model={model} /><Cards model={model} session={session} /></>
 }

@@ -11,6 +11,7 @@ import { parseTypst, plainOps } from '../domain/source/typst-parse'
 import { placeItems } from '../domain/text/quote'
 import type { Backup, Failure, Ports } from './ports'
 import type { CardView, HeadView, ViewMode } from './view'
+import { SaveQueue } from './save-queue'
 
 function brief(text: string): string { return text.replace(/\s+/g, ' ').trim() }
 
@@ -20,6 +21,7 @@ export class ReviewSession {
   private saved = false
   private blocked = false
   private pendingName = ''
+  private blankName = false
   private draft = ''
   private file = ''
   private etag = ''
@@ -34,7 +36,10 @@ export class ReviewSession {
   private cards = new Map<string, string>()
   private order: string[] = []
   private count = { changes: 0, comments: 0 }
-  private cancelSave: (() => void) | null = null
+  private queue: SaveQueue | null = null
+  private cancelBackup: (() => void) | null = null
+  private backupFailed = false
+  private conflictText: string | null = null
   private cancelPdf: (() => void) | null = null
   private pdfLoading: Promise<void> | null = null
   private pdfScheduledSignature: string | null = null
@@ -42,7 +47,6 @@ export class ReviewSession {
   private pdfCache = new Map<string, { signature: string; placements: PdfPlacement[] }>()
   private source: ReturnType<typeof sourceKey> | null = null
   private ops: ReturnType<typeof plainOps> = []
-  private pending: Promise<void> | null = null
 
   constructor(private readonly ports: Ports) {
     ports.editor.setEditable(false)
@@ -71,8 +75,8 @@ export class ReviewSession {
   dispose(): void {
     if (this.disposed) return
     this.disposed = true; this.generation++
-    this.cancelSave?.(); this.cancelPdf?.()
-    this.cancelSave = this.cancelPdf = null
+    this.queue?.dispose(); this.cancelBackup?.(); this.cancelPdf?.()
+    this.cancelBackup = this.cancelPdf = null
     for (const unsubscribe of this.listeners) unsubscribe()
     this.listeners = []
   }
@@ -95,7 +99,7 @@ export class ReviewSession {
         const backup = this.ports.store.read(remembered)
         this.saved = backup?.saved === true
         if (this.saved) await this.loadReview('', backup)
-        else if (backup) this.restore(backup)
+        else if (backup) { this.restore(backup); this.createQueue(backup); if (backup.pending) await this.queue?.flush() }
       }
     } catch { this.status = 'Could not load the draft.'; this.head() }
   }
@@ -103,14 +107,15 @@ export class ReviewSession {
   async setName(name: string): Promise<void> {
     if (this.disposed || !this.ports.reviewable || this.blocked || !this.review || this.record?.sent) return
     name = name.trim()
-    if (name === this.record?.name) return
+    if (name === this.record?.name && !this.blankName) return
     if ([...name].length > 100) {
       this.status = 'Your name must be 100 characters or fewer.'
       this.head(); return
     }
     if (this.record) {
-      if (!name) return
-      this.record.name = name; this.changed(); return
+      this.blankName = !name
+      if (name) this.record.name = name
+      this.changed(); return
     }
     this.pendingName = name
     if (!name) { this.render(); return }
@@ -122,7 +127,7 @@ export class ReviewSession {
     if (this.saved) await this.loadReview(name, this.ports.store.read(this.key))
     else {
       this.install(this.emptyRecord(name))
-      this.ports.store.remember(this.key); this.backup(false)
+      this.ports.store.remember(this.key); this.createQueue(); this.backup(false)
     }
   }
 
@@ -162,21 +167,101 @@ export class ReviewSession {
         if ('revision' in opened) result.record.revision = opened.revision
         this.install(result.record)
       }
+      if (backup?.dirty) {
+        const serverRevision = this.record?.revision ?? 0
+        let pendingRevision: number | null = null
+        try { pendingRevision = backup.pending ? JSON.parse(backup.pending.body).revision : null } catch { /* Invalid pending data cannot match. */ }
+        if (backup.revision === serverRevision || pendingRevision === serverRevision) this.restore(backup)
+        else {
+          this.ports.store.keepConflict(this.key, backup)
+          this.conflictText = this.keptText(backup)
+          this.ports.panel.setConflictView?.({ text: this.conflictText, show: false })
+          this.status = `Changes made in this browser at ${backup.at} were not restored, as the review changed elsewhere.`
+          backup = null
+        }
+      }
+      this.createQueue(backup?.dirty ? backup : null)
       this.ports.store.remember(this.key)
+      if (backup?.dirty && backup.pending) await this.queue?.flush()
+      else if (!backup?.dirty && this.record && !this.status) this.status = 'Saved'
     } catch { if (generation === this.generation) this.status = 'Could not load your review.' }
     finally { if (generation === this.generation) { this.loading = false; this.render() } }
   }
-  // Interim S7 saving path; F2 owns timed backups and pending saves.
-  private backup(dirty: boolean): void {
-    if (!this.record || !this.review || !this.key) return
-    this.ports.store.write(this.key, {
-      review: writeReview({ ...this.record, revision: Math.max(1, this.record.revision), items: [...this.review.items(), ...this.record.items.filter(i => i.kind === 'overall')] }),
-      revision: this.record.revision, saved: this.saved, dirty, pending: null, at: this.ports.clock.now(),
+  private serialise(revision: number): string | null {
+    if (!this.record || !this.review) return null
+    return writeReview({ ...this.record, revision: Math.max(1, revision), draft: { file: this.file, etag: this.etag }, items: [...this.review.items(), ...this.record.items.filter(i => i.kind === 'overall')] })
+  }
+  private body(revision: number): string | null {
+    if (this.blankName || !this.record?.name || !this.review || this.blocked) return null
+    const actual = this.ports.editor.text()
+    if (actual !== this.review.applied()) {
+      this.review.rebuild(actual, () => this.ports.ids.item(), this.ports.clock.now())
+      this.ports.diagnostic?.('The editor and review differed; the review was rebuilt.')
+      this.render()
+    }
+    return this.serialise(revision)
+  }
+  private createQueue(backup: Backup | null = null): void {
+    this.queue?.dispose()
+    this.queue = new SaveQueue({
+      enabled: () => !this.blankName && !this.blocked,
+      scheduler: this.ports.scheduler, revision: backup?.revision ?? this.record?.revision ?? 0,
+      pending: backup?.pending, refusal: backup?.refusal, dirty: backup?.dirty ?? false,
+      body: revision => this.body(revision),
+      save: (body, base, options) => options ? this.ports.api.save(this.key, body, base, options) : this.ports.api.save(this.key, body, base),
+      onStatus: (status, outcome) => {
+        if (outcome && 'status' in outcome && ![0, 423].includes(outcome.status) && outcome.status < 500) {
+          if (this.record?.sent) { this.record.sent = false; this.record.sentAt = null }
+          this.status = outcome.status === 412 ? status : this.refusal(outcome, 'Not saved: ')
+          if (outcome.status === 409 && outcome.error === 'conflict') {
+            this.backup(true)
+            const backup = this.ports.store.read(this.key)
+            if (backup) {
+              this.ports.store.keepConflict(this.key, backup)
+              this.conflictText = this.keptText(backup)
+              this.ports.panel.setConflictView?.({ text: this.conflictText, show: false })
+            }
+          }
+        } else {
+          if (outcome && 'revision' in outcome && this.record) {
+            this.record.revision = outcome.revision; this.saved = true
+          }
+          this.status = status === 'Saved' && this.record?.sent ? 'Sending…' : status
+        }
+        this.render()
+      },
+      onChange: () => { this.backup(this.queue?.dirty ?? true); this.head() },
     })
+    if (this.queue.refusal) this.status = this.refusal(this.queue.refusal, 'Not saved: ')
+    if (backup?.dirty) this.backup(true)
+    this.render()
+  }
+  private backup(dirty: boolean): void {
+    const review = this.serialise(this.record?.revision ?? 0)
+    if (!review || !this.key || !this.record) return
+    this.backupFailed = !this.ports.store.write(this.key, {
+      review, revision: this.queue?.revision ?? this.record.revision, saved: this.saved, dirty,
+      pending: this.queue?.pending ?? null, refusal: this.queue?.refusal ?? null, at: this.ports.clock.now(),
+    })
+  }
+  get dirty(): boolean { return this.queue?.dirty ?? false }
+  online(): void { this.queue?.online() }
+  pagehide(): void {
+    this.cancelBackup?.(); this.cancelBackup = null
+    this.backup(this.dirty)
+    this.queue?.pagehide()
+    this.backup(this.dirty)
+  }
+  private keptText(backup: Backup): string {
+    try {
+      const result = readReview(JSON.parse(backup.review), () => this.ports.ids.item())
+      if ('error' in result) return backup.review
+      return result.record.items.map(item => item.kind === 'overall' ? item.text : [item.quote.exact, ...(item.kind === 'proposal' ? [item.proposal] : []), ...item.comments.map(c => c.text)].join('\n')).join('\n\n')
+    } catch { return backup.review }
   }
   private refusal(failure: Failure, prefix: string): string {
     if ([403, 404, 410].includes(failure.status)) this.blocked = true
-    if (failure.status === 403) return 'This link is not set up for reviewing.'
+    if (failure.status === 403) { this.ports.reviewable = false; return 'This link is not set up for reviewing.' }
     if (failure.status === 404 || failure.status === 410) return 'This review link no longer works. Your changes are kept in this browser.'
     if (failure.status === 429) return 'The server is refusing saves for now. Your changes are kept in this browser; reload the page later to try again.'
     if (failure.status === 413) return 'Your review is over 1 MB and cannot be saved; shorten some comments.'
@@ -189,13 +274,13 @@ export class ReviewSession {
     return prefix + failure.error
   }
 
-  private editable(): boolean { return !this.disposed && !this.blocked && this.ports.reviewable && !!this.record && !this.record.sent && !this.loading }
+  private editable(): boolean { return !this.disposed && !this.blocked && this.ports.reviewable && !this.blankName && !!this.record?.name && !this.record.sent && !this.loading }
   private head(): void {
     if (this.disposed) return
     const editable = this.editable()
     this.ports.editor.setEditable(editable)
     const countText = `${this.count.changes} ${this.count.changes === 1 ? 'change' : 'changes'}, ${this.count.comments} ${this.count.comments === 1 ? 'comment' : 'comments'}`
-    this.ports.panel.setHead({ reviewable: this.ports.reviewable, name: this.record?.name ?? this.pendingName, title: this.file, hasPdf: this.ports.hasPdf !== false, view: this.view, editable, canSend: editable && this.order.length > 0, status: this.status, countText, form: this.form })
+    this.ports.panel.setHead({ reviewable: this.ports.reviewable, name: this.blankName ? '' : this.record?.name ?? this.pendingName, title: this.file, hasPdf: this.ports.hasPdf !== false, view: this.view, editable, canSend: editable && this.order.length > 0, status: this.status + (this.backupFailed ? ' Not backed up in this browser.' : ''), countText, form: this.form })
   }
 
   private render(): void {
@@ -228,8 +313,8 @@ export class ReviewSession {
   }
   private changed(): void {
     if (!this.record) return
-    this.record.updatedAt = this.ports.clock.now(); this.status = 'Saving…'; this.backup(true); this.render()
-    this.cancelSave?.(); this.cancelSave = this.ports.scheduler.after(600, () => { this.cancelSave = null; void this.save() })
+    this.record.updatedAt = this.ports.clock.now(); this.status = 'Saving…'; this.queue?.changed(); this.render()
+    this.cancelBackup?.(); this.cancelBackup = this.ports.scheduler.after(300, () => { this.cancelBackup = null; this.backup(this.dirty); this.head() })
   }
   openForm(target: Target, focus = true): void {
     if (!this.editable() || !this.review) return
@@ -298,45 +383,17 @@ export class ReviewSession {
       this.pdfCache = next
     })
   }
-  private async save(): Promise<void> {
-    if (this.disposed || !this.ports.reviewable || this.blocked) return
-    if (this.pending) { await this.pending; return this.save() }
-    if (!this.record || !this.review || !this.key) return
-    const record = this.record, review = this.review, key = this.key
-    const actual = this.ports.editor.text()
-    if (actual !== review.applied()) {
-      review.rebuild(actual, () => this.ports.ids.item(), this.ports.clock.now())
-      this.ports.diagnostic?.('The editor and review differed; the review was rebuilt.')
-      this.render()
-    }
-    const savingSent = record.sent
-    const body = writeReview({ ...record, revision: record.revision + 1, draft: { file: this.file, etag: this.etag }, items: [...review.items(), ...record.items.filter(i => i.kind === 'overall')] })
-    let bytes = 0
-    for (const character of body) {
-      const point = character.codePointAt(0)!
-      bytes += point < 0x80 ? 1 : point < 0x800 ? 2 : point < 0x10000 ? 3 : 4
-    }
-    const task = async () => {
-      try {
-        const result = bytes > 1_048_576 ? await Promise.resolve({ status: 413, error: 'tooLarge' }) : await this.ports.api.save(key, body, record.revision)
-        if ('status' in result) {
-          if (savingSent) { record.sent = false; record.sentAt = null; this.status = this.refusal(result, 'Not sent: ') }
-          else this.status = this.refusal(result, 'Not saved: ')
-        } else { record.revision = result.revision; this.saved = true; this.backup(false); this.status = savingSent ? 'Review sent. Thank you.' : record.sent ? 'Sending…' : 'Saved' }
-      } catch {
-        this.status = savingSent ? 'Not sent: network' : 'Not saved: network'
-        if (savingSent) { record.sent = false; record.sentAt = null }
-      } finally { this.pending = null; if (record === this.record) this.render() }
-    }
-    this.pending = task(); await this.pending
-  }
   async send(): Promise<void> {
     if (!this.editable() || !this.review?.items().length) return
-    this.cancelSave?.(); this.cancelSave = null
     this.record!.sent = true; this.record!.sentAt = this.ports.clock.now(); this.record!.updatedAt = this.record!.sentAt
-    this.form = null; this.status = 'Sending…'; this.render(); await this.save()
+    this.form = null; this.status = 'Sending…'; this.queue?.changed(); this.render()
+    await this.queue?.flush()
   }
   /** Reserved feature seams, settled by the S7 coordinator ruling. */
   setOverall(text: string): void { this.ports.panel.setOverallView?.(text) }
-  showKeptChanges(): void { this.ports.panel.setConflictView?.() }
+  showKeptChanges(): void {
+    const backup = this.ports.store.readConflict(this.key)
+    const text = this.conflictText ?? (backup ? this.keptText(backup) : '')
+    this.ports.panel.setConflictView?.({ text, show: true })
+  }
 }

@@ -31,7 +31,7 @@ export interface ReviewApi {
   open(key: string): Promise<{ review: unknown; revision: number } | { review: null } | Failure>
   save(key: string, body: string, baseRevision: number, options?: { keepalive?: boolean; signal?: CancelSignal }): Promise<{ revision: number } | Failure>
 }
-export type Backup = { review: string; pending: { body: string; revision: number } | null; revision: number; saved: boolean; dirty: boolean; at: string }
+export type Backup = { refusal?: Failure | null; review: string; pending: { body: string; revision: number } | null; revision: number; saved: boolean; dirty: boolean; at: string }
 export interface BackupStore {
   rememberedKey(): string | null
   remember(key: string): void
@@ -52,7 +52,7 @@ export interface PanelPort {
   setCount(count: { changes: number; comments: number }): void
   setHead(view: HeadView): void
   setOverallView?(text: string): void
-  setConflictView?(): void
+  setConflictView?(view: { text: string; show: boolean }): void
 }
 export interface Clipboard { write(text: string): Promise<boolean> }
 export type Ports = { editor: EditorPort; pdf: PdfPort; api: ReviewApi; store: BackupStore; clock: Clock; ids: Ids; scheduler: Scheduler; clipboard: Clipboard; panel: PanelPort; reviewable: boolean; hasPdf?: boolean; diagnostic?(message: string): void }

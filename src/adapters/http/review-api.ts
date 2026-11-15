@@ -65,10 +65,12 @@ export function createReviewApi(base: string, requestToken: string): ReviewApi {
       return 'status' in result ? result : result.data as Awaited<ReturnType<ReviewApi['open']>>
     },
     async save(key, body, baseRevision, options = {}) {
+      const encoded = new URLSearchParams({ key, review: body, baseRevision: String(baseRevision) })
+      if (options.keepalive && new TextEncoder().encode(encoded.toString()).byteLength >= 65_536) return { status: 0, error: 'network' }
       const result = await request('/review', {
         ...options,
         method: 'POST',
-        body: new URLSearchParams({ key, review: body, baseRevision: String(baseRevision) }),
+        body: encoded,
       })
       return 'status' in result ? result : result.data as { revision: number }
     },
