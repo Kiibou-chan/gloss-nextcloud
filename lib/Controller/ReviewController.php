@@ -7,6 +7,7 @@ namespace OCA\Gloss\Controller;
 use OCA\Gloss\Exception\ReviewRefused;
 use OCA\Gloss\Service\DraftLocator;
 use OCA\Gloss\Service\ReviewStore;
+use OCA\Gloss\Service\SentNotifier;
 use OCA\Gloss\Service\ReviewKey;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
@@ -42,6 +43,7 @@ class ReviewController extends PublicShareController {
 		private IURLGenerator $urls,
 		private DraftLocator $draftLocator,
 		private ReviewStore $reviewStore,
+		private SentNotifier $sentNotifier,
 	) {
 		parent::__construct($appName, $request, $session);
 	}
@@ -134,7 +136,16 @@ class ReviewController extends PublicShareController {
 			return new DataResponse(['error' => 'badKey'], Http::STATUS_BAD_REQUEST);
 		}
 		try {
-			$result = $this->reviewStore->save($this->requireShare(), $parsed, $review, $baseRevision);
+			$share = $this->requireShare();
+			$result = $this->reviewStore->save($share, $parsed, $review, $baseRevision);
+			if ($result->sentNow) {
+				$body = json_decode($review, true);
+				try {
+					$this->sentNotifier->notify($share, $result, (string)($body['draft']['file'] ?? ''));
+				} catch (\Throwable) {
+					// The save has landed, so notification failure must not change its response.
+				}
+			}
 			return new DataResponse(['revision' => $result->revision]);
 		} catch (ReviewRefused $e) {
 			return $this->refusal($e);
