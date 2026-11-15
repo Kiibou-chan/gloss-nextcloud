@@ -1,11 +1,48 @@
 import { describe, expect, it } from 'vitest'
 import { ReviewSession } from '../../src/app/session'
+import { readReview } from '../../src/domain/format/read'
 import { fakes } from './fakes'
 
 async function ready(name = 'Ada') { const f = fakes(); const s = new ReviewSession(f.ports); await s.start(); await s.setName(name); return { f, s } }
 const change = { from: 6, to: 10, insert: 'brighter' }
 
 describe('ReviewSession', () => {
+  it.each(['x', '😀'])('accepts and saves a name of 100 code points using %s', async character => {
+    const name = character.repeat(100)
+    const { f } = await ready(` ${name} `)
+    expect(f.head()).toMatchObject({ name, editable: true, status: '' })
+    f.editor.replace(change)
+    await f.advance(600)
+    const result = readReview(JSON.parse(f.api.save.mock.lastCall![1]), f.ids.item)
+    expect(result).toMatchObject({ record: { name } })
+  })
+  it.each(['x', '😀'])('refuses a name of 101 code points using %s without losing the current review', async character => {
+    const { f, s } = await ready()
+    f.editor.replace(change)
+    await s.setName(` ${character.repeat(101)} `)
+    expect(f.head()).toMatchObject({ name: 'Ada', editable: true, status: 'Your name must be 100 characters or fewer.' })
+    expect(f.api.open).toHaveBeenCalledTimes(1)
+    expect(f.store.remember).toHaveBeenCalledTimes(1)
+    await f.advance(600)
+    expect(f.api.save).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(f.api.save.mock.lastCall![1])).toMatchObject({ name: 'Ada', items: [expect.objectContaining({ proposal: 'brighter' })] })
+  })
+  it('reports a comment target removed by undo while the form is open', async () => {
+    const { f, s } = await ready()
+    f.editor.replace(change)
+    const id = f.panel.upsertCard.mock.lastCall![0].id
+    s.openForm({ id })
+    const target = f.head().form!.target
+    s.undoProposal(id)
+    await f.advance(600)
+    f.api.save.mockClear()
+    s.commentOn(target, 'Please explain this change')
+    expect(f.head().form).toBeNull()
+    expect(f.head().status).toBe('That item no longer exists, so the comment form has been closed.')
+    await f.advance(600)
+    expect(f.api.save).not.toHaveBeenCalled()
+    expect(f.head().countText).toBe('0 changes, 0 comments')
+  })
   it('shows raw Typst syntax in proposal cards', async () => {
     const f = fakes()
     f.api.draft.mockResolvedValue({ main: 'draft.typ', files: [{ file: 'draft.typ', text: '*alpha* beta', etag: 'v1' }] })
