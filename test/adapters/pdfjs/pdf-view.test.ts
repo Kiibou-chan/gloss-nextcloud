@@ -75,7 +75,7 @@ beforeEach(() => {
   Object.defineProperty(host, 'clientHeight', { value: 700, configurable: true })
   document.body.append(host)
   pages = [1, 2, 3].map(makePage)
-  pdf.getDocument.mockImplementation(() => ({ promise: Promise.resolve({ numPages: pages.length, getPage: vi.fn(async (n: number) => pages[n - 1]) }) }))
+  pdf.getDocument.mockImplementation(() => ({ promise: Promise.resolve({ numPages: pages.length, getPage: vi.fn(async (n: number) => pages[n - 1]) }), destroy: vi.fn(async () => {}) }))
 })
 afterEach(() => {
   window.getSelection()?.removeAllRanges()
@@ -212,7 +212,7 @@ describe('PDF view', () => {
   })
 
   it('allows retrying a failed load', async () => {
-    pdf.getDocument.mockImplementationOnce(() => ({ promise: Promise.reject(new Error('offline')) }))
+    pdf.getDocument.mockImplementationOnce(() => ({ promise: Promise.reject(new Error('offline')), destroy: vi.fn(async () => {}) }))
     const view = create()
     await expect(view.show()).rejects.toThrow('offline')
     await expect(view.show()).resolves.toHaveProperty('pages')
@@ -289,5 +289,32 @@ describe('distant canvas releasing', () => {
     await settle()
     expect(boxes()[0]!.querySelector('canvas')).toBe(newCanvas)
     expect(boxes()[0]!.querySelectorAll('.textLayer')).toHaveLength(1)
+  })
+})
+
+
+describe('PDF disposal', () => {
+  it.each(['document', 'page', 'text'])('stops a pending %s load without creating observers after disposal', async stage => {
+    let resume!: () => void
+    const gate = new Promise<void>(resolve => { resume = resolve })
+    const doc = { numPages: 1, getPage: vi.fn(async () => { if (stage === 'page') await gate; return pages[0]! }) }
+    const original = pages[0]!.getTextContent.getMockImplementation()!
+    pages[0]!.getTextContent.mockImplementation(async () => { if (stage === 'text') await gate; return original() })
+    const destroy = vi.fn(async () => {})
+    pdf.getDocument.mockReturnValueOnce({ promise: (async () => { if (stage === 'document') await gate; return doc })(), destroy })
+    const view = create(); const showing = view.show()
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
+    view.dispose!(); resume(); await showing
+    expect(Observer.instances.flatMap(o => [...o.targets])).toEqual([])
+    expect(host.childNodes).toHaveLength(0)
+    expect(destroy).toHaveBeenCalledTimes(1)
+    await view.show(); expect(pdf.getDocument).toHaveBeenCalledTimes(1)
+  })
+  it('destroys the loaded document and disconnects all observers once', async () => {
+    const destroy = vi.fn(async () => {})
+    pdf.getDocument.mockReturnValueOnce({ promise: Promise.resolve({ numPages: 1, getPage: async () => pages[0] }), destroy })
+    const view = create(); await view.show(); view.dispose!(); view.dispose!()
+    expect(destroy).toHaveBeenCalledTimes(1)
+    expect(Observer.instances.flatMap(o => [...o.targets])).toEqual([])
   })
 })

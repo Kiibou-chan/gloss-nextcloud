@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ReviewSession } from '../../src/app/session'
 import { readReview } from '../../src/domain/format/read'
 import { fakes } from './fakes'
@@ -228,4 +228,56 @@ describe('ReviewSession', () => {
     expect(f.api.save.mock.calls[1]![2]).toBe(1); expect(f.head().status).toBe('Review sent. Thank you.')
   })
   it('exposes the settled future hook names', async () => { const { f, s } = await ready(); s.setOverall('later'); s.showKeptChanges(); expect(f.panel.setOverallView).toHaveBeenCalledWith('later'); expect(f.panel.setConflictView).toHaveBeenCalled() })
+})
+
+
+describe('S11b session regressions', () => {
+  it('reuses the remembered key after a failed first open', async () => {
+    const f = fakes(); f.store.remember('KnownReview12345'); f.store.remember.mockClear()
+    f.api.open.mockResolvedValueOnce({ status: 0, error: 'network' })
+    const s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
+    expect(f.store.remember).not.toHaveBeenCalled()
+    await s.setName('Ada L')
+    expect(f.api.open.mock.calls.map(call => call[0])).toEqual(['KnownReview12345', 'KnownReview12345'])
+    expect(f.store.rememberedKey()).toBe('KnownReview12345')
+  })
+  it('does not consume the remembered key for a superseded first open', async () => {
+    const f = fakes(); f.store.remember('KnownReview12345'); f.store.remember.mockClear()
+    let resolve!: (value: { review: null }) => void
+    f.api.open.mockImplementationOnce(() => new Promise(r => { resolve = r }))
+    const s = new ReviewSession(f.ports); await s.start(); const first = s.setName('Ada')
+    expect(f.store.remember).not.toHaveBeenCalled()
+    await s.setName('Ada L'); resolve({ review: null }); await first
+    expect(f.api.open.mock.calls.map(call => call[0])).toEqual(['KnownReview12345', 'KnownReview12345'])
+    expect(f.store.remember).toHaveBeenCalledTimes(1)
+    expect(f.head().name).toBe('Ada L')
+  })
+  it('keeps the editor and key when the current name is re-entered with whitespace', async () => {
+    const { f, s } = await ready(); const key = vi.spyOn(f.ids, 'key')
+    f.editor.replace(change); await f.advance(600)
+    await s.setName('  Ada  ')
+    expect(f.editor.text()).toBe('alpha brighter gamma delta')
+    expect(f.api.open).toHaveBeenCalledTimes(1); expect(key).not.toHaveBeenCalled()
+  })
+  it('keeps the attempted name while opening and after open fails', async () => {
+    const { f, s } = await ready()
+    let resolve!: (value: { status: number; error: string }) => void
+    f.api.open.mockImplementationOnce(() => new Promise(r => { resolve = r }))
+    const opening = s.setName('Bob')
+    expect(f.head().name).toBe('Bob')
+    resolve({ status: 0, error: 'network' }); await opening
+    expect(f.head()).toMatchObject({ name: 'Bob', editable: false, status: 'Could not load your review: network' })
+  })
+  it('falls back to the editor and remembers it after PDF load failure', async () => {
+    const f = fakes(); f.store.setView('pdf'); f.pdf.show.mockRejectedValueOnce(new Error('offline'))
+    const s = new ReviewSession(f.ports); await s.start()
+    expect(f.store.view()).toBe('editor'); expect(f.head().view).toBe('editor')
+    await s.setView('pdf'); expect(f.store.view()).toBe('pdf'); expect(f.head().status).toBe('')
+  })
+  it('retains the form object for an equal quote or empty selection', async () => {
+    const { f } = await ready(); f.select(0, 5); const form = f.head().form
+    f.select(0, 5); expect(f.head().form).toBe(form)
+    f.pdfSelect('alpha'); expect(f.head().form).toBe(form)
+    f.select(0, 0); f.pdfSelect(''); expect(f.head().form).toBe(form)
+  })
 })

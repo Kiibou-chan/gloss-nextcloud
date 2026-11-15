@@ -1,4 +1,4 @@
-import type { Failure, ReviewApi } from '../../app/ports'
+import type { CancelSignal, Failure, ReviewApi } from '../../app/ports'
 
 const sessionEnded: Failure = {
   status: 412,
@@ -18,12 +18,21 @@ async function refusal(response: Response): Promise<Failure> {
 export function createReviewApi(base: string, requestToken: string): ReviewApi {
   let token = requestToken
   const root = base.replace(/\/$/, '')
-  async function request(path: string, init: RequestInit = {}): Promise<{ data: unknown } | Failure> {
-    try {
-      const send = () => fetch(root + path, { ...init, headers: { requesttoken: token } })
+  async function request(path: string, init: Omit<RequestInit, 'signal'> & { signal?: CancelSignal } = {}): Promise<{ data: unknown } | Failure> {
+    const controller = new AbortController()
+    const abort = () => controller.abort()
+    let rejectAbort!: (reason: Error) => void
+    const aborted = new Promise<never>((_, reject) => { rejectAbort = reject })
+    const fail = () => rejectAbort(new Error('Request aborted'))
+    controller.signal.addEventListener('abort', fail, { once: true })
+    init.signal?.addEventListener('abort', abort, { once: true })
+    if (init.signal?.aborted) abort()
+    const timeout = setTimeout(abort, 30_000)
+    const perform = async () => {
+      const send = () => fetch(root + path, { ...init, signal: controller.signal, headers: { requesttoken: token } })
       let response = await send()
       if (response.status === 412) {
-        const refreshed = await fetch('/index.php/csrftoken', { method: 'GET' })
+        const refreshed = await fetch('/index.php/csrftoken', { method: 'GET', signal: controller.signal })
         if (!refreshed.ok) return await refusal(refreshed)
         const fresh: unknown = await refreshed.json()
         if (!fresh || typeof fresh !== 'object' || !('token' in fresh) || typeof fresh.token !== 'string') {
@@ -34,8 +43,15 @@ export function createReviewApi(base: string, requestToken: string): ReviewApi {
       }
       if (!response.ok) return await refusal(response)
       return { data: await response.json() }
+    }
+    try {
+      return await Promise.race([perform(), aborted])
     } catch {
       return { status: 0, error: 'network' }
+    } finally {
+      clearTimeout(timeout)
+      init.signal?.removeEventListener('abort', abort)
+      controller.signal.removeEventListener('abort', fail)
     }
   }
   return {
@@ -48,8 +64,9 @@ export function createReviewApi(base: string, requestToken: string): ReviewApi {
       const result = await request('/review?' + new URLSearchParams({ reviewer: key }))
       return 'status' in result ? result : { review: result.data, revision: 0 }
     },
-    async save(key, body, _baseRevision) {
+    async save(key, body, _baseRevision, options = {}) {
       const result = await request('/review', {
+        ...options,
         method: 'POST',
         body: new URLSearchParams({ reviewer: key, review: body }),
       })

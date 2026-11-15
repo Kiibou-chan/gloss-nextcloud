@@ -45,17 +45,19 @@ export async function mountReview(root: HTMLElement): Promise<() => void> {
   const dispose = () => {
     if (disposed) return
     disposed = true
-    window.removeEventListener('pagehide', dispose)
+    window.removeEventListener('pagehide', onPageHide)
     session.dispose(); unsubscribe(); unmountPanel(); unmountHead()
     editor.dispose?.(); pdf.dispose?.()
   }
-  window.addEventListener('pagehide', dispose)
+  const onPageHide = (event: PageTransitionEvent) => { if (!event.persisted) dispose() }
+  window.addEventListener('pagehide', onPageHide)
   await session.start()
   return dispose
 }
 
 const root = document.querySelector<HTMLElement>('#gloss-review')
-if (root) void mountReview(root).catch(() => {
+if (root) void mountReview(root).catch(error => {
+  console.error('Could not load the draft.', error)
   const header = root.querySelector('.gr-head')
-  if (header) header.textContent = 'Could not load the draft.'
+  if (header && !header.querySelector('#gr-status')) header.textContent = 'Could not load the draft.'
 })

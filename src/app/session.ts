@@ -18,6 +18,7 @@ export class ReviewSession {
   private disposed = false
   private listeners: (() => void)[] = []
   private named = false
+  private pendingName = ''
   private draft = ''
   private file = ''
   private etag = ''
@@ -52,7 +53,7 @@ export class ReviewSession {
       this.openForm(target, false)
     }))
     this.listen(ports.pdf.onSelect(selection => {
-      if (!this.editable() || !this.source || !this.review) return
+      if (!this.editable() || !this.source || !this.review || !selection.text.trim()) return
       const range = toSource(this.source, selection.text, selection.fraction)
       if (!range) this.status = 'That selection could not be placed in the draft. Select a little more, or use the editor.'
       else {
@@ -92,17 +93,18 @@ export class ReviewSession {
   async setName(name: string): Promise<void> {
     if (this.disposed || !this.review || this.record?.sent) return
     name = name.trim()
+    if (name === this.record?.name) return
     if ([...name].length > 100) {
       this.status = 'Your name must be 100 characters or fewer.'
       this.head(); return
     }
     this.cancelSave?.(); this.cancelSave = null
     const generation = ++this.generation
+    this.pendingName = name
     this.record = null; this.form = null
     if (!name) { this.render(); return }
     const remembered = this.ports.store.rememberedKey()
     this.key = !this.named && remembered && /^[A-Za-z0-9]{16}$/.test(remembered) ? remembered : this.ports.ids.key()
-    this.named = true; this.ports.store.remember(this.key)
     this.loading = true; this.render()
     try {
       const opened = await this.ports.api.open(this.key)
@@ -116,6 +118,7 @@ export class ReviewSession {
         if ('revision' in opened) record.revision = opened.revision
       }
       const placed = placeItems(record.items.filter(i => i.kind === 'overall' || i.file === this.file), this.draft)
+      this.named = true; this.ports.store.remember(this.key)
       this.record = record; this.review = new DraftReview(this.file, this.draft, placed.placed)
       this.status = placed.lost ? `${placed.lost} of your earlier items no longer match the draft.` : record.sent ? 'Review sent. Thank you.' : ''
       this.ports.editor.setText(this.review.applied())
@@ -129,7 +132,7 @@ export class ReviewSession {
     const editable = this.editable()
     this.ports.editor.setEditable(editable)
     const countText = `${this.count.changes} ${this.count.changes === 1 ? 'change' : 'changes'}, ${this.count.comments} ${this.count.comments === 1 ? 'comment' : 'comments'}`
-    this.ports.panel.setHead({ name: this.record?.name ?? '', title: this.file, hasPdf: this.ports.hasPdf !== false, view: this.view, editable, canSend: editable && this.order.length > 0, status: this.status, countText, form: this.form })
+    this.ports.panel.setHead({ name: this.record?.name ?? this.pendingName, title: this.file, hasPdf: this.ports.hasPdf !== false, view: this.view, editable, canSend: editable && this.order.length > 0, status: this.status, countText, form: this.form })
   }
 
   private render(): void {
@@ -173,7 +176,9 @@ export class ReviewSession {
       if (!item || item.kind === 'overall') return
       quote = this.draft.slice(item.from, item.from + item.quote.exact.length)
     } else quote = this.draft.slice(target.from, target.to)
-    this.form = { target, quote: brief(quote), focus }; this.head()
+    quote = brief(quote)
+    if (this.form?.quote === quote) return
+    this.form = { target, quote, focus }; this.head()
   }
   cancelForm(): void { this.form = null; this.head() }
   commentOn(target: Target, text: string): void {
@@ -200,7 +205,12 @@ export class ReviewSession {
     if (view === 'editor') { this.cancelPdf?.(); this.pdfScheduledSignature = null; return }
     this.pdfLoading ??= this.ports.pdf.show().then(({ pages }) => { this.pdfIndex = pdfKey(pages) })
     try { await this.pdfLoading; if (this.status === 'Could not load the PDF.') { this.status = ''; this.head() }; this.deferPdf() }
-    catch { this.pdfLoading = null; this.status = 'Could not load the PDF.'; this.head() }
+    catch {
+      this.pdfLoading = null
+      if (this.disposed) return
+      this.view = 'editor'; this.ports.store.setView('editor')
+      this.status = 'Could not load the PDF.'; this.head()
+    }
   }
   private deferPdf(): void {
     if (this.disposed || this.view === 'editor' || !this.pdfIndex || !this.review) return

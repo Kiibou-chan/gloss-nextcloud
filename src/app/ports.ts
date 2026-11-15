@@ -21,10 +21,15 @@ export interface PdfPort {
   onSelect(listener: (s: { text: string; fraction: number }) => void): void | (() => void)
 }
 export type Failure = { status: number; error: string }
+export interface CancelSignal {
+  readonly aborted: boolean
+  addEventListener(type: 'abort', listener: () => void, options?: { once?: boolean }): void
+  removeEventListener(type: 'abort', listener: () => void): void
+}
 export interface ReviewApi {
   draft(): Promise<{ main: string; files: readonly { file: string; text: string; etag: string }[] }>
   open(key: string): Promise<{ review: unknown; revision: number } | { review: null } | Failure>
-  save(key: string, body: string, baseRevision: number): Promise<{ revision: number } | Failure>
+  save(key: string, body: string, baseRevision: number, options?: { keepalive?: boolean; signal?: CancelSignal }): Promise<{ revision: number } | Failure>
 }
 export type Backup = { review: string; pending: { body: string; revision: number } | null; revision: number; saved: boolean; dirty: boolean; at: string }
 export interface BackupStore {

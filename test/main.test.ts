@@ -65,3 +65,26 @@ it('uses the source language and hides PDF controls when absent', async () => {
   expect(el.querySelector<HTMLElement>('.gr-views')!.hidden).toBe(true)
   dispose()
 })
+
+it('keeps the page usable after persisted pagehide and pageshow', async () => {
+  state.f = fakes(); const el = root(); const dispose = await mountReview(el)
+  try {
+    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+    const name = el.querySelector<HTMLInputElement>('#gr-name')
+    expect(name).not.toBeNull()
+    name!.value = 'Ada'; name!.dispatchEvent(new Event('change', { bubbles: true }))
+    await vi.waitFor(() => expect(state.f!.editor.setEditable).toHaveBeenLastCalledWith(true))
+    state.f.editor.replace({ from: 6, to: 10, insert: 'blue' })
+    await vi.waitFor(() => expect(state.f!.api.save).toHaveBeenCalledTimes(1), { timeout: 1500 })
+    expect(state.f.unsubscribed()).toBe(0)
+  } finally { dispose() }
+})
+it('reports the page-load error through the diagnostic path', async () => {
+  state.f = fakes(); const error = new Error('synthetic draft failure')
+  state.f.api.draft.mockRejectedValueOnce(error)
+  const report = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const el = root(); vi.resetModules(); await import('../src/main')
+  await vi.waitFor(() => expect(report).toHaveBeenCalledWith('Could not load the draft.', error))
+  expect(el.querySelector('.gr-head')?.textContent).toBe('Could not load the draft.')
+})
