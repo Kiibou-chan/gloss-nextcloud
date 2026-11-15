@@ -10,6 +10,9 @@
 	let ops = []
 	let review = { reviewer: '', items: [], sent: false }
 	let pending = null
+	let pdfReady = null
+	let sourceKey = null
+	const pdfEl = $('gr-pdf')
 	let saveTimer = 0
 
 	const store = {
@@ -36,6 +39,7 @@
 	const render = () => {
 		const marks = review.items.map((it, n) => ({ n, from: locate(it), to: locate(it) + it.quote.exact.length })).filter(m => m.from >= 0)
 		GlossTypst.render(textEl, text, ops, marks)
+		if (pdfReady) pdfReady.then(() => GlossPdf.highlight(pdfEl, review.items, it => Math.max(0, locate(it)) / Math.max(1, text.length)))
 		items.replaceChildren(...review.items.map((it, n) => {
 			const li = document.createElement('li')
 			li.dataset.n = String(n)
@@ -79,13 +83,7 @@
 	/** The shown characters of [from, to): the source's characters minus the markup the view hides. */
 	const shownText = (from, to) => ops.filter(o => o.op === 'text' && o.to > from && o.from < to)
 		.map(o => text.slice(Math.max(o.from, from), Math.min(o.to, to))).join('').replace(/\s+/g, ' ').trim()
-	textEl.addEventListener('mouseup', () => {
-		const sel = getSelection()
-		if (review.sent || !sel || sel.isCollapsed || !textEl.contains(sel.anchorNode) || !textEl.contains(sel.focusNode)) return
-		const range = sel.getRangeAt(0)
-		const from = GlossTypst.sourceOffset(range.startContainer, range.startOffset)
-		const to = GlossTypst.sourceOffset(range.endContainer, range.endOffset)
-		if (from === null || to === null || to <= from) return
+	const startPending = (from, to) => {
 		if (!review.reviewer) { $('gr-name').focus(); say('Enter your name first.'); return }
 		pending = { from, quote: { exact: text.slice(from, to), prefix: text.slice(Math.max(0, from - CONTEXT), from), suffix: text.slice(to, to + CONTEXT) } }
 		pending.shown = shownText(from, to)
@@ -93,7 +91,41 @@
 		$('gr-comment').value = ''; $('gr-proposal').value = ''
 		form.hidden = false; $('gr-hint').hidden = true
 		$('gr-comment').focus()
+	}
+	const selectionIn = el => {
+		const sel = getSelection()
+		if (review.sent || !sel || sel.isCollapsed || !el.contains(sel.anchorNode) || !el.contains(sel.focusNode)) return null
+		return sel
+	}
+	textEl.addEventListener('mouseup', () => {
+		const sel = selectionIn(textEl)
+		if (!sel) return
+		const range = sel.getRangeAt(0)
+		const from = GlossTypst.sourceOffset(range.startContainer, range.startOffset)
+		const to = GlossTypst.sourceOffset(range.endContainer, range.endOffset)
+		if (from === null || to === null || to <= from) return
+		startPending(from, to)
 	})
+	pdfEl.addEventListener('mouseup', () => {
+		const sel = selectionIn(pdfEl)
+		if (!sel) return
+		sourceKey ??= GlossPdf.sourceKey(text, ops)
+		const at = GlossPdf.toSource(sourceKey, sel.toString(), GlossPdf.fractionOf(pdfEl, sel.anchorNode))
+		if (!at) { say('That selection could not be placed in the source. Select a little more, or use the Text view.'); return }
+		startPending(at.from, at.to)
+	})
+	const showView = pdf => {
+		textEl.hidden = pdf; pdfEl.hidden = !pdf
+		$('gr-view-text').setAttribute('aria-pressed', String(!pdf)); $('gr-view-pdf').setAttribute('aria-pressed', String(pdf))
+		store.set('gloss-review-view:' + base, pdf ? 'pdf' : 'text')
+		if (pdf && !pdfReady) {
+			say('Loading the PDF…')
+			pdfReady = GlossPdf.mount(pdfEl, base + '/pdf', root.dataset.worker)
+			pdfReady.then(() => { say(''); render() }).catch(e => say('Could not load the PDF: ' + e.message))
+		}
+	}
+	$('gr-view-text').addEventListener('click', () => showView(false))
+	$('gr-view-pdf').addEventListener('click', () => showView(true))
 	form.addEventListener('submit', e => {
 		e.preventDefault()
 		if (!pending) return
@@ -122,6 +154,7 @@
 		ops = /\.typ$/i.test(d.name) ? GlossTypst.parse(text)
 			: [{ op: 'open', tag: 'div', cls: 'gr-plain' }, { op: 'text', from: 0, to: text.length }, { op: 'close' }]
 		render()
+		if (root.dataset.hasPdf && store.get('gloss-review-view:' + base) === 'pdf') showView(true)
 		const name = store.get('gloss-review-name:' + base)
 		if (name) { $('gr-name').value = name; return loadReview(name) }
 	}).catch(e => say('Could not load the draft: ' + e.message))

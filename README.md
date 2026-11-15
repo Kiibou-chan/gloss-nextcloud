@@ -15,6 +15,9 @@ Comments anchor in the source by the words they quote, with the words before and
 A reviewer enters a name, selects words, and adds a comment, a new wording, or both.
 Each change is saved to `reviews/<name>-<id>.json` in the shared folder, so progress is kept between sittings; Send review marks it sent.
 Saving needs a link that allows upload and editing.
+With a PDF beside the draft (same base name, or the only PDF in the folder), a PDF view sits beside the Text view.
+A selection in the PDF is placed in the source by its letters and digits alone, so line breaks, hyphenation, ligatures, and markup do not stop a match; of several matches, the one nearest the selection's page wins.
+The PDF is drawn by pdf.js 3.11.174 (Apache-2.0, `js/vendor/`).
 
 Local Nextcloud 33 in Docker, with this folder mounted as the app:
 

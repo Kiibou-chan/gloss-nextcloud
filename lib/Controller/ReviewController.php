@@ -7,7 +7,10 @@ namespace OCA\Gloss\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\PublicPage;
+use OCP\AppFramework\Http\ContentSecurityPolicy;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\AppFramework\Http\Response;
+use OCP\AppFramework\Http\StreamResponse;
 use OCP\AppFramework\Http\Template\PublicTemplateResponse;
 use OCP\AppFramework\PublicShareController;
 use OCP\Constants;
@@ -15,6 +18,7 @@ use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\NotFoundException;
 use OCP\IRequest;
+use OCP\IURLGenerator;
 use OCP\ISession;
 use OCP\Share\Exceptions\ShareNotFound;
 use OCP\Share\IManager;
@@ -36,6 +40,7 @@ class ReviewController extends PublicShareController {
 		IRequest $request,
 		ISession $session,
 		private IManager $shareManager,
+		private IURLGenerator $urls,
 	) {
 		parent::__construct($appName, $request, $session);
 	}
@@ -56,14 +61,22 @@ class ReviewController extends PublicShareController {
 	#[PublicPage]
 	#[NoCSRFRequired]
 	public function page(): PublicTemplateResponse {
+		Util::addScript('gloss', 'vendor/pdf.min');
 		Util::addScript('gloss', 'typst-view');
+		Util::addScript('gloss', 'pdf-view');
 		Util::addScript('gloss', 'review');
 		Util::addStyle('gloss', 'review');
 		$draft = $this->draft();
 		$response = new PublicTemplateResponse('gloss', 'review', [
 			'token' => $this->getToken(),
 			'draftName' => $draft?->getName() ?? '',
+			'hasPdf' => $this->pdfFile() !== null,
+			'worker' => $this->urls->linkTo('gloss', 'js/vendor/pdf.worker.min.js'),
 		]);
+		$csp = new ContentSecurityPolicy();
+		$csp->addAllowedWorkerSrcDomain("'self'");
+		$csp->addAllowedFontDomain('data:');
+		$response->setContentSecurityPolicy($csp);
 		$response->setHeaderTitle('Review: ' . ($draft?->getName() ?? 'no draft'));
 		return $response;
 	}
@@ -76,6 +89,18 @@ class ReviewController extends PublicShareController {
 			return new DataResponse(['error' => 'The shared folder holds no draft.'], Http::STATUS_NOT_FOUND);
 		}
 		return new DataResponse(['name' => $draft->getName(), 'text' => $draft->getContent(), 'etag' => $draft->getEtag()]);
+	}
+
+	#[PublicPage]
+	#[NoCSRFRequired]
+	public function pdf(): Response {
+		$pdf = $this->pdfFile();
+		if ($pdf === null) {
+			return new DataResponse(['error' => 'The shared folder holds no PDF.'], Http::STATUS_NOT_FOUND);
+		}
+		$response = new StreamResponse($pdf->fopen('rb'));
+		$response->addHeader('Content-Type', 'application/pdf');
+		return $response;
 	}
 
 	#[PublicPage]
@@ -148,6 +173,19 @@ class ReviewController extends PublicShareController {
 			&& in_array(strtolower(pathinfo($n->getName(), PATHINFO_EXTENSION)), self::DRAFT_EXTENSIONS, true));
 		usort($files, fn ($a, $b) => strcmp($a->getName(), $b->getName()));
 		return $files[0] ?? null;
+	}
+
+	/** The PDF of the draft: the PDF with the draft's base name, or else the only PDF at the folder's top level. */
+	private function pdfFile(): ?File {
+		$pdfs = array_values(array_filter($this->folder()->getDirectoryListing(), fn ($n) => $n instanceof File
+			&& strtolower(pathinfo($n->getName(), PATHINFO_EXTENSION)) === 'pdf'));
+		$base = pathinfo($this->draft()?->getName() ?? '', PATHINFO_FILENAME);
+		foreach ($pdfs as $pdf) {
+			if (pathinfo($pdf->getName(), PATHINFO_FILENAME) === $base) {
+				return $pdf;
+			}
+		}
+		return count($pdfs) === 1 ? $pdfs[0] : null;
 	}
 
 	/** The review file's name for a reviewer key, which the page makes as name-slug plus a random part. */
