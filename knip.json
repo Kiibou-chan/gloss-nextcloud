@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/main.ts",
+    "src/editor.mjs",
+    "scripts/*.mjs",
+    "test/**/*.test.{ts,tsx}"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx,mjs}",
+    "scripts/*.mjs",
+    "test/**/*.{ts,tsx}"
+  ],
+  "ignoreFiles": [
+    "src/pure-anchor.d.ts"
+  ],
+  "ignoreDependencies": [
+    "ajv",
+    "pdfjs-dist",
+    "preact",
+    "@preact/signals",
+    "@playwright/test"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": [
+      "ES2023"
+    ],
+    "types": []
+  },
+  "include": [
+    "src/domain/**/*",
+    "src/app/**/*",
+    "src/pure-anchor.d.ts"
+  ]
+}
