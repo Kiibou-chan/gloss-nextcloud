@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { createPdfView } from '../../../src/adapters/pdfjs/pdf-view'
 
 const pdf = vi.hoisted(() => ({ getDocument: vi.fn(), options: { workerSrc: '' } }))
@@ -84,6 +85,19 @@ afterEach(() => {
 })
 
 const create = () => createPdfView(host, { url: '/synthetic.pdf', workerUrl: '/apps/gloss/js/pdf.worker.js' })
+
+describe('generated PDF text layer CSS', () => {
+  it.each([90, 180, 270])('transforms a text layer with main rotation %i', rotation => {
+    const style = document.createElement('style')
+    style.textContent = readFileSync('css/pdf-text-layer.css', 'utf8')
+    document.body.append(style)
+    const layer = document.createElement('div')
+    layer.className = 'textLayer'
+    layer.dataset.mainRotation = String(rotation)
+    host.append(layer)
+    expect(getComputedStyle(layer).transform).toContain(`rotate(${rotation}deg)`)
+  })
+})
 
 describe('PDF view', () => {
   it('lays out every page at its own size before any canvas is drawn, loading only once', async () => {
