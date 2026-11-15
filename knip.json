@@ -12,8 +12,6 @@
     "test/**/*.{ts,tsx}"
   ],
   "ignoreDependencies": [
-    "pdfjs-dist",
-    "preact",
-    "@preact/signals"
+    "pdfjs-dist"
   ]
 }
