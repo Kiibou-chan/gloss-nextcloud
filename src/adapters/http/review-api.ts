@@ -61,16 +61,16 @@ export function createReviewApi(base: string, requestToken: string): ReviewApi {
       return result.data as Awaited<ReturnType<ReviewApi['draft']>>
     },
     async open(key) {
-      const result = await request('/review?' + new URLSearchParams({ reviewer: key }))
-      return 'status' in result ? result : { review: result.data, revision: 0 }
+      const result = await request('/review/open', { method: 'POST', body: new URLSearchParams({ key }) })
+      return 'status' in result ? result : result.data as Awaited<ReturnType<ReviewApi['open']>>
     },
-    async save(key, body, _baseRevision, options = {}) {
+    async save(key, body, baseRevision, options = {}) {
       const result = await request('/review', {
         ...options,
         method: 'POST',
-        body: new URLSearchParams({ reviewer: key, review: body }),
+        body: new URLSearchParams({ key, review: body, baseRevision: String(baseRevision) }),
       })
-      return 'status' in result ? result : { revision: 0 }
+      return 'status' in result ? result : result.data as { revision: number }
     },
   }
 }

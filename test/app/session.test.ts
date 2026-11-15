@@ -4,6 +4,10 @@ import { readReview } from '../../src/domain/format/read'
 import { fakes } from './fakes'
 
 async function ready(name = 'Ada') { const f = fakes(); const s = new ReviewSession(f.ports); await s.start(); await s.setName(name); return { f, s } }
+function rememberSaved(f: ReturnType<typeof fakes>, key = 'KnownReview12345') {
+  f.store.remember(key)
+  f.store.write(key, { review: JSON.stringify({ name: 'Ada', draft: 'draft.txt', sent: false, items: [] }), pending: null, revision: 0, saved: true, dirty: false, at: f.clock.now() })
+}
 const change = { from: 6, to: 10, insert: 'brighter' }
 
 describe('ReviewSession', () => {
@@ -21,7 +25,7 @@ describe('ReviewSession', () => {
     f.editor.replace(change)
     await s.setName(` ${character.repeat(101)} `)
     expect(f.head()).toMatchObject({ name: 'Ada', editable: true, status: 'Your name must be 100 characters or fewer.' })
-    expect(f.api.open).toHaveBeenCalledTimes(1)
+    expect(f.api.open).not.toHaveBeenCalled()
     expect(f.store.remember).toHaveBeenCalledTimes(1)
     await f.advance(600)
     expect(f.api.save).toHaveBeenCalledTimes(1)
@@ -88,15 +92,15 @@ describe('ReviewSession', () => {
     s.cancelForm()
     expect(f.head().form).toBeNull(); expect(f.panel.upsertCard).not.toHaveBeenCalled(); expect(f.api.save).not.toHaveBeenCalled()
   })
-  it('clears visible PDF marks when switching to an empty reviewer', async () => {
+  it('keeps visible PDF marks when renaming the reviewer', async () => {
     const { f, s } = await ready(); await s.setView('both')
     s.commentOn({ from: 6, to: 10 }, 'Ada note'); await f.advance(400)
     expect(f.pdf.setMarks.mock.lastCall![0]).not.toHaveLength(0)
     f.pdf.setMarks.mockClear(); await s.setName('Bob'); await f.advance(400)
-    expect(f.pdf.setMarks).toHaveBeenLastCalledWith([])
+    expect(f.pdf.setMarks).not.toHaveBeenCalled()
   })
   it('shows the sent confirmation when reopening a sent review', async () => {
-    const f = fakes()
+    const f = fakes(); rememberSaved(f)
     f.api.open.mockResolvedValue({ review: { name: 'Ada', draft: 'draft.txt', sent: true, items: [] }, revision: 1 })
     const s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
     expect(f.head().status).toBe('Review sent. Thank you.'); expect(f.head().editable).toBe(false)
@@ -108,19 +112,19 @@ describe('ReviewSession', () => {
   })
   it('passes server-shaped keys to open and save and replaces invalid remembered keys', async () => {
     const { f, s } = await ready('Éva Smith')
-    expect(f.api.open.mock.lastCall![0]).toMatch(/^[A-Za-z0-9]{16}$/)
+    expect(f.store.rememberedKey()).toMatch(/^[A-Za-z0-9]{16}$/); expect(f.api.open).not.toHaveBeenCalled()
     f.editor.replace(change); await f.advance(600)
     expect(f.api.save.mock.lastCall![0]).toMatch(/^[A-Za-z0-9]{16}$/)
     f.store.remember('invalid-key')
     const t = new ReviewSession(f.ports); await t.start(); await t.setName('Other')
-    expect(f.api.open.mock.lastCall![0]).toMatch(/^[A-Za-z0-9]{16}$/)
+    expect(f.store.rememberedKey()).toMatch(/^[A-Za-z0-9]{16}$/); expect(f.api.open).not.toHaveBeenCalled()
   })
-  it('reuses a valid remembered key initially and makes a fresh key when the name changes', async () => {
-    const f = fakes(); f.store.remember('KnownReview12345')
+  it('keeps a valid remembered key for the link when the name changes', async () => {
+    const f = fakes(); rememberSaved(f)
     const s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
     expect(f.api.open).toHaveBeenLastCalledWith('KnownReview12345')
     await s.setName('Bob')
-    expect(f.api.open).toHaveBeenLastCalledWith('Abcdef1234567890')
+    expect(f.api.open).toHaveBeenCalledExactlyOnceWith('KnownReview12345'); expect(f.store.rememberedKey()).toBe('KnownReview12345')
   })
   it('retries a failed PDF load on the next request', async () => {
     const { f, s } = await ready()
@@ -191,11 +195,11 @@ describe('ReviewSession', () => {
   it('sends immediately, stops edits, and restores editing on refusal', async () => {
     const { f, s } = await ready(); f.editor.replace(change); await s.send(); expect(f.api.save).toHaveBeenCalledTimes(1); expect(JSON.parse(f.api.save.mock.lastCall![1]).sent).toBe(true)
     expect(f.editor.setEditable).toHaveBeenLastCalledWith(false); expect(f.head().status).toBe('Review sent. Thank you.')
-    const { f: g, s: t } = await ready(); g.editor.replace(change); g.api.save.mockResolvedValue({ status: 413, error: 'tooLarge' }); await t.send(); expect(g.editor.setEditable).toHaveBeenLastCalledWith(true); expect(g.head().status).toContain('Not sent:')
+    const { f: g, s: t } = await ready(); g.editor.replace(change); g.api.save.mockResolvedValue({ status: 413, error: 'tooLarge' }); await t.send(); expect(g.editor.setEditable).toHaveBeenLastCalledWith(true); expect(g.head().status).toBe('Your review is over 1 MB and cannot be saved; shorten some comments.')
     await g.advance(1000); expect(g.api.save).toHaveBeenCalledTimes(1)
   })
   it('opens, places saved items, and reports lost quotes', async () => {
-    const f = fakes(); f.api.open.mockResolvedValue({ review: { name: 'Ada', draft: 'draft.txt', sent: true, items: [
+    const f = fakes(); rememberSaved(f); f.api.open.mockResolvedValue({ review: { name: 'Ada', draft: 'draft.txt', sent: true, items: [
       { kind: 'proposal', from: 0, quote: { exact: 'beta', prefix: '', suffix: '' }, proposal: 'blue', comments: [], at: f.clock.now() },
       { kind: 'comment', from: 0, quote: { exact: 'missing', prefix: '', suffix: '' }, comments: [{ text: 'lost', at: f.clock.now() }], at: f.clock.now() },
     ] }, revision: 0 }); const s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
@@ -210,7 +214,7 @@ describe('ReviewSession', () => {
     expect(f.head()).toMatchObject({ hasPdf: false, view: 'editor' }); expect(f.pdf.show).not.toHaveBeenCalled()
   })
   it('sorts loaded cards in draft order rather than saved order', async () => {
-    const f = fakes(); f.api.open.mockResolvedValue({ review: { name: 'Ada', draft: 'draft.txt', sent: false, items: [
+    const f = fakes(); rememberSaved(f); f.api.open.mockResolvedValue({ review: { name: 'Ada', draft: 'draft.txt', sent: false, items: [
       { kind: 'comment', from: 11, quote: { exact: 'gamma', prefix: '', suffix: '' }, comments: [{ text: 'later', at: f.clock.now() }], at: f.clock.now() },
       { kind: 'comment', from: 0, quote: { exact: 'alpha', prefix: '', suffix: '' }, comments: [{ text: 'first', at: f.clock.now() }], at: f.clock.now() },
     ] }, revision: 0 }); const s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
@@ -245,19 +249,20 @@ describe('S11b session regressions', () => {
     ])
   })
   it('reuses the remembered key after a failed first open', async () => {
-    const f = fakes(); f.store.remember('KnownReview12345'); f.store.remember.mockClear()
+    const f = fakes(); rememberSaved(f); f.store.remember.mockClear()
     f.api.open.mockResolvedValueOnce({ status: 0, error: 'network' })
-    const s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
+    const s = new ReviewSession(f.ports); await s.start()
     expect(f.store.remember).not.toHaveBeenCalled()
     await s.setName('Ada L')
     expect(f.api.open.mock.calls.map(call => call[0])).toEqual(['KnownReview12345', 'KnownReview12345'])
     expect(f.store.rememberedKey()).toBe('KnownReview12345')
   })
   it('does not consume the remembered key for a superseded first open', async () => {
-    const f = fakes(); f.store.remember('KnownReview12345'); f.store.remember.mockClear()
+    const f = fakes(); rememberSaved(f); f.store.remember.mockClear()
     let resolve!: (value: { review: null }) => void
     f.api.open.mockImplementationOnce(() => new Promise(r => { resolve = r }))
-    const s = new ReviewSession(f.ports); await s.start(); const first = s.setName('Ada')
+    const s = new ReviewSession(f.ports); const first = s.start()
+    for (let i = 0; i < 8; i++) await Promise.resolve()
     expect(f.store.remember).not.toHaveBeenCalled()
     await s.setName('Ada L'); resolve({ review: null }); await first
     expect(f.api.open.mock.calls.map(call => call[0])).toEqual(['KnownReview12345', 'KnownReview12345'])
@@ -269,10 +274,11 @@ describe('S11b session regressions', () => {
     f.editor.replace(change); await f.advance(600)
     await s.setName('  Ada  ')
     expect(f.editor.text()).toBe('alpha brighter gamma delta')
-    expect(f.api.open).toHaveBeenCalledTimes(1); expect(key).not.toHaveBeenCalled()
+    expect(f.api.open).not.toHaveBeenCalled(); expect(key).not.toHaveBeenCalled()
   })
   it('keeps the attempted name while opening and after open fails', async () => {
-    const { f, s } = await ready()
+    const f = fakes(); rememberSaved(f); f.api.open.mockResolvedValueOnce({ status: 0, error: 'network' })
+    const s = new ReviewSession(f.ports); await s.start()
     let resolve!: (value: { status: number; error: string }) => void
     f.api.open.mockImplementationOnce(() => new Promise(r => { resolve = r }))
     const opening = s.setName('Bob')

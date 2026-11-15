@@ -1,0 +1,297 @@
+[
+  {
+    "description": "A held lock refuses even a first save.",
+    "stored": null,
+    "locked": true,
+    "request": {
+      "baseRevision": 0,
+      "review": "{\"format\":1,\"revision\":1,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 423,
+      "body": {
+        "error": "busy"
+      },
+      "sentNow": false,
+      "written": false
+    }
+  },
+  {
+    "description": "A first save writes revision one.",
+    "stored": null,
+    "locked": false,
+    "request": {
+      "baseRevision": 0,
+      "review": "{\"format\":1,\"revision\":1,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 200,
+      "body": {
+        "revision": 1
+      },
+      "sentNow": false,
+      "written": true
+    }
+  },
+  {
+    "description": "A later save advances one revision.",
+    "stored": "{\"format\":1,\"revision\":1,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}",
+    "locked": false,
+    "request": {
+      "baseRevision": 1,
+      "review": "{\"format\":1,\"revision\":2,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 200,
+      "body": {
+        "revision": 2
+      },
+      "sentNow": false,
+      "written": true
+    }
+  },
+  {
+    "description": "A lost first answer is retried without a write.",
+    "stored": "{\"format\":1,\"revision\":1,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}",
+    "locked": false,
+    "request": {
+      "baseRevision": 0,
+      "review": "{\"format\":1,\"revision\":1,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 200,
+      "body": {
+        "revision": 1
+      },
+      "sentNow": false,
+      "written": false
+    }
+  },
+  {
+    "description": "A lost later answer is retried without a write.",
+    "stored": "{\"format\":1,\"revision\":2,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}",
+    "locked": false,
+    "request": {
+      "baseRevision": 1,
+      "review": "{\"format\":1,\"revision\":2,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 200,
+      "body": {
+        "revision": 2
+      },
+      "sentNow": false,
+      "written": false
+    }
+  },
+  {
+    "description": "Send advances once and marks the transition.",
+    "stored": "{\"format\":1,\"revision\":2,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}",
+    "locked": false,
+    "request": {
+      "baseRevision": 2,
+      "review": "{\"format\":1,\"revision\":3,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":true,\"sentAt\":\"2026-11-15T12:00:00Z\",\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 200,
+      "body": {
+        "revision": 3
+      },
+      "sentNow": true,
+      "written": true
+    }
+  },
+  {
+    "description": "A lost Send answer is retried without another transition.",
+    "stored": "{\"format\":1,\"revision\":3,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":true,\"sentAt\":\"2026-11-15T12:00:00Z\",\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}",
+    "locked": false,
+    "request": {
+      "baseRevision": 2,
+      "review": "{\"format\":1,\"revision\":3,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":true,\"sentAt\":\"2026-11-15T12:00:00Z\",\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 200,
+      "body": {
+        "revision": 3
+      },
+      "sentNow": false,
+      "written": false
+    }
+  },
+  {
+    "description": "A first save can itself be sent.",
+    "stored": null,
+    "locked": false,
+    "request": {
+      "baseRevision": 0,
+      "review": "{\"format\":1,\"revision\":1,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":true,\"sentAt\":\"2026-11-15T12:00:00Z\",\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 200,
+      "body": {
+        "revision": 1
+      },
+      "sentNow": true,
+      "written": true
+    }
+  },
+  {
+    "description": "Other bytes cannot overwrite a sent review.",
+    "stored": "{\"format\":1,\"revision\":3,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":true,\"sentAt\":\"2026-11-15T12:00:00Z\",\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}",
+    "locked": false,
+    "request": {
+      "baseRevision": 3,
+      "review": "{\"format\":1,\"revision\":4,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":true,\"sentAt\":\"2026-11-15T12:00:00Z\",\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 409,
+      "body": {
+        "error": "sent"
+      },
+      "sentNow": false,
+      "written": false
+    }
+  },
+  {
+    "description": "A sent review cannot be reopened by saving.",
+    "stored": "{\"format\":1,\"revision\":3,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":true,\"sentAt\":\"2026-11-15T12:00:00Z\",\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}",
+    "locked": false,
+    "request": {
+      "baseRevision": 3,
+      "review": "{\"format\":1,\"revision\":4,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 409,
+      "body": {
+        "error": "sent"
+      },
+      "sentNow": false,
+      "written": false
+    }
+  },
+  {
+    "description": "Changed bytes at the same sent revision are refused.",
+    "stored": "{\"format\":1,\"revision\":3,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":true,\"sentAt\":\"2026-11-15T12:00:00Z\",\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}",
+    "locked": false,
+    "request": {
+      "baseRevision": 2,
+      "review": "{\"format\":1,\"revision\":3,\"name\":\"Grace Hopper\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":true,\"sentAt\":\"2026-11-15T12:00:00Z\",\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 409,
+      "body": {
+        "error": "sent"
+      },
+      "sentNow": false,
+      "written": false
+    }
+  },
+  {
+    "description": "A stale base conflicts with the stored revision.",
+    "stored": "{\"format\":1,\"revision\":2,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}",
+    "locked": false,
+    "request": {
+      "baseRevision": 1,
+      "review": "{\"format\":1,\"revision\":3,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 409,
+      "body": {
+        "error": "conflict",
+        "revision": 2
+      },
+      "sentNow": false,
+      "written": false
+    }
+  },
+  {
+    "description": "Base zero conflicts with an existing file.",
+    "stored": "{\"format\":1,\"revision\":2,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}",
+    "locked": false,
+    "request": {
+      "baseRevision": 0,
+      "review": "{\"format\":1,\"revision\":1,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 409,
+      "body": {
+        "error": "conflict",
+        "revision": 2
+      },
+      "sentNow": false,
+      "written": false
+    }
+  },
+  {
+    "description": "A missing file conflicts with a nonzero base.",
+    "stored": null,
+    "locked": false,
+    "request": {
+      "baseRevision": 1,
+      "review": "{\"format\":1,\"revision\":2,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 409,
+      "body": {
+        "error": "conflict",
+        "revision": 0
+      },
+      "sentNow": false,
+      "written": false
+    }
+  },
+  {
+    "description": "A first revision cannot skip ahead.",
+    "stored": null,
+    "locked": false,
+    "request": {
+      "baseRevision": 0,
+      "review": "{\"format\":1,\"revision\":2,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 409,
+      "body": {
+        "error": "conflict",
+        "revision": 0
+      },
+      "sentNow": false,
+      "written": false
+    }
+  },
+  {
+    "description": "A later revision cannot skip ahead.",
+    "stored": "{\"format\":1,\"revision\":1,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}",
+    "locked": false,
+    "request": {
+      "baseRevision": 1,
+      "review": "{\"format\":1,\"revision\":3,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 409,
+      "body": {
+        "error": "conflict",
+        "revision": 1
+      },
+      "sentNow": false,
+      "written": false
+    }
+  },
+  {
+    "description": "Same revision with different bytes conflicts.",
+    "stored": "{\"format\":1,\"revision\":1,\"name\":\"Ada Lovelace\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}",
+    "locked": false,
+    "request": {
+      "baseRevision": 0,
+      "review": "{\"format\":1,\"revision\":1,\"name\":\"Grace Hopper\",\"draft\":{\"file\":\"paper.typ\",\"etag\":\"synthetic\"},\"sent\":false,\"sentAt\":null,\"updatedAt\":\"2026-11-15T12:00:00Z\",\"items\":[]}"
+    },
+    "expected": {
+      "status": 409,
+      "body": {
+        "error": "conflict",
+        "revision": 1
+      },
+      "sentNow": false,
+      "written": false
+    }
+  }
+]

@@ -1,4 +1,3 @@
-// S11b mocks interim review open/save only; remove the mock when F1b lands.
 import { expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -9,13 +8,6 @@ const count = page => page.locator('.gr-count');
 const status = page => page.getByRole('status');
 const name = page => page.getByRole('textbox', { name: 'Your name' });
 const send = page => page.getByRole('button', { name: 'Send review', exact: true });
-
-async function interimReview(page) {
-  await page.route('**/r/*/review*', route => {
-    const request = route.request();
-    return route.fulfill({ status: 200, contentType: 'application/json', body: request.method() === 'POST' ? '{"saved":true}' : 'null' });
-  });
-}
 
 async function ready(page) {
   await expect(content(page)).toBeVisible();
@@ -45,7 +37,6 @@ async function comment(page, word) {
 }
 
 async function editor({ page }) {
-  await interimReview(page);
   await ready(page);
   await find(page, 'grow');
   await page.keyboard.insertText('flourish');
@@ -66,6 +57,11 @@ async function editor({ page }) {
   await expect(replacement.locator('ins')).toHaveText('flourish');
   await expect(page.locator('.gr-items > li del').filter({ hasText: 'drift' })).toHaveCount(1);
   await expect(page.locator('.gr-items blockquote')).toHaveText('stones');
+  await expect(status(page)).toHaveText('Saved');
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(name(page)).toHaveValue(reviewer);
+  await expect(count(page)).toHaveText('3 changes, 1 comment');
+  await expect(content(page)).toHaveAttribute('contenteditable', 'true');
 }
 
 async function requireFeature(page, selector, feature) {
@@ -91,7 +87,6 @@ async function pdfSelection(page, words) {
 }
 
 async function pdf({ page }) {
-  await interimReview(page);
   await ready(page);
   await comment(page, 'stones');
   await page.getByRole('button', { name: 'PDF', exact: true }).click();
@@ -175,7 +170,6 @@ async function reviewLink(args) {
 }
 
 async function long({ page, out, prefix }) {
-  await interimReview(page);
   await ready(page);
   await content(page).click();
   await page.keyboard.press('Control+Home');
@@ -218,7 +212,6 @@ export const scenes = {
     await expect(args.page.locator('#gr-pdf canvas').first()).toBeVisible();
   } },
   search: { run: async ({ page, capture }) => {
-    await interimReview(page);
     await ready(page);
     await content(page).click();
     await page.keyboard.press('Control+f');

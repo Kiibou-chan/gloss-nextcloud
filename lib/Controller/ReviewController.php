@@ -7,6 +7,7 @@ namespace OCA\Gloss\Controller;
 use OCA\Gloss\Exception\ReviewRefused;
 use OCA\Gloss\Service\DraftLocator;
 use OCA\Gloss\Service\ReviewStore;
+use OCA\Gloss\Service\ReviewKey;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\PublicPage;
@@ -28,7 +29,7 @@ use OCP\Util;
 
 /**
  * A review page for a public link to a folder: the folder's draft is shown as text, and each reviewer's comments and
- * proposals are kept in the folder under reviews/, one JSON file per reviewer.
+ * proposals are kept beside the folder, one JSON file per reviewer.
  */
 class ReviewController extends PublicShareController {
 	private ?IShare $share = null;
@@ -70,7 +71,7 @@ class ReviewController extends PublicShareController {
 			'draftName' => $draft?->getName() ?? '',
 			'hasPdf' => $this->draftLocator->pdf($this->folder()) !== null,
 			'worker' => $this->urls->linkTo('gloss', 'js/pdf.worker.js'),
-			'reviewable' => true,
+			'reviewable' => $this->reviewStore->isReviewable($this->requireShare()),
 		]);
 		$csp = new ContentSecurityPolicy();
 		$csp->addAllowedWorkerSrcDomain("'self'");
@@ -78,16 +79,6 @@ class ReviewController extends PublicShareController {
 		$response->setContentSecurityPolicy($csp);
 		$response->setHeaderTitle('Review: ' . ($draft?->getName() ?? 'no draft'));
 		return $response;
-	}
-
-	#[PublicPage]
-	#[NoCSRFRequired]
-	public function text(): DataResponse {
-		$draft = $this->draftLocator->locate($this->folder())?->main;
-		if ($draft === null) {
-			return new DataResponse(['error' => 'The shared folder holds no draft.'], Http::STATUS_NOT_FOUND);
-		}
-		return new DataResponse(['name' => $draft->getName(), 'text' => $draft->getContent(), 'etag' => $draft->getEtag()]);
 	}
 
 	#[PublicPage]
@@ -121,30 +112,45 @@ class ReviewController extends PublicShareController {
 
 	#[PublicPage]
 	#[NoCSRFRequired]
-	public function load(string $reviewer): DataResponse {
+	public function open(string $key): DataResponse {
+		$parsed = ReviewKey::parse($key);
+		if ($parsed === null) {
+			return new DataResponse(['error' => 'badKey'], Http::STATUS_BAD_REQUEST);
+		}
 		try {
-			$share = $this->getShare();
-			if ($share === null) {
-				throw new NotFoundException('The share is not a folder.');
-			}
-			return new DataResponse($this->reviewStore->load($share, $reviewer));
+			$stored = $this->reviewStore->open($this->requireShare(), $parsed);
+			return new DataResponse($stored === null ? ['review' => null] : [
+				'review' => json_decode($stored->content, true), 'revision' => $stored->revision,
+			]);
 		} catch (ReviewRefused $e) {
-			return new DataResponse(['error' => $e->getMessage()], $e->status);
+			return $this->refusal($e);
 		}
 	}
 
 	#[PublicPage]
-	public function save(string $reviewer, string $review): DataResponse {
-		$share = $this->getShare();
-		if ($share === null) {
-			return new DataResponse(['error' => 'This link does not allow saving.'], Http::STATUS_FORBIDDEN);
+	public function save(string $key, string $review, int $baseRevision): DataResponse {
+		$parsed = ReviewKey::parse($key);
+		if ($parsed === null) {
+			return new DataResponse(['error' => 'badKey'], Http::STATUS_BAD_REQUEST);
 		}
 		try {
-			$this->reviewStore->save($share, $reviewer, $review);
-			return new DataResponse(['saved' => true]);
+			$result = $this->reviewStore->save($this->requireShare(), $parsed, $review, $baseRevision);
+			return new DataResponse(['revision' => $result->revision]);
 		} catch (ReviewRefused $e) {
-			return new DataResponse(['error' => $e->getMessage()], $e->status);
+			return $this->refusal($e);
 		}
+	}
+
+	private function refusal(ReviewRefused $e): DataResponse {
+		$body = ['error' => $e->getMessage()];
+		if ($e->revision !== null) {
+			$body['revision'] = $e->revision;
+		}
+		return new DataResponse($body, $e->status);
+	}
+
+	private function requireShare(): IShare {
+		return $this->getShare() ?? throw new NotFoundException('The share is not a folder.');
 	}
 
 	private function getShare(): ?IShare {

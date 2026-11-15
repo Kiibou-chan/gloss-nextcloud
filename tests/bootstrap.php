@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/stubs/Emitter.php';
 
 // The API package deliberately leaves autoloading to the consuming app.
 spl_autoload_register(static function (string $class): void {

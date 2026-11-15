@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ReviewSession } from '../../../src/app/session'
 import { fakes } from '../../app/fakes'
+import { mountHead, mountPanel } from '../../../src/ui/mount'
+import { createPanelModel } from '../../../src/ui/panel-model'
 import { createReviewApi } from '../../../src/adapters/http/review-api'
 
 const base = '/index.php/apps/gloss/r/synthetic'
@@ -22,21 +24,25 @@ describe('review HTTP adapter', () => {
     expect(await api.draft()).toEqual(draft)
     expect(fetcher).toHaveBeenCalledWith(base + '/draft', expect.objectContaining({ headers: { requesttoken: 'initial-token' } }))
   })
-  it('opens the interim GET route and wraps the stored review at revision zero', async () => {
+  it('opens through POST with the key in the body and preserves the server revision', async () => {
     const { api, fetcher } = setup()
     const review = { name: 'Synthetic Reviewer', items: [] }
-    fetcher.mockResolvedValueOnce(reply(review))
-    expect(await api.open('a+b')).toEqual({ review, revision: 0 })
-    expect(fetcher).toHaveBeenCalledWith(base + '/review?reviewer=a%2Bb', expect.objectContaining({ headers: { requesttoken: 'initial-token' } }))
+    fetcher.mockResolvedValueOnce(reply({ review, revision: 7 }))
+    expect(await api.open('a+b')).toEqual({ review, revision: 7 })
+    expect(fetcher).toHaveBeenCalledWith(base + '/review/open', expect.objectContaining({ method: 'POST', body: new URLSearchParams({ key: 'a+b' }), headers: { requesttoken: 'initial-token' } }))
   })
-  it('posts the exact review bytes and reviewer, ignoring baseRevision until F1b', async () => {
+  it('posts the exact review bytes, key, and baseRevision', async () => {
     const { api, fetcher } = setup()
-    fetcher.mockResolvedValueOnce(reply({ saved: true }))
-    expect(await api.save('key', '{ "sent": false }', 12)).toEqual({ revision: 0 })
+    fetcher.mockResolvedValueOnce(reply({ revision: 13 }))
+    expect(await api.save('key', '{ "sent": false }', 12)).toEqual({ revision: 13 })
     const [url, init] = fetcher.mock.calls[0]!
     expect(url).toBe(base + '/review')
     expect(init).toMatchObject({ method: 'POST', headers: { requesttoken: 'initial-token' } })
-    expect(String(init?.body)).toBe(new URLSearchParams({ reviewer: 'key', review: '{ "sent": false }' }).toString())
+    expect(String(init?.body)).toBe(new URLSearchParams({ key: 'key', review: '{ "sent": false }', baseRevision: '12' }).toString())
+  })
+  it('preserves an unknown key as an empty review', async () => {
+    const { api, fetcher } = setup(); fetcher.mockResolvedValueOnce(reply({ review: null }))
+    expect(await api.open('Abcdef1234567890')).toEqual({ review: null })
   })
   for (const status of [400, 403, 404, 409, 410, 413, 423, 429, 500]) {
     it(`returns ${status} refusals unchanged without retrying`, async () => {
@@ -128,7 +134,21 @@ describe('save request lifetime', () => {
     await vi.advanceTimersByTimeAsync(60_000)
     expect(resolved).toBe(true); expect(f.head()).toMatchObject({ editable: true, status: 'Not sent: network' })
     await sending
-    fetcher.mockResolvedValue(reply({ saved: true })); await session.send()
+    fetcher.mockResolvedValue(reply({ revision: 13 })); await session.send()
     expect(f.head().status).toBe('Review sent. Thank you.'); session.dispose()
   })
+})
+
+
+it('renders an unreviewable page without a name field or Send', async () => {
+  const f = fakes(); const model = createPanelModel()
+  const session = new ReviewSession({ ...f.ports, panel: model, reviewable: false })
+  const header = document.createElement('header'), panel = document.createElement('aside')
+  const unmountHead = mountHead(header, model, session), unmountPanel = mountPanel(panel, model, session)
+  try {
+    await session.start()
+    expect(header.querySelector('input')).toBeNull(); expect(header.querySelector('#gr-send')).toBeNull()
+    expect(header.textContent + panel.textContent).toContain('This link is not set up for reviewing.')
+    expect(f.editor.setEditable).toHaveBeenLastCalledWith(false)
+  } finally { session.dispose(); unmountHead(); unmountPanel() }
 })
