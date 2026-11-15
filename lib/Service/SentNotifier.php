@@ -13,7 +13,7 @@ class SentNotifier {
 	public function __construct(private IManager $notifications, private ITimeFactory $time, private LoggerInterface $logger) {
 	}
 
-	public function notify(IShare $share, SaveResult $result, string $draft): void {
+	public function notify(IShare $share, SaveResult $result): void {
 		try {
 			$notification = $this->notifications->createNotification()
 				->setApp('gloss')
@@ -22,7 +22,7 @@ class SentNotifier {
 				->setObject('review', (string)$result->fileId)
 				->setSubject('review_sent', [
 					'name' => $result->name,
-					'draft' => $draft,
+					'draft' => $result->draftFile,
 					'fileId' => $result->fileId,
 					'path' => $result->path,
 				]);

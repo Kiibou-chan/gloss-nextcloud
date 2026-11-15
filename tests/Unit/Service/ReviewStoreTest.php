@@ -138,6 +138,16 @@ final class ReviewStoreTest extends TestCase {
 		self::assertSame($row['expected']['written'] ? 1 : 0, $this->writes);
 	}
 
+	public function testSaveResultCarriesDraftFileForInitialSaveAndRetry(): void {
+		$store = $this->store();
+		$key = ReviewKey::parse(self::KEY);
+		$body = json_encode(array_merge(json_decode($this->body(), true), ['draft' => ['file' => 'chapter.typ']]));
+		foreach ([0, 1] as $attempt) {
+			$result = $store->save($this->share, $key, $body, 0);
+			self::assertSame('chapter.typ', $result->draftFile);
+		}
+	}
+
 	public function testFolderCreatedOnlyOnSaveAndOpenUsesSuffix(): void {
 		$store = $this->store(exists: false);
 		$key = ReviewKey::parse(self::KEY);

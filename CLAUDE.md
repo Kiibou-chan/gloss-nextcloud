@@ -1,7 +1,7 @@
 # Working on gloss for Nextcloud
 
-Follow the task's Files list and checklist in the implementation plan.
-The architecture described here is the target built task by task; a documented interface does not mean its implementation has landed yet.
+Keep changes within the assigned task's file scope and checklist.
+The architecture described here is implemented and enforced by the checks below.
 Use test-first development: run each new test and see it fail before writing its implementation.
 Keep fixtures synthetic, and keep changes within the assigned task.
 
@@ -62,7 +62,7 @@ Apply R8, R37, and R42: Preact owns the header content in `header.gr-head` and t
 Hand-built editor and PDF code writes only into `#gr-text` and `#gr-pdf`, outside island ownership.
 Construct the UI-owned `PanelModel` before `ReviewSession` and pass it as `PanelPort`.
 Use a keyed `Card` per item reading its own signal, separate order and count signals, and fine-grained `upsertCard`, `removeCard`, `setOrder`, `setCount`, and `setHead` calls.
-A keystroke redraws only changed cards and the count line, without rebuilding or diffing the whole card list.
+On each keystroke, the panel redraws only changed cards.
 Place PDF marks after 400 ms without typing, only while the PDF shows, and only for items whose words changed.
 
 ## Hard rules
@@ -84,6 +84,4 @@ git -c user.name="Svenja Kernig" -c user.email=20756868+Kiibou-chan@users.norepl
 git push origin HEAD
 ```
 
-For anything the brief and plan do not settle, call `coord.ask_coordinator` with the evidence, options, and a recommendation, wait for the ruling, and continue with it.
-Do not write question files; stop only if the coordinator tool fails.
 Write UI text and Markdown in British English, with Oxford commas, no em-dashes, and one sentence per line.

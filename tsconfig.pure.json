@@ -10,7 +10,6 @@
   },
   "include": [
     "src/domain/**/*",
-    "src/app/**/*",
-    "src/pure-anchor.d.ts"
+    "src/app/**/*"
   ]
 }

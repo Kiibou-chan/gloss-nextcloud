@@ -41,8 +41,7 @@ final class SentNotifierTest extends TestCase {
 		$logger->expects(self::once())->method('error')->with('Failed to send review notification.', ['exception' => $exception]);
 		(new SentNotifier($manager, $this->createMock(ITimeFactory::class), $logger))->notify(
 			$share,
-			new SaveResult(2, true, 42, '/synthetic/review.json', 'Synthetic reviewer'),
-			'paper.typ',
+			new SaveResult(2, true, 42, '/synthetic/review.json', 'Synthetic reviewer', 'paper.typ'),
 		);
 	}
 
@@ -65,6 +64,6 @@ final class SentNotifierTest extends TestCase {
 		$manager->expects(self::once())->method('notify')->with($notification);
 		$logger = $this->createMock(LoggerInterface::class);
 		$logger->expects(self::never())->method('error');
-		(new SentNotifier($manager, $time, $logger))->notify($share, new SaveResult(2, true, 42, '/synthetic-owner/files/Review reviews/ada.json', 'Ada'), 'paper.typ');
+		(new SentNotifier($manager, $time, $logger))->notify($share, new SaveResult(2, true, 42, '/synthetic-owner/files/Review reviews/ada.json', 'Ada', 'paper.typ'));
 	}
 }

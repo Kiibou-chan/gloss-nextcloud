@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
+import { tmpdir } from 'node:os'
 import { join, matchesGlob } from 'node:path'
 import config from '../../vitest.config'
 import ts from 'typescript'
@@ -76,19 +77,22 @@ for (const layer of ['domain', 'app']) {
     ['performance', 'performance.now()'],
     ['HTMLElement', 'let element: HTMLElement'],
   ])(`pure typecheck rejects %s in ${layer}`, (name, code) => {
-    const dir = `src/${layer}`
+    const root = mkdtempSync(join(tmpdir(), 'gloss-purity-'))
+    const dir = join(root, 'src', layer)
+    cpSync('tsconfig.pure.json', join(root, 'tsconfig.pure.json'))
+    cpSync('tsconfig.json', join(root, 'tsconfig.json'))
     const probe = `${dir}/s1-purity-probe.ts`
     mkdirSync(dir, { recursive: true })
     expect(existsSync(probe)).toBe(false)
     try {
       writeFileSync(probe, `${code};\nexport {};\n`)
-      const result = spawnSync(process.execPath, ['node_modules/typescript/bin/tsc', '--noEmit', '-p', 'tsconfig.pure.json', '--pretty', 'false'], { encoding: 'utf8' })
+      const result = spawnSync(process.execPath, ['node_modules/typescript/bin/tsc', '--noEmit', '-p', join(root, 'tsconfig.pure.json'), '--pretty', 'false'], { encoding: 'utf8' })
       expect(result.error).toBeUndefined()
       expect(result.status, result.stdout + result.stderr).not.toBe(0)
       expect(result.stdout).toContain(name)
       expect(result.stdout).toContain(probe)
     } finally {
-      rmSync(probe, { force: true })
+      rmSync(root, { recursive: true, force: true })
     }
   })
 }

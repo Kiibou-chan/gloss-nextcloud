@@ -4,7 +4,7 @@ A Nextcloud app for gloss, an editor for academic writing with an inline comment
 Reviewers use a share link to comment on raw source and propose changes, with the PDF beside it when available.
 The author imports their reviews into gloss.
 
-In development; the architecture below is the implementation plan, whose components land task by task.
+The architecture below describes the implementation.
 Licence: AGPL-3.0-or-later.
 
 ## Architecture
@@ -71,4 +71,6 @@ Use `scripts/dev-nc.sh reset` to restart the disposable instance after route cha
 The script enables Nextcloud debug mode so route changes are picked up promptly without an app version bump.
 Use `node scripts/shots.mjs <scene>` for hand-check pictures in light and dark themes under the gitignored `shots/` directory, and inspect both.
 For PDF and side-by-side scenes, also check Firefox and WebKit with `--browser firefox` and `--browser webkit`.
-The development and screenshot scripts land with the infrastructure tasks; use only this disposable setup for hand checks.
+The development and screenshot scripts use this disposable setup for hand checks.
+The scene runner empties only files in its `Review reviews` folder before each light and dark run through `scripts/dev-nc.sh empty-reviews`, using WebDAV at `127.0.0.1:8090`.
+The cleanup action requires Python 3 for its standard XML parser.

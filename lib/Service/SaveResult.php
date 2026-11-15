@@ -11,6 +11,7 @@ final class SaveResult {
 		public readonly int $fileId,
 		public readonly string $path,
 		public readonly string $name,
+		public readonly string $draftFile,
 	) {
 	}
 }

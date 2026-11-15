@@ -1,5 +1,6 @@
 module.exports = {
   forbidden: [
+    { name: 'src-no-test', severity: 'error', from: { path: '^src/' }, to: { path: '^test/' } },
     { name: 'domain-pure', severity: 'error', from: { path: '^src/domain/' }, to: { pathNot: '^src/domain/' } },
     { name: 'app-only-domain-and-app', severity: 'error', from: { path: '^src/app/' }, to: { pathNot: '^src/(domain|app)/' } },
     { name: 'adapters-no-ui', severity: 'error', from: { path: '^src/adapters/' }, to: { path: '^src/ui/' } },

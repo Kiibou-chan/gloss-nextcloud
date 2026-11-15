@@ -38,12 +38,12 @@ final class ReviewControllerTest extends TestCase {
 	public function testOnlyNewSendNotifiesAndLandedRetryDoesNot(): void {
 		$share = $this->createMock(IShare::class);
 		$store = $this->createMock(ReviewStore::class);
-		$draftSave = new SaveResult(1, false, 42, '/owner/files/Review reviews/ada.json', 'Ada');
-		$send = new SaveResult(2, true, 42, $draftSave->path, 'Ada');
-		$retry = new SaveResult(2, false, 42, $draftSave->path, 'Ada');
+		$draftSave = new SaveResult(1, false, 42, '/owner/files/Review reviews/ada.json', 'Ada', 'paper.typ');
+		$send = new SaveResult(2, true, 42, $draftSave->path, 'Ada', 'chapter.typ');
+		$retry = new SaveResult(2, false, 42, $draftSave->path, 'Ada', 'chapter.typ');
 		$store->expects(self::exactly(3))->method('save')->willReturn($draftSave, $send, $retry);
 		$notifier = $this->createMock(SentNotifier::class);
-		$notifier->expects(self::once())->method('notify')->with($share, $send, 'paper.typ');
+		$notifier->expects(self::once())->method('notify')->with($share, $send);
 		$controller = $this->controller($this->createMock(Folder::class), $store, $share, $notifier);
 		$body = '{"format":1,"revision":2,"name":"Ada","draft":{"file":"paper.typ"},"items":[],"sent":true}';
 		self::assertSame(['revision' => 1], $controller->save('AbCdEf0123456789', str_replace(['true', '"revision":2'], ['false', '"revision":1'], $body), 0)->getData());
@@ -65,11 +65,14 @@ final class ReviewControllerTest extends TestCase {
 		self::assertSame(['main' => 'paper.typ', 'files' => [['file' => 'paper.typ', 'text' => 'Synthetic draft.', 'etag' => 'synthetic-etag']]], $response->getData());
 	}
 
-	public function testLandedSendStillSucceedsWhenNotifierThrows(): void {
+	public function testLandedSendStillSucceedsWhenNotificationDeliveryThrows(): void {
 		$store = $this->createMock(ReviewStore::class);
-		$store->expects(self::once())->method('save')->willReturn(new SaveResult(2, true, 42, '/synthetic/review.json', 'Ada'));
-		$notifier = $this->createMock(SentNotifier::class);
-		$notifier->expects(self::once())->method('notify')->willThrowException(new \RuntimeException('Synthetic notification failure.'));
+		$store->expects(self::once())->method('save')->willReturn(new SaveResult(2, true, 42, '/synthetic/review.json', 'Ada', 'paper.typ'));
+		$manager = $this->createMock(\OCP\Notification\IManager::class);
+		$manager->expects(self::once())->method('createNotification')->willThrowException(new \Error('Synthetic notification failure.'));
+		$logger = $this->createMock(\Psr\Log\LoggerInterface::class);
+		$logger->expects(self::once())->method('error');
+		$notifier = new SentNotifier($manager, $this->createMock(\OCP\AppFramework\Utility\ITimeFactory::class), $logger);
 		$controller = $this->controller($this->createMock(Folder::class), $store, null, $notifier);
 		$response = $controller->save('AbCdEf0123456789', '{"draft":{"file":"paper.typ"},"sent":true}', 1);
 		self::assertSame(200, $response->getStatus());
@@ -91,7 +94,7 @@ final class ReviewControllerTest extends TestCase {
 		$body = '{"format":1,"revision":2,"name":"Ada","items":[],"sent":false}';
 		$key = 'AbCdEf0123456789';
 		$store->expects(self::once())->method('open')->with($share, ReviewKey::parse($key))->willReturn(new StoredReview($body, 2));
-		$store->expects(self::once())->method('save')->with($share, ReviewKey::parse($key), $body, 1)->willReturn(new SaveResult(2, false, 42, '/synthetic/review.json', 'Ada'));
+		$store->expects(self::once())->method('save')->with($share, ReviewKey::parse($key), $body, 1)->willReturn(new SaveResult(2, false, 42, '/synthetic/review.json', 'Ada', 'paper.typ'));
 		$controller = $this->controller($this->createMock(Folder::class), $store, $share);
 		self::assertSame(['review' => json_decode($body, true), 'revision' => 2], $controller->open($key)->getData());
 		$response = $controller->save($key, $body, 1);

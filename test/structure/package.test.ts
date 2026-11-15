@@ -1,5 +1,5 @@
-import { execFileSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync, spawnSync } from 'node:child_process'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { afterEach, expect, test } from 'vitest'
@@ -37,7 +37,7 @@ function assertContents(paths: string[]) {
 }
 
 test('the release archive contains the runtime allowlist and complete licence notices', () => {
-  const file = archive(resolve('.'), scratch())
+  const file = archive(fixture().root, scratch())
   const paths = entries(file)
   assertContents(paths)
   const notices = execFileSync('tar', ['-xOzf', file, 'gloss/THIRD-PARTY.md'], { encoding: 'utf8' })
@@ -50,21 +50,59 @@ test('the release archive contains the runtime allowlist and complete licence no
   expect(notices).toContain('Permission is hereby granted, free of charge')
 })
 
-test('scratch files forbidden by R31 are excluded even inside allowlisted directories', () => {
+function fixture() {
   const root = scratch()
-  const put = (path: string, content = 'Synthetic exclusion probe.\n') => {
-    mkdirSync(dirname(join(root, path)), { recursive: true })
-    writeFileSync(join(root, path), content)
-  }
   mkdirSync(join(root, 'scripts'))
   cpSync('scripts/package.sh', join(root, 'scripts/package.sh'))
-  for (const path of allowed) put(path.includes('/') || path.includes('.') || path === 'LICENSE' ? path : `${path}/runtime.txt`)
-  put('appinfo/info.xml', '<info><version>9.8.7</version></info>')
-  for (const prefix of ['', 'appinfo/', 'lib/', 'templates/', 'css/']) {
-    for (const path of forbidden) put(`${prefix}${path}${path.startsWith('.') && path !== '.git' ? '' : '/probe.txt'}`)
+  for (const path of allowed) {
+    mkdirSync(dirname(join(root, path)), { recursive: true })
+    cpSync(path, join(root, path), { recursive: true })
   }
-  put('js/unlisted.js')
-  const paths = entries(archive(root, scratch()))
-  assertContents(paths)
-  expect(paths).not.toContain('gloss/js/unlisted.js')
+  const git = (...args: string[]) => execFileSync('git', ['-C', root, ...args], { stdio: 'pipe' })
+  git('init', '-q')
+  git('add', '.')
+  git('-c', 'user.name=Package test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'Synthetic runtime')
+  return { root, git }
+}
+
+test('the archive version exceeds the base release', () => {
+  const { root } = fixture()
+  const xml = execFileSync('tar', ['-xOzf', archive(root, scratch()), 'gloss/appinfo/info.xml'], { encoding: 'utf8' })
+  const version = xml.match(/<version>([^<]+)<\/version>/)![1]!
+  expect(version).toBe('0.1.0')
+  const base = spawnSync('git', ['show', 'origin/main:appinfo/info.xml'], { encoding: 'utf8' })
+  const tag = spawnSync('git', ['describe', '--tags', '--abbrev=0'], { encoding: 'utf8' })
+  const tagged = tag.status === 0 ? spawnSync('git', ['show', `${tag.stdout.trim()}:appinfo/info.xml`], { encoding: 'utf8' }).stdout : ''
+  // 0.0.11 is the final spike version; installations need an upgrade to invalidate cached routes.
+  const previous = (base.status === 0 ? base.stdout : tagged).match(/<version>([^<]+)<\/version>/)?.[1] ?? '0.0.11'
+  const parts = (value: string) => value.split('.').map(Number)
+  const currentParts = parts(version), baseParts = parts(previous)
+  const differing = currentParts.findIndex((part, i) => part !== baseParts[i])
+  expect(differing >= 0 && currentParts[differing]! > baseParts[differing]!, `${version} > ${previous}`).toBe(true)
+})
+
+test('only committed allowlisted runtime paths enter a reproducible root-owned archive', () => {
+  const { root, git } = fixture()
+  writeFileSync(join(root, '.env'), 'Synthetic excluded secret')
+  mkdirSync(join(root, 'src'))
+  writeFileSync(join(root, 'src/probe.ts'), 'Synthetic excluded source')
+  writeFileSync(join(root, 'js/unlisted.js'), 'Synthetic excluded entry')
+  const first = archive(root, scratch())
+  assertContents(entries(first))
+  expect(entries(first)).not.toContain('gloss/js/unlisted.js')
+  expect(readFileSync(first)).toEqual(readFileSync(archive(root, scratch())))
+  const listing = execFileSync('tar', ['--numeric-owner', '-tvzf', first], { encoding: 'utf8' })
+  expect(listing.split('\n').filter(Boolean).every(line => / 0\/0 +/.test(line)), listing).toBe(true)
+  const extracted = scratch()
+  execFileSync('tar', ['-xzf', first, '-C', extracted])
+  const timestamp = Number(git('show', '-s', '--format=%ct', 'HEAD').toString().trim())
+  expect(statSync(join(extracted, 'gloss/appinfo/info.xml')).mtimeMs / 1000).toBe(timestamp)
+})
+
+test.each(['lib/ReviewController.php.orig', 'css/review.css', 'appinfo/info.xml'])('packaging refuses dirty allowlisted path %s', path => {
+  const { root } = fixture()
+  writeFileSync(join(root, path), 'Synthetic dirty runtime')
+  const result = spawnSync('bash', [join(root, 'scripts/package.sh'), scratch()], { encoding: 'utf8' })
+  expect(result.status, result.stdout + result.stderr).not.toBe(0)
+  expect(result.stderr).toContain('allowlisted')
 })
