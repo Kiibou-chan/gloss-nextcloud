@@ -12,6 +12,7 @@ type Options = {
   revision?: number
   pending?: Pending | null
   dirty?: boolean
+  refusal?: Failure | null
 }
 
 function byteLength(text: string): number {
@@ -31,7 +32,7 @@ export class SaveQueue {
   private version = 0
   private pendingVersion = 0
   private attempt = 0
-  private refused = false
+  refusal: Failure | null = null
   private disposed = false
   private flight: Promise<Outcome> | null = null
   private cancel: (() => void) | null = null
@@ -39,26 +40,28 @@ export class SaveQueue {
     this.revision = options.revision ?? 0
     this.pending = options.pending ?? null
     this.dirty = options.dirty ?? !!this.pending
+    this.refusal = options.refusal && [400, 403, 404, 409, 410, 413].includes(options.refusal.status) ? options.refusal : null
     if (this.pending && options.body(this.pending.revision + 1) !== this.pending.body) this.version++
+    if (this.dirty && !this.pending && !this.refusal) this.changed()
   }
   changed(): void {
     if (this.disposed) return
-    this.version++; this.dirty = true; this.refused = false
+    this.version++; this.dirty = true; this.refusal = null
     if (!this.pending || (!this.flight && !this.cancel)) {
       this.cancel?.()
       this.cancel = this.options.scheduler.after(5000, () => { this.cancel = null; void this.flush() })
     }
   }
   online(): void {
-    if (!this.refused && this.dirty) { this.cancel?.(); this.cancel = null; void this.flush() }
+    if (!this.refusal && this.dirty) { this.cancel?.(); this.cancel = null; void this.flush() }
   }
   pagehide(): void {
-    if (this.disposed || this.flight || this.refused || !this.dirty || this.options.enabled?.() === false) return
+    if (this.disposed || this.flight || this.refusal || !this.dirty || this.options.enabled?.() === false) return
     const body = this.pending?.body ?? this.options.body(this.revision + 1)
     if (body && byteLength(body) < 65_536) void this.run(true)
   }
   flush(): Promise<Outcome> {
-    if (this.disposed || this.refused || !this.dirty || this.options.enabled?.() === false) return Promise.resolve({ idle: true })
+    if (this.disposed || this.refusal || !this.dirty || this.options.enabled?.() === false) return Promise.resolve({ idle: true })
     this.cancel?.(); this.cancel = null
     if (this.flight) return this.flight
     return this.run(false)
@@ -88,7 +91,7 @@ export class SaveQueue {
           this.options.onStatus(`${sent ? 'Not sent' : 'Not saved'} yet; trying again in ${delay} s`, result)
           this.cancel = this.options.scheduler.after(delay * 1000, () => { this.cancel = null; void this.flush() })
         } else {
-          this.pending = null; this.refused = true; this.attempt = 0
+          this.pending = null; this.refusal = result; this.attempt = 0
           this.options.onStatus(result.status === 412 ? 'Your session ended. Reload the page to continue; your changes are kept in this browser.' : `Not ${sent ? 'sent' : 'saved'}: ${result.error}`, result)
         }
       } else {

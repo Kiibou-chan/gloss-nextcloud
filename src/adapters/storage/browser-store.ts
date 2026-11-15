@@ -5,6 +5,9 @@ function isBackup(value: unknown): value is Backup {
   const b = value as Partial<Backup>
   return typeof b.review === 'string' && Number.isInteger(b.revision) && b.revision! >= 0
     && typeof b.saved === 'boolean' && typeof b.dirty === 'boolean' && typeof b.at === 'string'
+    && (b.refusal === undefined || b.refusal === null || (typeof b.refusal === 'object'
+      && Number.isInteger(b.refusal.status) && b.refusal.status >= 400 && b.refusal.status < 500
+      && b.refusal.status !== 423 && typeof b.refusal.error === 'string'))
     && (b.pending === null || (typeof b.pending === 'object' && b.pending !== undefined
       && typeof b.pending.body === 'string' && Number.isInteger(b.pending.revision) && b.pending.revision >= 0))
 }

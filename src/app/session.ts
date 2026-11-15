@@ -206,7 +206,7 @@ export class ReviewSession {
     this.queue = new SaveQueue({
       enabled: () => !this.blankName && !this.blocked,
       scheduler: this.ports.scheduler, revision: backup?.revision ?? this.record?.revision ?? 0,
-      pending: backup?.pending, dirty: backup?.dirty ?? false,
+      pending: backup?.pending, refusal: backup?.refusal, dirty: backup?.dirty ?? false,
       body: revision => this.body(revision),
       save: (body, base, options) => options ? this.ports.api.save(this.key, body, base, options) : this.ports.api.save(this.key, body, base),
       onStatus: (status, outcome) => {
@@ -232,13 +232,16 @@ export class ReviewSession {
       },
       onChange: () => { this.backup(this.queue?.dirty ?? true); this.head() },
     })
+    if (this.queue.refusal) this.status = this.refusal(this.queue.refusal, 'Not saved: ')
+    if (backup?.dirty) this.backup(true)
+    this.render()
   }
   private backup(dirty: boolean): void {
     const review = this.serialise(this.record?.revision ?? 0)
     if (!review || !this.key || !this.record) return
     this.backupFailed = !this.ports.store.write(this.key, {
       review, revision: this.queue?.revision ?? this.record.revision, saved: this.saved, dirty,
-      pending: this.queue?.pending ?? null, at: this.ports.clock.now(),
+      pending: this.queue?.pending ?? null, refusal: this.queue?.refusal ?? null, at: this.ports.clock.now(),
     })
   }
   get dirty(): boolean { return this.queue?.dirty ?? false }

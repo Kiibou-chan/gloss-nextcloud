@@ -18,6 +18,39 @@ describe('session backup and recovery', () => {
     await f.advance(299); expect(f.store.read(key)?.dirty).toBe(false); expect(s.dirty).toBe(true)
     await f.advance(1); expect(f.store.read(key)?.dirty).toBe(true); await f.advance(4700); await settle(); expect(s.dirty).toBe(false)
   })
+  it.each([false, true])('resumes a dirty backup without pending after reload (saved: %s)', async saved => {
+    const { f, s } = await ready()
+    if (saved) { f.editor.replace({ from: 6, to: 10, insert: 'pink' }); await f.advance(5000); await settle() }
+    f.editor.replace(edit); await f.advance(300)
+    const backup = f.store.read(key)!
+    expect(backup).toMatchObject({ saved, dirty: true, pending: null }); s.dispose()
+    const g = fakes(); g.store.remember(key); g.store.write(key, backup)
+    if (saved) g.api.open.mockResolvedValue({ review: JSON.parse(backup.review), revision: backup.revision })
+    const t = new ReviewSession(g.ports); await t.start()
+    await g.advance(4999); expect(g.api.save).not.toHaveBeenCalled()
+    await g.advance(55001); await settle()
+    expect(g.api.save).toHaveBeenCalledTimes(1); expect(t.dirty).toBe(false)
+    expect(g.editor.text()).toBe('alpha blue gamma delta'); t.dispose()
+  })
+  it('tries once after reloading a 429 refusal', async () => {
+    const { f, s } = await ready(); f.api.save.mockResolvedValue({ status: 429, error: 'rateLimited' })
+    f.editor.replace(edit); await f.advance(5000); await settle()
+    const backup = f.store.read(key)!; s.dispose()
+    const g = fakes(); g.store.remember(key); g.store.write(key, backup)
+    g.api.save.mockResolvedValue({ status: 429, error: 'rateLimited' })
+    const t = new ReviewSession(g.ports); await t.start(); await g.advance(60000); await settle()
+    expect(g.api.save).toHaveBeenCalledTimes(1); expect(t.dirty).toBe(true); t.dispose()
+  })
+  it.each([400, 403, 404, 409, 410, 413])('preserves a %s refusal across reload and online events', async status => {
+    const { f, s } = await ready(); f.api.save.mockResolvedValue({ status, error: status === 409 ? 'full' : 'refused' })
+    f.editor.replace(edit); await f.advance(5000); await settle()
+    const sentence = f.head().status, backup = f.store.read(key)!; s.dispose()
+    const g = fakes(); g.store.remember(key); g.store.write(key, backup)
+    const t = new ReviewSession(g.ports); await t.start(); t.online(); t.pagehide()
+    await g.advance(60000); await settle()
+    expect(g.api.save).not.toHaveBeenCalled(); expect(g.head().status).toBe(sentence)
+    expect(g.editor.text()).toBe('alpha blue gamma delta'); expect(t.dirty).toBe(true); t.dispose()
+  })
   it('writes pending before keepalive; a landed page-close save reloads as Saved without conflict', async () => {
     const { f, s } = await ready(); let body = ''
     f.api.save.mockImplementation(async (_key, incoming) => { expect(f.store.read(key)?.pending?.body).toBe(incoming); body = incoming; return { revision: 1 } })
