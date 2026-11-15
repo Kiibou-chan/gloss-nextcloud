@@ -53,7 +53,7 @@ On this laptop, Node 26.10.0, on synthetic text only; the scripts are kept in `/
   | 300 | 902 ms | 1,288 MB |
   | 1,000 | 3,435 ms | 6,443 MB |
 
-  The memory is the trace: every step of Myers' loop copies the whole diagonal array of 2(n + m) + 3 entries (`js/diff.js:17`, `:21`), so memory grows as (n + m) times the number of edits, and the time with it; at 2,000 items a keystroke would need over 10 GB.
+  The memory is the trace: every step of Myers' loop copies the whole diagonal array of 2(n + m) + 3 entries (`js/diff.js:17`, `:21`), so memory grows as (n + m) times the number of edits, and the time with it; extrapolated by the same growth, 2,000 items would need about 13 GB a keystroke.
 - **P2, the offset mapping is quadratic.** `toApplied` sorts every proposal on each call (`js/review.js:53-63`) and the editor's redraw calls it per item (`:84-91`); with 2,000 proposals the mapping alone took 50 ms per redraw.
 - **P3, the pure parts are fast enough once.** `parseprobe.mjs` on a 10,000-line Typst draft: `GlossTypst.parse` 18 ms (10,260 ops), `GlossPdf.sourceKey` 85 ms (a key of 462,211 characters), and 2,000 placements by `toSource` 324 ms; the spike redraws every PDF mark on every change (`js/review.js:96-100`, `:159`).
 - **P4, 2,000 items fit in 1 MiB, barely.** 2,000 seeded items, each with a four-word quote, 32 characters of context on each side, a four-word proposal, and one 14-word comment: 927,640 bytes (0.88 MiB) in the spike's shape and 815,402 bytes (0.78 MiB) in format 1, which drops the derived `shown` and `proposalShown`.
@@ -404,7 +404,7 @@ A task marked UI ends with its hand checks (see "Hand checks"), light and dark, 
 - [ ] Write the tests: a card for each kind with today's markup (classes, `data-id`, the buttons' words); changing one item re-renders only its card (a render counter); the form's quote and focus rules (B6, B7); the head's view buttons' `aria-pressed` and Send's disabled state (B11, B13); run; expect FAIL.
 - [ ] Write the islands and `main.ts`; switch the template and `page()`; delete the old files; run `npm run build`.
 - [ ] Run `npx vitest run test --maxWorkers=8` through the lock, `npm run typecheck`, and `npm run structure` (knip reports nothing unused); `git grep -n "window.Gloss\|sourceOffset\|renderTextLayer" -- src js templates` prints nothing; expect PASS.
-- [ ] Hand checks H1, H2, H3, and H4; commit.
+- [ ] Hand checks H1, H2, H3, H4, H10, and H11; commit.
 
 ### Task S12: the PHP services and PHPUnit (lane P, first; parallel with every lane T task up to S10)
 
@@ -493,3 +493,50 @@ A task marked UI ends with its hand checks (see "Hand checks"), light and dark, 
 
 - [ ] Write the test: it runs `scripts/package.sh` into a temporary folder and lists the archive: every path under `gloss/`, the allowlist present, none of R31's forbidden paths; run; expect FAIL.
 - [ ] Write the script and `THIRD-PARTY.md`; run; expect PASS; commit; tell the coordinator the archive's path for your signing.
+
+## Order and lanes
+
+| Lane | Tasks, in order | Starts |
+| --- | --- | --- |
+| T, TypeScript | S1, then S2, S3, S5, and S6 in parallel, then S4 (needs S3), S7, then S8, S9, and S10 in parallel, then S11, F1b, F2, and F3; F4 beside F2 or F3 | at once |
+| P, PHP | S12, F1a, F5 | at once |
+| I, infrastructure | S14 first; S15 after S1; S13 after S1 and S12; R1 last | at once |
+
+The critical path is S1, S3, S4, S7, the slowest of S8 to S10, S11, F1b, F2, and F3: nine build sessions one after another, with lanes P and I and the parallel tasks beside them.
+S2 is pushed first in lane T, since gloss's import is built on Wednesday morning against it (R33).
+F1a and F1b merge together (R38); if Wednesday comes first, R39 says what is cut.
+
+## Hand checks
+
+Each runs on `scripts/dev-nc.sh up` with `node scripts/shots.mjs <scene>`, which writes the light and the dark picture; the builder looks at both and names in the task's commit what each shows.
+
+- **H1, editor.** The `Review` link, a name typed, one word replaced, one inserted, and one deleted in the editor, and a comment added on a selection: underlines and strikes legible in both themes, the cards in draft order, the count line "3 changes, 1 comments" as today's wording has it.
+- **H2, pdf.** The PDF view with a mark over a commented passage, and a PDF selection with the form open and the editor scrolled.
+- **H3, both.** Editor and PDF side by side with the panel, at 1,600 by 1,000 pixels.
+- **H4, search.** The search panel open with matches highlighted, and the go-to-line prompt.
+- **H5, not set up.** The `Plain` link (no marker): "This link is not set up for reviewing.", the draft shown read-only, no name field, no Send.
+- **H6, waiting.** Saves refused by the scene's network route: "Not saved yet; trying again in 2 s"; then let through: "Saved".
+- **H7, review link.** After the first save, "Your review link" with its Copy button; a second, fresh browser context opening that link shows the same review and name.
+- **H8, overall.** The overall comment box with text at the top of the panel, the count line unchanged.
+- **H9, bell.** The owner logged in after a Send, the notifications menu open on "<name> sent a review of paper.typ".
+- **H10, sent.** After Send: "Review sent. Thank you.", the editor read-only, the card buttons gone.
+- **H11, long.** The generated 10,000-line draft opens, and the scene logs the time from each of 20 keystrokes to the panel's update; the worst is under 100 ms.
+
+## Not in this plan
+
+- A password prompt of the page's own (R32; the question below).
+- Multi-file drafts beyond the seam (feature 6).
+- Send this section, which gloss's exploration lists (gloss `docs/design/review-by-others.md:25`) and the brief's features do not.
+- Nextcloud 34: `appinfo/info.xml` declares `max-version="33"`, so when your server moves to 34 the app is disabled until a release declares 34; Packagist already has `nextcloud/ocp` `dev-stable34` (P7's listing).
+- Translations: the strings go through `IL10N` on the server (R26) and are English on the page.
+
+## Question for you
+
+**RVWPW-1 · password-protected review links**
+
+Question: should a review link with a password ask for it on the review page itself?
+
+- A: No. A password-protected link opens the review page only after the password was entered on the link's own `/s/<token>` page in the same browser, and otherwise answers "not found", as the spike does. Nothing more to build before Wednesday.
+- B: Yes. The review page gets its own password prompt (Nextcloud's `AuthPublicShareController`, an action and a template more), one build session in lane P, before Wednesday or in the next release.
+
+Recommendation: A for Wednesday. A link's token is 15 random characters from a 52-character alphabet by default (Nextcloud `lib/private/Share/Constants.php:18`, `lib/private/Share20/Manager.php:1986-1989`), so without a password only those you send it to can open it, and the marker keeps writing to the folders you chose; B is worth it only if you want to send links where a password travels separately.
