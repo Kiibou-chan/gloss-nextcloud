@@ -280,7 +280,8 @@ export class ReviewSession {
     const editable = this.editable()
     this.ports.editor.setEditable(editable)
     const countText = `${this.count.changes} ${this.count.changes === 1 ? 'change' : 'changes'}, ${this.count.comments} ${this.count.comments === 1 ? 'comment' : 'comments'}`
-    this.ports.panel.setHead({ reviewable: this.ports.reviewable, name: this.blankName ? '' : this.record?.name ?? this.pendingName, title: this.file, hasPdf: this.ports.hasPdf !== false, view: this.view, editable, canSend: editable && this.order.length > 0, status: this.status + (this.backupFailed ? ' Not backed up in this browser.' : ''), countText, form: this.form })
+    this.ports.panel.setOverallView?.(this.overallText())
+    this.ports.panel.setHead({ reviewable: this.ports.reviewable, name: this.blankName ? '' : this.record?.name ?? this.pendingName, title: this.file, hasPdf: this.ports.hasPdf !== false, view: this.view, editable, canSend: editable && (this.order.length > 0 || !!this.overallText().trim()), status: this.status + (this.backupFailed ? ' Not backed up in this browser.' : ''), countText, form: this.form })
   }
 
   private render(): void {
@@ -384,13 +385,22 @@ export class ReviewSession {
     })
   }
   async send(): Promise<void> {
-    if (!this.editable() || !this.review?.items().length) return
+    if (!this.editable() || (!this.review?.items().length && !this.overallText().trim())) return
     this.record!.sent = true; this.record!.sentAt = this.ports.clock.now(); this.record!.updatedAt = this.record!.sentAt
     this.form = null; this.status = 'Sending…'; this.queue?.changed(); this.render()
     await this.queue?.flush()
   }
   /** Reserved feature seams, settled by the S7 coordinator ruling. */
-  setOverall(text: string): void { this.ports.panel.setOverallView?.(text) }
+  private overallText(): string {
+    return this.record?.items.find(item => item.kind === 'overall')?.text ?? ''
+  }
+  setOverall(text: string): void {
+    if (!this.editable() || !this.record || text === this.overallText()) return
+    const existing = this.record.items.find(item => item.kind === 'overall')
+    this.record.items = this.record.items.filter(item => item.kind !== 'overall')
+    if (text.trim()) this.record.items.push({ kind: 'overall', id: existing?.id ?? this.ports.ids.item(), text, at: this.ports.clock.now() })
+    this.changed()
+  }
   showKeptChanges(): void {
     const backup = this.ports.store.readConflict(this.key)
     const text = this.conflictText ?? (backup ? this.keptText(backup) : '')

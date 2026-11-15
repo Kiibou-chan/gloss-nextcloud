@@ -8,6 +8,7 @@ import { flushIslands } from './island'
 /** Only the public session commands are available to the islands and their fakes. */
 export type PanelCommands = Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges'>
 export interface PanelModel extends PanelPort {
+  readonly overall: Signal<string>
   readonly cards: Map<string, Signal<CardView>>
   readonly order: Signal<readonly string[]>
   readonly count: Signal<{ changes: number; comments: number }>
@@ -16,13 +17,15 @@ export interface PanelModel extends PanelPort {
 }
 
 export function createPanelModel(): PanelModel {
+  const overall = signal('')
   const cards = new Map<string, Signal<CardView>>()
   const order = signal<readonly string[]>([])
   const count = signal({ changes: 0, comments: 0 })
   const head = signal<HeadView>({ name: '', title: '', hasPdf: false, view: 'editor', editable: false, canSend: false, status: '', countText: '0 changes, 0 comments', form: null })
   const conflict = signal<{ text: string; show: boolean } | null>(null)
   return {
-    cards, order, count, head, conflict,
+    overall, cards, order, count, head, conflict,
+    setOverallView(text) { overall.value = text; flushIslands() },
     setConflictView(view) { conflict.value = view; flushIslands() },
     upsertCard(view) {
       const existing = cards.get(view.id)
