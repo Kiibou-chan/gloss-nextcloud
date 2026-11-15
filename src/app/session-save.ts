@@ -76,6 +76,12 @@ export class SessionSave {
     this.cancelBackup?.(); this.cancelBackup = this.s.ports.scheduler.after(300, () => { this.cancelBackup = null; this.backup(this.s.queue?.dirty ?? false); this.actions.head() })
   }
   async send(): Promise<void> {
+    if (this.s.ports.reviewable && !this.s.blocked && !this.s.record?.sent && (this.s.blankName || !this.s.record?.name)) {
+      this.s.status = 'Enter your name first.'; this.actions.head(); this.s.ports.panel.focusName?.(); return
+    }
+    if (this.s.form && this.s.ports.panel.hasCommentDraft?.()) {
+      this.s.status = 'Add or cancel your comment before sending the review.'; this.actions.head(); return
+    }
     if (!this.actions.editable() || (!this.s.review?.items().length && !this.actions.overallText().trim())) return
     this.s.record!.sent = true; this.s.record!.sentAt = this.s.ports.clock.now(); this.s.record!.updatedAt = this.s.record!.sentAt
     this.s.form = null; this.s.status = 'Sending…'; this.s.queue?.changed(); this.actions.render()

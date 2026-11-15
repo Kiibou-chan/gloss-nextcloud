@@ -51,14 +51,17 @@ export class ReviewSession {
     this.link = new LinkKey(this.s)
     ports.editor.setEditable(false)
     this.listen(ports.editor.onEdit(changes => this.items.edit(changes)))
+    this.listen(ports.editor.onAttempt?.(() => this.requestName()))
     this.listen(ports.editor.onSelect(range => {
-      if (!this.presenter.editable() || !this.s.review || range.to <= range.from) return
+      if (!this.presenter.editable()) { this.requestName(); return }
+      if (!this.s.review || range.to <= range.from) return
       const a = this.s.review.fromApplied(range.from), b = this.s.review.fromApplied(range.to)
       const target = 'inside' in a ? { id: a.inside } : 'inside' in b ? { id: b.inside } : this.s.review.targetFor(a.at, b.at)
       this.items.openForm(target, false)
     }))
     this.listen(ports.pdf.onSelect(selection => {
-      if (!this.presenter.editable() || !this.s.source || !this.s.review) return
+      if (!this.presenter.editable()) { this.requestName(); return }
+      if (!this.s.source || !this.s.review || ports.panel.hasCommentDraft?.()) return
       const range = toSource(this.s.source, selection.text, selection.fraction)
       if (!range) this.s.status = 'That selection could not be placed in the draft. Select a little more, or use the editor.'
       else {
@@ -67,6 +70,22 @@ export class ReviewSession {
       }
       this.presenter.head()
     }))
+  }
+  requestName(): void {
+    if (this.s.disposed || this.presenter.editable()) return
+    if (this.s.ports.reviewable && !this.s.blocked && !this.s.record?.sent && (this.s.blankName || !this.s.record?.name)) {
+      this.s.status = 'Enter your name first.'; this.presenter.head(); this.s.ports.panel.focusName?.()
+    } else {
+      this.s.status ||= 'This review is read-only.'; this.presenter.head()
+    }
+  }
+  commentSelection(): void {
+    if (!this.presenter.editable()) { this.requestName(); return }
+    if (this.s.ports.pdf.commentSelection?.()) return
+    const range = this.s.ports.editor.selection?.()
+    if (!range || range.to <= range.from || !this.s.review) return
+    const a = this.s.review.fromApplied(range.from), b = this.s.review.fromApplied(range.to)
+    this.items.openForm('inside' in a ? { id: a.inside } : 'inside' in b ? { id: b.inside } : this.s.review.targetFor(a.at, b.at))
   }
   start(): Promise<void> { return this.lifecycle.start() }
   setName(name: string): Promise<void> { return this.lifecycle.setName(name) }

@@ -21,7 +21,7 @@ export class SessionItems {
     this.s.review.edit(changes, () => this.s.ports.ids.item(), this.s.ports.clock.now()); this.actions.changed()
   }
   openForm(target: Target, focus = true): void {
-    if (!this.actions.editable() || !this.s.review) return
+    if (!this.actions.editable() || !this.s.review || this.s.ports.panel.hasCommentDraft?.()) return
     let quote: string
     if ('id' in target) {
       const item = this.s.review.items().find(i => i.id === target.id)
@@ -30,15 +30,14 @@ export class SessionItems {
     } else quote = this.s.draft.slice(target.from, target.to)
     this.s.form = { target, quote: brief(quote), focus }; this.actions.head()
   }
-  cancelForm(): void { this.s.form = null; this.actions.head() }
+  cancelForm(): void { this.s.ports.panel.clearCommentDraft?.(); this.s.form = null; this.actions.head() }
   commentOn(target: Target, text: string): void {
     if (!this.actions.editable() || !text.trim()) return
     if ('id' in target && !this.s.review!.items().some(item => item.id === target.id)) {
-      this.s.form = null
-      this.s.status = 'That item no longer exists, so the comment form has been closed.'
+      this.s.status = 'That item no longer exists. Copy your comment before cancelling.'
       this.actions.head(); return
     }
-    this.s.review!.comment(target, text, this.s.ports.ids.item(), this.s.ports.clock.now()); this.s.form = null; this.actions.changed()
+    this.s.review!.comment(target, text, this.s.ports.ids.item(), this.s.ports.clock.now()); this.s.ports.panel.clearCommentDraft?.(); this.s.form = null; this.actions.changed()
   }
   deleteComment(id: string, index: number): void { if (this.actions.editable()) { this.s.review!.deleteComment(id, index); this.actions.changed() } }
   undoProposal(id: string): void {

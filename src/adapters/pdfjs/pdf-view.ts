@@ -2,7 +2,6 @@ import { getDocument, GlobalWorkerOptions, TextLayer } from 'pdfjs-dist'
 import type { PDFPageProxy, PageViewport, RenderTask } from 'pdfjs-dist'
 import type { PdfPort } from '../../app/ports'
 import type { PdfPlacement } from '../../domain/pdf/match'
-
 type Page = {
   number: number
   pdf: PDFPageProxy
@@ -17,7 +16,6 @@ type Page = {
   render?: RenderTask
   generation: number
 }
-
 /** The host is the PDF scroll container; matching uses cached text, never the DOM. */
 export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string; workerUrl: string }): PdfPort {
   let disposed = false
@@ -29,7 +27,6 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
   let viewportObserver: IntersectionObserver | undefined
   const visible = new Set<number>()
   let selected: Parameters<PdfPort['onSelect']>[0] | undefined
-
   function drawMarks(page: Page) {
     page.marks.replaceChildren()
     if (!page.layer) return
@@ -65,7 +62,6 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
       }
     }
   }
-
   function release(page: Page) {
     if (!page.canvas) return
     // A cancelled render may settle after this page has started drawing again.
@@ -131,13 +127,14 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
     })()
     return page.drawing
   }
-
   async function load(): ReturnType<PdfPort['show']> {
     GlobalWorkerOptions.workerSrc = workerUrl
     task = getDocument({ url })
     const doc = await task.promise
     if (disposed) return { pages: [] }
-    const width = el.clientWidth || 900
+    const style = getComputedStyle(el)
+    const padding = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0)
+    const width = el.clientWidth ? Math.max(1, el.clientWidth - padding - 2) : 900
     const next: Page[] = []
     for (let number = 1; number <= doc.numPages; number++) {
       const pdf = await doc.getPage(number)
@@ -180,7 +177,6 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
     }
     return { pages: pages.map(page => page.content.items.flatMap(item => 'str' in item ? [item.str] : [])) }
   }
-
   function destroyTask() {
     const current = task
     task = undefined
@@ -189,19 +185,23 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
 
   function reportSelection() {
     const selection = window.getSelection()
-    if (!selection || selection.isCollapsed || !selection.anchorNode || !selection.focusNode) return
-    if (!el.contains(selection.anchorNode) || !el.contains(selection.focusNode)) return
+    if (!selection || selection.isCollapsed || !selection.anchorNode || !selection.focusNode) return false
+    if (!el.contains(selection.anchorNode) || !el.contains(selection.focusNode)) return false
     const text = selection.toString().trim()
-    if (!text) return
+    if (!text) return false
     const node = selection.anchorNode
     const box = (node.nodeType === Node.TEXT_NODE ? node.parentElement : node as Element | null)?.closest('.gr-page')
     const fraction = box && pages.length ? (Number((box as HTMLElement).dataset.page) - 0.5) / pages.length : 0.5
     selected?.({ text, fraction })
+    return true
+  }
+  function commentKey(event: KeyboardEvent) {
+    if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'm') { event.preventDefault(); reportSelection() }
   }
   el.addEventListener('mouseup', reportSelection)
-  el.addEventListener('keyup', reportSelection)
-
+  el.addEventListener('keydown', commentKey)
   return {
+    commentSelection: reportSelection,
     show() {
       if (disposed) return Promise.resolve({ pages: [] })
       loading ??= load().catch(error => {
@@ -231,7 +231,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
       disposed = true
       destroyTask()
       observer?.disconnect(); viewportObserver?.disconnect()
-      el.removeEventListener('mouseup', reportSelection); el.removeEventListener('keyup', reportSelection)
+      el.removeEventListener('mouseup', reportSelection); el.removeEventListener('keydown', commentKey)
       selected = undefined
       for (const page of pages) release(page)
     },

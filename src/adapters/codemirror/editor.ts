@@ -34,6 +34,7 @@ const external = Annotation.define<boolean>()
 
 export function createEditor(parent: HTMLElement, options: { text: string; language: string; spellLanguage: string }): EditorPort {
   const editable = new Compartment()
+  let onAttempt = () => {}
   let onEdit: (changes: readonly Change[]) => void = () => {}
   let onSelect: (range: { from: number; to: number }) => void = () => {}
   const language = options.language === 'typst' ? typstLanguage
@@ -46,12 +47,29 @@ export function createEditor(parent: HTMLElement, options: { text: string; langu
         lineNumbers(), highlightActiveLine(), highlightActiveLineGutter(), history(), bracketMatching(),
         search({ top: true }), highlightSelectionMatches(),
         keymap.of([...searchKeymap, ...defaultKeymap, ...historyKeymap]), EditorView.lineWrapping,
-        EditorView.contentAttributes.of({ spellcheck: 'true', lang: options.spellLanguage || 'en' }),
+        EditorView.contentAttributes.of({ tabindex: '0', spellcheck: 'true', lang: options.spellLanguage || 'en' }),
         language, syntaxHighlighting(reviewHighlight), decorations,
         editable.of([EditorView.editable.of(false), EditorState.readOnly.of(true)]),
-        EditorState.transactionFilter.of(transaction =>
-          transaction.docChanged && transaction.startState.readOnly && !transaction.annotation(external)
-            && transaction.isUserEvent('input') ? [] : transaction),
+        EditorView.domEventHandlers({
+          mouseup: (_event, view) => { const range = view.state.selection.main; if (!range.empty) onSelect({ from: range.from, to: range.to }) },
+          keydown: (event, view) => {
+            if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'm') {
+              const range = view.state.selection.main
+              if (!range.empty) onSelect({ from: range.from, to: range.to })
+              return true
+            }
+            if (view.state.readOnly && !event.ctrlKey && !event.metaKey && !event.altKey && (event.key.length === 1 || ['Backspace', 'Delete', 'Enter'].includes(event.key))) onAttempt()
+            return false
+          },
+          paste: (_event, view) => { if (view.state.readOnly) onAttempt(); return false },
+          beforeinput: (_event, view) => { if (view.state.readOnly) onAttempt(); return false },
+        }),
+        EditorState.transactionFilter.of(transaction => {
+          if (transaction.docChanged && transaction.startState.readOnly && !transaction.annotation(external) && transaction.isUserEvent('input')) {
+            onAttempt(); return []
+          }
+          return transaction
+        }),
         EditorView.updateListener.of(update => {
           // Each transaction has its own old-text coordinates, including in a batched dispatch.
           for (const transaction of update.transactions) {
@@ -62,13 +80,13 @@ export function createEditor(parent: HTMLElement, options: { text: string; langu
             })
             onEdit(changes)
           }
-          const range = update.state.selection.main
-          if (update.selectionSet && !range.empty) onSelect({ from: range.from, to: range.to })
         }),
       ],
     }),
   })
   return {
+    onAttempt(listener) { onAttempt = listener; return () => { onAttempt = () => {} } },
+    selection: () => { const { from, to } = view.state.selection.main; return { from, to } },
     dispose: () => view.destroy(),
     text: () => view.state.doc.toString(),
     setText(text) {

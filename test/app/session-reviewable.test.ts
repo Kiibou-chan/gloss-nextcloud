@@ -20,6 +20,15 @@ const sentences = [
 ] as const
 
 describe('reviewable links and remembered reviews', () => {
+  it('uses an explicit comment action for the current PDF selection', async () => {
+    const f = fakes()
+    const commentSelection = vi.fn(() => { f.pdfSelect('beta'); return true })
+    const s = new ReviewSession({ ...f.ports, pdf: { ...f.pdf, commentSelection } })
+    await s.start(); await s.setName('Ada')
+    s.commentSelection()
+    expect(commentSelection).toHaveBeenCalledOnce()
+    expect(f.head().form).toMatchObject({ quote: 'beta' })
+  })
   it('keeps an unreviewable link read-only without opening or saving, even with a remembered review', async () => {
     const f = fakes(); f.store.remember(key); f.store.write(key, backup(true))
     const s = new ReviewSession({ ...f.ports, reviewable: false }); await s.start(); await s.setName('Ada')
@@ -75,4 +84,56 @@ describe('reviewable links and remembered reviews', () => {
     const f = fakes(); f.store.remember(key); f.store.write(key, backup(true)); f.api.open.mockResolvedValue({ status, error })
     const s = new ReviewSession(f.ports); await s.start(); expect(f.head().status).toBe(sentence)
   })
+})
+
+
+describe('name prompts on reviewable links', () => {
+  it('asks for a name after start without a record', async () => {
+    const f = fakes(), s = new ReviewSession(f.ports); await s.start()
+    expect(f.head().status).toBe('Enter your name to start.')
+  })
+  it.each(['editor selection', 'PDF selection', 'editor keystroke', 'overall key', 'Send'])('asks and focuses the name on %s', async action => {
+    const f = fakes(), s = new ReviewSession(f.ports); await s.start()
+    if (action === 'editor selection') f.select(0, 5)
+    if (action === 'PDF selection') f.pdfSelect('alpha')
+    if (action === 'editor keystroke') f.attempt()
+    if (action === 'overall key') s.requestName()
+    if (action === 'Send') await s.send()
+    expect(f.head().status).toBe('Enter your name first.')
+    expect(f.panel.focusName).toHaveBeenCalled()
+  })
+  it('asks to continue when an existing name is blank', async () => {
+    const f = fakes(), s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada'); await s.setName('')
+    await f.advance(6000)
+    expect(f.head()).toMatchObject({ status: 'Enter your name to continue.', editable: false })
+  })
+})
+
+it('formats the kept-changes time through Clock and labels text, proposal, and comments', async () => {
+  const f = fakes(); f.clock.local = vi.fn(() => '16/11/2026, 09:30:00')
+  const b = backup(true), record = JSON.parse(b.review)
+  record.items[0].comments = [{ text: 'Synthetic note', at: record.updatedAt }]
+  b.review = JSON.stringify(record); f.store.remember(key); f.store.write(key, b)
+  f.api.open.mockResolvedValue({ review: { ...record, revision: 4 }, revision: 4 })
+  const s = new ReviewSession(f.ports); await s.start()
+  expect(f.clock.local).toHaveBeenCalledWith(b.at)
+  expect(f.head().status).toContain('16/11/2026, 09:30:00')
+  expect(f.panel.setConflictView.mock.lastCall![0].text).toBe('Text: beta\nProposed: blue\nComment: Synthetic note')
+})
+
+it('refuses Send while a comment draft is open', async () => {
+  const f = fakes(), s = new ReviewSession({ ...f.ports, panel: { ...f.panel, hasCommentDraft: () => !!f.head().form } })
+  await s.start(); await s.setName('Ada'); s.setOverall('Synthetic overall note'); f.select(0, 5)
+  const form = f.head().form; await s.send()
+  expect(f.head()).toMatchObject({ status: 'Add or cancel your comment before sending the review.', sent: false, form })
+  expect(f.api.save).not.toHaveBeenCalled()
+})
+
+it('keeps the blank-name prompt when an earlier save completes', async () => {
+  const f = fakes(), s = new ReviewSession(f.ports)
+  let finish!: (value: { revision: number }) => void
+  f.api.save.mockImplementation(() => new Promise(done => { finish = done }))
+  await s.start(); await s.setName('Ada'); s.setOverall('Synthetic note'); await f.advance(5000)
+  await s.setName(''); finish({ revision: 1 }); await f.advance(0)
+  expect(f.head().status).toBe('Enter your name to continue.')
 })

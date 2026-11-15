@@ -47,7 +47,9 @@ export class Lifecycle {
     if (this.s.record) {
       this.s.blankName = !name
       if (name) this.s.record.name = name
-      this.actions.changed(); return
+      this.actions.changed()
+      if (!name) { this.s.status = 'Enter your name to continue.'; this.actions.head() }
+      return
     }
     this.s.pendingName = name
     if (!name) { this.actions.render(); return }
@@ -100,7 +102,7 @@ export class Lifecycle {
         if (backup.revision === serverRevision || pendingRevision === serverRevision) this.restore(backup)
         else {
           this.keepConflict(backup)
-          this.s.status = `Changes made in this browser at ${backup.at} were not restored, as the review changed elsewhere.`
+          this.s.status = `Changes made in this browser at ${this.s.ports.clock.local?.(backup.at) ?? backup.at} were not restored, as the review changed elsewhere.`
           backup = null
         }
       }

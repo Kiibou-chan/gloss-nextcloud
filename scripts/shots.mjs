@@ -73,7 +73,7 @@ async function main() {
         if (fixture && sceneName === 'overall') {
           await page.getByRole('button', { name: 'Send review', exact: true }).click();
           await page.getByRole('status').getByText('Review sent. Thank you.', { exact: true }).waitFor();
-          if (!await page.getByRole('textbox', { name: 'Overall comment' }).evaluate(box => box.readOnly)) throw new Error('Sent overall comment must be read-only.');
+          if (!await page.locator('.gr-overall-text').count() || await page.locator('#gr-overall').count()) throw new Error('Sent overall comment must be plain text.');
           await capture('-sent');
         }
       } finally { await context.close(); }
