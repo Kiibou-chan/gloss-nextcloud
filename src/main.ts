@@ -46,11 +46,17 @@ export async function mountReview(root: HTMLElement): Promise<() => void> {
     if (disposed) return
     disposed = true
     window.removeEventListener('pagehide', onPageHide)
+    window.removeEventListener('beforeunload', onBeforeUnload)
+    window.removeEventListener('online', onOnline)
     session.dispose(); unsubscribe(); unmountPanel(); unmountHead()
     editor.dispose?.(); pdf.dispose?.()
   }
-  const onPageHide = (event: PageTransitionEvent) => { if (!event.persisted) dispose() }
+  const onPageHide = (event: PageTransitionEvent) => { session.pagehide(); if (!event.persisted) dispose() }
+  const onBeforeUnload = (event: BeforeUnloadEvent) => { if (session.dirty) { event.preventDefault(); event.returnValue = '' } }
+  const onOnline = () => session.online()
   window.addEventListener('pagehide', onPageHide)
+  window.addEventListener('beforeunload', onBeforeUnload)
+  window.addEventListener('online', onOnline)
   await session.start()
   return dispose
 }

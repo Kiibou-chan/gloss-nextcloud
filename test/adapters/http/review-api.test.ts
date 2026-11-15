@@ -132,9 +132,12 @@ describe('save request lifetime', () => {
     f.editor.replace({ from: 6, to: 10, insert: 'blue' }); await f.advance(600)
     let resolved = false; const sending = session.send().then(() => { resolved = true })
     await vi.advanceTimersByTimeAsync(60_000)
-    expect(resolved).toBe(true); expect(f.head()).toMatchObject({ editable: true, status: 'Not sent: network' })
+    expect(resolved).toBe(true); expect(f.head()).toMatchObject({ editable: false, status: 'Not sent yet; trying again in 2 s' })
     await sending
-    fetcher.mockResolvedValue(reply({ revision: 13 })); await session.send()
+    const body = f.store.read(f.store.rememberedKey()!)!.pending!.body
+    fetcher.mockResolvedValue(reply({ revision: 1 })); session.online(); await f.advance(0)
+    for (let i = 0; i < 30; i++) await Promise.resolve()
+    expect(new URLSearchParams(fetcher.mock.lastCall![1]?.body as URLSearchParams).get('review')).toBe(body)
     expect(f.head().status).toBe('Review sent. Thank you.'); session.dispose()
   })
 })

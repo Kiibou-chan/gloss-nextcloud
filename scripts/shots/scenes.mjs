@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 
 const reviewer = 'Ada Example';
 const content = page => page.locator('#gr-text .cm-content');
@@ -101,7 +102,7 @@ async function ownerPage({ browser, options, state }) {
     await page.goto(`${state.base}/login`);
     await page.getByRole('textbox', { name: /Account name|Username|Email/i }).fill(state.owner);
     await page.locator('input[type="password"]').fill(state.password);
-    await page.getByRole('button', { name: /Log in/i }).click();
+    await page.getByRole('button', { name: 'Log in', exact: true }).click();
     await page.waitForURL(url => !url.pathname.includes('/login'));
     return { context, page };
   } catch (error) { await context.close(); throw error; }
@@ -112,14 +113,16 @@ async function waiting(args) {
   await requireFeature(page, '#gloss-review[data-reviewable]', 'F1b and F2');
   await ready(page);
   let lost = false;
+  let saveRequests = 0;
   let reviewKey;
   await page.route('**/r/*/review', async route => {
     if (route.request().method() !== 'POST') return route.continue();
+    saveRequests++;
     if (!lost) {
       const response = await route.fetch();
       if (!response.ok()) throw new Error('Scene needs a successful F2 save.');
-      reviewKey = new URLSearchParams(route.request().postData() ?? '').get('reviewer');
-      if (!reviewKey || reviewKey.length > 80 || !/^[a-z0-9]+(?:-[a-z0-9]+)+$/.test(reviewKey)) {
+      reviewKey = new URLSearchParams(route.request().postData() ?? '').get('key');
+      if (!reviewKey || !/^[A-Za-z0-9]{16}$/.test(reviewKey)) {
         throw new Error('Scene needs a valid reviewer key in the F2 save.');
       }
       lost = true;
@@ -128,22 +131,32 @@ async function waiting(args) {
   });
   await find(page, 'grow');
   await page.keyboard.insertText('flourish');
-  await expect(status(page)).toHaveText('Not saved yet; trying again in 2 s');
+  try { await expect(status(page)).toHaveText('Not saved yet; trying again in 2 s', { timeout: 40_000 }); }
+  catch (error) { console.log(`H6 status: ${await status(page).textContent()}`); await capture('-diagnostic'); throw error; }
   await capture('-retry');
   await expect(status(page)).toHaveText('Saved', { timeout: 25_000 });
   const owner = await ownerPage(args);
   try {
     await owner.page.goto(`${args.state.base}/index.php/apps/files/?dir=/Review%20reviews`);
-    const review = owner.page.locator('[data-cy-files-list-row-name]').filter({
-      has: owner.page.getByText(`${reviewKey}.json`, { exact: true }),
-    });
+    // Dismiss Nextcloud's first-login slideshow before selecting a file.
+    const skip = owner.page.getByRole('button', { name: 'Skip', exact: true });
+    await skip.waitFor?.({ state: 'visible', timeout: 5000 }).catch(() => {});
+    if (await skip.count()) await skip.click();
+    await owner.page.waitForTimeout?.(1000);
+    const closeWelcome = owner.page.getByRole('button', { name: 'Close', exact: true });
+    if (await closeWelcome.count()) await closeWelcome.click();
+    const filename = `ada-${createHash('sha256').update(reviewKey).digest('hex').slice(0, 16)}.json`;
+    const review = owner.page.locator(`tr[data-cy-files-list-row-name="${filename}"]`);
     await expect(review).toHaveCount(1);
-    await review.click({ button: 'right' });
-    await owner.page.getByText('Details', { exact: true }).click();
+    try { await review.click({ button: 'right' }); }
+    catch (error) { await capture('-row-diagnostic', owner.page); console.log(JSON.stringify(await owner.page.getByRole('button').evaluateAll(nodes => nodes.map(n => ({ label: n.getAttribute('aria-label'), text: n.textContent.trim() }))))); throw error; }
+    try { await owner.page.getByText('Details', { exact: true }).click(); }
+    catch (error) { await capture('-menu-diagnostic', owner.page); throw error; }
     await owner.page.getByRole('tab', { name: 'Versions' }).click();
-    const versions = owner.page.locator('[data-cy-version]');
+    await expect(owner.page.getByText('Current version', { exact: true })).toBeVisible();
+    const versions = owner.page.locator('[data-cy-files-version-label]');
     await expect(versions.first()).toBeVisible();
-    console.log(`Versions after H6: ${await versions.count()}`);
+    console.log(`Versions after H6: ${await versions.count()} current, ${(await versions.count()) - 1} historical; ${saveRequests} save requests, 1 landed write.`);
     await capture('-versions', owner.page);
   } finally { await owner.context.close(); }
 }

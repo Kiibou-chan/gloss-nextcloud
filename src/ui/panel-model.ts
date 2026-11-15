@@ -11,6 +11,7 @@ export interface PanelModel extends PanelPort {
   readonly cards: Map<string, Signal<CardView>>
   readonly order: Signal<readonly string[]>
   readonly count: Signal<{ changes: number; comments: number }>
+  readonly conflict: Signal<{ text: string; show: boolean } | null>
   readonly head: Signal<HeadView>
 }
 
@@ -19,8 +20,10 @@ export function createPanelModel(): PanelModel {
   const order = signal<readonly string[]>([])
   const count = signal({ changes: 0, comments: 0 })
   const head = signal<HeadView>({ name: '', title: '', hasPdf: false, view: 'editor', editable: false, canSend: false, status: '', countText: '0 changes, 0 comments', form: null })
+  const conflict = signal<{ text: string; show: boolean } | null>(null)
   return {
-    cards, order, count, head,
+    cards, order, count, head, conflict,
+    setConflictView(view) { conflict.value = view; flushIslands() },
     upsertCard(view) {
       const existing = cards.get(view.id)
       if (existing) existing.value = view
