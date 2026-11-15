@@ -3,6 +3,7 @@
   "entry": [
     "src/main.ts",
     "src/editor.mjs",
+    "src/adapters/pdfjs/worker-entry.ts",
     "scripts/*.mjs",
     "test/**/*.test.{ts,tsx}"
   ],
@@ -12,7 +13,6 @@
     "test/**/*.{ts,tsx}"
   ],
   "ignoreDependencies": [
-    "pdfjs-dist",
     "preact",
     "@preact/signals"
   ]
