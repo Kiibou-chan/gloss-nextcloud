@@ -1,4 +1,5 @@
 import { Conflict } from './conflict'
+import { ReviewLink } from './review-link'
 import { Overall } from './overall'
 import { Card } from './card'
 import { CommentForm } from './comment-form'
@@ -15,5 +16,5 @@ function Cards({ model, session }: { model: PanelModel; session: PanelCommands }
   })}</ol>
 }
 export function Panel({ model, session }: { model: PanelModel; session: PanelCommands }) {
-  return <>{model.conflict.value && <Conflict {...model.conflict.value} onShow={() => session.showKeptChanges()} />}<Overall model={model} session={session} /><CommentForm model={model} session={session} /><Count model={model} /><Cards model={model} session={session} /></>
+  return <>{model.conflict.value && <Conflict {...model.conflict.value} onShow={() => session.showKeptChanges()} />}<Overall model={model} session={session} /><CommentForm model={model} session={session} /><ReviewLink model={model} session={session} /><Count model={model} /><Cards model={model} session={session} /></>
 }

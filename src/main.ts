@@ -33,7 +33,7 @@ export async function mountReview(root: HTMLElement): Promise<() => void> {
     ids: browserIds, scheduler: browserScheduler, clipboard: browserClipboard,
     reviewable: root.dataset.reviewable === '1', hasPdf: root.dataset.hasPdf === '1',
     diagnostic: message => console.warn(message),
-  })
+  }, { address: location.href, fragment: location.hash })
   const unmountHead = mountHead(header, model, session)
   const unmountPanel = mountPanel(side, model, session)
   const unsubscribe = model.head.subscribe(view => {
