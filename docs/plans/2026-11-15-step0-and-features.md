@@ -83,6 +83,7 @@ The brief's limits: a 10,000-line draft, 50 reviewers, and 2,000 items in one re
 | Saved review | 0.88 MiB at 2,000 items (P4) | 0.78 MiB; over 1 MiB is refused with a message | R10, R19 |
 | Backup in the browser | none | written 300 ms after the last change, and on leaving | R22 |
 | Review files per link | unbounded | 50 | R19 |
+| PDF pages drawn | every page's canvas kept, 900 by 1,273 px at 4 bytes a pixel, 4.6 MB a page at pixel ratio 1 and 18.3 MB at 2 (`js/pdf-view.js:43-52`) | pages near the view drawn, canvases far from it released; text for matching from `getTextContent`, no drawing needed | R36 |
 
 The edit path is the only superlinear work found; R6 and R7 make a keystroke cost the changed lines plus O(P), and task S4's timed test holds it there.
 
@@ -199,3 +200,97 @@ Opening is a POST so that a key never stands in a URL or an access log; `open` c
 (R34) Ruling: ids are 10 characters `[a-z0-9]` from `crypto.getRandomValues` behind the `Ids` port, and times are ISO strings from the `Clock` port, both passed into the domain as values; why: the brief's "time and ids are parameters" and the spike's `Math.random` ids (`js/review.js:28`); cost if wrong: none.
 
 (R35) Ruling: `js/typst-view.js`'s `render` and `sourceOffset` (`:160-216`) are deleted and `parse` (`:41-140`) moves to `src/domain/source/typst-parse.ts` with `dropBlankParagraphs`; `js/diff.js`, `js/pdf-view.js`, `js/review.js`, and `src/editor.mjs` go once their parts are moved; why: the brief's item 12, and nothing calls `render` or `sourceOffset` (`git grep -n "render(\|sourceOffset" js/review.js` prints nothing); cost if wrong: none.
+
+(R36) Ruling: the PDF view lays out every page at its size at once, draws a page's canvas and text layer when it comes within one screen of the view (`IntersectionObserver`), and releases canvases more than ten pages away; PDF matching runs on the strings of `page.getTextContent()` for all pages, read once and kept, through the pure `pdfKey(pages)` of `src/domain/pdf/match.ts`, and a mark is drawn when its page's text layer exists, over `TextLayer.textDivs`, which pairs with `textContentItemsStr` (`types/src/display/text_layer.d.ts:80`, `:86`); why: the spike keeps every page's canvas (`js/pdf-view.js:43-58`), which the arithmetic in the size table puts at hundreds of megabytes for a long draft, and matching on strings makes the PDF side as testable as the source side; cost if wrong: a mark on a page not yet drawn appears when it is scrolled to.
+
+(R37) Ruling: the template keeps the root `#gloss-review` with its `data-*` and four empty slots with today's ids and classes (`#gr-head`, `#gr-text`, `#gr-pdf`, `#gr-side`); Preact islands render the header into `#gr-head` and the panel into `#gr-side`, and the editor and PDF adapters draw into `#gr-text` and `#gr-pdf`; why: gloss's islands rule that hand-built code writes only into slots no island owns (gloss `CLAUDE.md`, Islands, item 2), and `css/review.css` keeps its selectors; cost if wrong: none.
+
+(R38) Ruling: task S12 keeps the spike's `GET /text`, `GET /review`, and `POST /review` working beside the new `GET /draft`, so the page works after every merge; tasks F1a and F1b are merged together, since F1a removes the old routes and F1b moves the page to the new ones; why: no merge leaves a broken page on the branch you test from; cost if wrong: none.
+
+(R39) Ruling: if the build runs late for Wednesday, features are cut from the end in this order: F4 first, then F5, then F3, then F2; F1a, F1b, and R1 are never cut, and nothing falls back onto the spike's structure; why: without F1 saving needs an editable link writing into the shared folder, which RVW-3 B rules out, a lost review (F2) costs a reviewer more than a missing link (F3) or notification (F5), and the overall comment (F4) can be a comment on the title meanwhile; cost if wrong: a feature you valued more waits a few days.
+
+## Layers and interfaces
+
+```
+src/
+  domain/                 pure; no DOM, no clock, no randomness, no npm package
+    text/diff.ts          word diff (R6)
+    text/quote.ts         Quote, quoteAt, refind (R9)
+    review/model.ts       Proposal, Note, Overall, Comment, Change, Target
+    review/applied-map.ts AppliedMap (R7)
+    review/draft-review.ts DraftReview: one file's proposals and notes against its draft
+    review/region.ts      the changed region of R6
+    format/record.ts      ReviewRecord, the in-memory form of format 1
+    format/format-0.ts, format-1.ts, read.ts, write.ts (R10, R11)
+    source/typst-parse.ts, shown.ts, language.ts
+    pdf/match.ts          keyOf, sourceKey, pdfKey, toSource, placeMarks
+  app/                    ports and use cases; may import domain only
+    ports.ts              EditorPort, PdfPort, ReviewApi, BackupStore, Clock, Ids, Scheduler, HeadPort, PanelPort
+    session.ts            ReviewSession
+    view.ts               HeadView, PanelView, CardView (plain data with a version per card)
+    save-queue.ts         (feature 2)
+  adapters/
+    codemirror/editor.ts, typst-language.ts, highlight.ts
+    pdfjs/pdf-view.ts, worker-entry.ts
+    http/review-api.ts
+    storage/browser-store.ts
+    browser/clock.ts, ids.ts, scheduler.ts
+  ui/
+    head.tsx, panel.tsx, card.tsx, comment-form.tsx, mount.ts (+ review-link.tsx, overall.tsx in features)
+  main.ts                 wiring only
+schema/review-1.schema.json
+```
+
+The ports, as task S7 writes them (names binding, details the builder's):
+
+```ts
+type Change = { from: number; to: number; insert: string };            // in the editor text before the change
+interface EditorPort {
+  setText(text: string): void;                                        // outside history; no onEdit
+  replace(change: Change): void;                                      // as if typed: undoable; onEdit follows
+  setMarks(marks: readonly EditorMark[], deleted: readonly DeletedWords[]): void;
+  setEditable(on: boolean): void;
+  scrollTo(pos: number): void;
+  onEdit(listener: (changes: readonly Change[]) => void): void;
+  onSelect(listener: (range: { from: number; to: number }) => void): void;
+}
+interface PdfPort {
+  show(): Promise<{ pages: readonly (readonly string[])[] }>;          // loads once; text items per page
+  setMarks(placements: readonly PdfPlacement[]): void;
+  scrollToMark(id: string): void;
+  onSelect(listener: (s: { text: string; fraction: number }) => void): void;
+}
+interface ReviewApi {
+  draft(): Promise<{ main: string; files: readonly { file: string; text: string; etag: string }[] }>;
+  open(key: string): Promise<{ review: unknown; etag: string } | null>;
+  save(key: string, body: string, baseEtag: string): Promise<{ etag: string } | { status: number; error: string }>;
+}
+interface BackupStore {
+  rememberedKey(): string | null; remember(key: string): void;
+  read(key: string): Backup | null; write(key: string, b: Backup): boolean; keepConflict(key: string, b: Backup): void;
+  view(): ViewMode | null; setView(v: ViewMode): void;
+}
+interface Clock { now(): string }                                      // ISO time
+interface Ids { item(): string; key(): string }
+interface Scheduler { after(ms: number, run: () => void): () => void } // returns cancel
+interface HeadPort { render(view: HeadView): void }
+interface PanelPort { render(view: PanelView): void }
+```
+
+`ReviewSession` holds one `DraftReview` per file (one today), takes the ports in its constructor, and offers the commands the islands call (`setName`, `setView`, `commentOn`, `deleteComment`, `undoProposal`, `focusItem`, `send`, and in the features `setOverall`); it never touches the DOM.
+
+## The multi-file seam (feature 6, not built)
+
+What this plan builds now: the `file` field on every anchored item (R10), `Draft { main, files, pdf }` from `DraftLocator` and `{ main, files }` from `/draft` (R15), `ReviewSession` keyed by file, the marker read as a JSON object whose `main` key is reserved (R16), and `placeMarks` and `toSource` taking a source key that records `[file, offset]` per character (one file today).
+What the later plan adds: `DraftLocator` reads `main` from `.gloss-review`, follows Typst `#include "<path>"` and LaTeX `\input{<path>}` and `\include{<path>}` within the shared folder (no path outside it, no cycles, a depth cap), and returns the files in include order; the page shows one editor tab per file; the source key concatenates the files in include order so a PDF selection lands in its file; the save carries every file's items in one review.
+Nothing in format 1 changes for it: `file` already names the file, and `draft.file` names the main file.
+
+## Acceptance tests
+
+- **A0, the behaviours survive.** Each of B1 to B15 has a test in the task that moves it (named in the task), and hand checks H1 to H4 walk them on the page after S11.
+- **A1, the layers hold.** `npm run structure` fails on a domain file importing an adapter, on a `ui` file importing an adapter, on an import of `main.ts`, and on an unused export; `test/structure/purity.test.ts` fails on `Date` in `src/domain/`; each seen red on a throwaway file in S1.
+- **A2, the format.** Every fixture and the writer's output validate against `schema/review-1.schema.json`; a format 0 fixture reads into the format 1 record; format 2 is refused; 2,000 items of P4's shape stay under 1 MiB.
+- **A3, the edit path.** Over 500 seeded random edit sequences on synthetic text, applying the proposals to the draft gives the editor's text; one keystroke on a 10,000-line draft with 2,000 proposals stays under the bound S4 sets from its measurement.
+- **A4, the server.** PHPUnit: R16 to R22's cases (task F1a), R26's notification (task F5), and B1's draft and PDF choice (task S12).
+- **A5, the bundles.** A fresh build equals the committed files; neither bundle holds `new Function(` or `eval(`.
+- **A6, the release archive.** It holds the allowlist and none of the forbidden paths (R31).
