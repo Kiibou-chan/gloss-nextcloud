@@ -44,7 +44,9 @@ export class ReviewSession {
   private ops: ReturnType<typeof plainOps> = []
   private pending: Promise<void> | null = null
 
-  constructor(private readonly ports: Ports) {
+  // F3: the page address is supplied by the browser wiring.
+  private linkMessage = ''
+  constructor(private readonly ports: Ports, private readonly page: { address: string; fragment: string } = { address: '', fragment: '' }) {
     ports.editor.setEditable(false)
     this.listen(ports.editor.onEdit(changes => this.edit(changes)))
     this.listen(ports.editor.onSelect(range => {
@@ -89,12 +91,13 @@ export class ReviewSession {
       this.ports.editor.setText(this.review.applied()); this.render()
       await this.setView(this.ports.store.view() ?? 'editor')
       if (!this.ports.reviewable) { this.status = 'This link is not set up for reviewing.'; this.head(); return }
-      const remembered = this.ports.store.rememberedKey()
+      const fragment = /^#[A-Za-z0-9]{16}$/.test(this.page.fragment) ? this.page.fragment.slice(1) : null
+      const remembered = fragment ?? this.ports.store.rememberedKey()
       if (remembered && /^[A-Za-z0-9]{16}$/.test(remembered)) {
         this.key = remembered
         const backup = this.ports.store.read(remembered)
         this.saved = backup?.saved === true
-        if (this.saved) await this.loadReview('', backup)
+        if (fragment || this.saved) await this.loadReview('', backup)
         else if (backup) this.restore(backup)
       }
     } catch { this.status = 'Could not load the draft.'; this.head() }
@@ -155,8 +158,9 @@ export class ReviewSession {
         if (!name && backup) {
           try { const result = readReview(JSON.parse(backup.review), () => this.ports.ids.item()); if (!('error' in result)) name = result.record.name } catch { /* An invalid backup cannot supply a name. */ }
         }
-        this.install(this.emptyRecord(name))
+        if (name) this.install(this.emptyRecord(name))
       } else {
+        this.saved = true
         const result = readReview(opened.review, () => this.ports.ids.item())
         if ('error' in result) { this.status = result.error; return }
         if ('revision' in opened) result.record.revision = opened.revision
@@ -189,10 +193,29 @@ export class ReviewSession {
     return prefix + failure.error
   }
 
+  // F3: link visibility follows a confirmed server save or open.
+  private reviewLink(): string | null {
+    return this.saved && this.key && this.page.address ? `${this.page.address.split('#')[0]}#${this.key}` : null
+  }
+  private publishLink(): void {
+    const url = this.reviewLink()
+    this.ports.panel.setLink?.(url ? { url, message: this.linkMessage } : null)
+  }
+  async copyReviewLink(): Promise<void> {
+    const url = this.reviewLink()
+    if (this.disposed || !url) return
+    let copied = false
+    try { copied = await this.ports.clipboard.write(url) } catch { /* A denied clipboard remains selectable. */ }
+    if (this.disposed) return
+    this.linkMessage = copied ? 'Link copied.' : 'Copy failed; select the link and copy it.'
+    this.publishLink()
+  }
+
   private editable(): boolean { return !this.disposed && !this.blocked && this.ports.reviewable && !!this.record && !this.record.sent && !this.loading }
   private head(): void {
     if (this.disposed) return
     const editable = this.editable()
+    this.publishLink()
     this.ports.editor.setEditable(editable)
     const countText = `${this.count.changes} ${this.count.changes === 1 ? 'change' : 'changes'}, ${this.count.comments} ${this.count.comments === 1 ? 'comment' : 'comments'}`
     this.ports.panel.setOverallView?.(this.overallText())

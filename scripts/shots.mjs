@@ -18,7 +18,7 @@ async function main() {
     if (!args[i + 1]) throw new Error('An option is missing its value.');
     if (args[i] === '--out') out = args[i + 1];
     else if (args[i] === '--browser') browserName = args[i + 1];
-    else if (args[i] === '--fixture' && args[i + 1] === 'synthetic' && sceneName === 'overall') fixture = true;
+    else if (args[i] === '--fixture' && args[i + 1] === 'synthetic' && ['overall', 'review-link'].includes(sceneName)) fixture = true;
     else throw new Error('Unknown screenshot option.');
   }
   const browserType = { chromium, firefox, webkit }[browserName];
@@ -43,6 +43,7 @@ async function main() {
   const url = state.links[folder];
   if (!url?.startsWith(`${state.base}/index.php/apps/gloss/r/`)) throw new Error('Fixture link missing; run scripts/dev-nc.sh up.');
   await mkdir(out, { recursive: true });
+  const reviews = new Map();
   const browser = await browserType.launch({ headless: true });
   try {
     for (const colour of ['light', 'dark']) {
@@ -59,16 +60,17 @@ async function main() {
           await target.screenshot({ path: resolve(out, `${prefix}${suffix}.png`), fullPage: true });
           console.log(`Wrote ${prefix}${suffix}.png`);
         };
-        if (fixture) await syntheticOverall(page);
+        const prepareSynthetic = fixture ? target => syntheticOverall(target, sceneName, reviews) : undefined;
+        if (fixture) await prepareSynthetic(context);
         await page.goto(url, { waitUntil: 'networkidle' });
         try {
-          await scene.run({ page, context, browser, options, state, capture, out, prefix });
+          await scene.run({ page, context, browser, options, state, capture, out, prefix, prepareSynthetic });
         } catch (error) {
           if (scene.requires) console.error(`Scene needs feature ${scene.requires} and its specified behaviour.`);
           throw error;
         }
         await capture();
-        if (fixture) {
+        if (fixture && sceneName === 'overall') {
           await page.getByRole('button', { name: 'Send review', exact: true }).click();
           await page.getByRole('status').getByText('Review sent. Thank you.', { exact: true }).waitFor();
           if (!await page.getByRole('textbox', { name: 'Overall comment' }).evaluate(box => box.readOnly)) throw new Error('Sent overall comment must be read-only.');
@@ -79,10 +81,10 @@ async function main() {
   } finally { await browser.close(); }
 }
 
-async function syntheticOverall(page) {
+async function syntheticOverall(context, sceneName, reviews) {
   const script = await readFile(new URL('../js/gloss-review.js', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/review.css', import.meta.url), 'utf8');
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><title>Synthetic H8 overall comment</title>
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><title>Synthetic review fixture</title>
     <style>
       :root { color-scheme: light dark; --color-main-background: #fff; --color-main-text: #222; --color-text-maxcontrast: #555; --color-border: #bbb; --color-background-hover: #eee; --color-primary-element: #006da3; --color-primary-element-light: #d9edf8; --border-radius: 6px; --border-radius-large: 10px; }
       @media (prefers-color-scheme: dark) { :root { --color-main-background: #181818; --color-main-text: #eee; --color-text-maxcontrast: #bbb; --color-border: #666; --color-background-hover: #292929; --color-primary-element: #80cfff; --color-primary-element-light: #244459; } }
@@ -90,16 +92,23 @@ async function syntheticOverall(page) {
       input, textarea, button { box-sizing: border-box; font: inherit; padding: 8px; color: inherit; background: var(--color-main-background); border: 1px solid var(--color-border); border-radius: 6px; }
       label { display: flex; flex-direction: column; } button:enabled { cursor: pointer; } button:disabled { opacity: .5; }
       ${css}
-    </style><body><p>Synthetic H8 fixture, with the application bundle and simulated API.</p>
+    </style><body><p>Synthetic ${sceneName} fixture, with the application bundle and simulated API.</p>
     <div id="gloss-review" data-token="synthetic" data-reviewable="1" data-has-pdf="0" data-view="editor">
       <header class="gr-head"></header><main class="gr-body"><article id="gr-text" class="gr-text"></article><article id="gr-pdf" class="gr-pdf" hidden></article><aside class="gr-side"></aside></main>
     </div><script src="/gloss-review.js"></script></body></html>`;
-  await page.route('http://gloss.invalid/**', async route => {
+  await context.route('http://gloss.invalid/**', async route => {
     const path = new URL(route.request().url()).pathname;
     if (path === '/gloss-review.js') return route.fulfill({ contentType: 'text/javascript', body: script });
     if (path.endsWith('/draft')) return route.fulfill({ json: { main: 'garden.txt', files: [{ file: 'garden.txt', text: 'Synthetic garden observations.\nThe seedlings grow beside the window.\n', etag: 'synthetic-v1' }] } });
+    if (path.endsWith('/review/open')) {
+      const params = new URLSearchParams(route.request().postData() ?? '');
+      const review = reviews.get(params.get('key')) ?? null;
+      return route.fulfill({ json: review ? { review, revision: review.revision } : { review: null } });
+    }
     if (path.endsWith('/review')) {
       const params = new URLSearchParams(route.request().postData() ?? '');
+      const review = JSON.parse(params.get('review'));
+      reviews.set(params.get('key'), review);
       return route.fulfill({ json: { revision: Number(params.get('baseRevision')) + 1 } });
     }
     if (path.endsWith('/synthetic')) return route.fulfill({ contentType: 'text/html', body: html });

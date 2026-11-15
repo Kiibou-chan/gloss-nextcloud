@@ -45,7 +45,10 @@ export interface BackupStore {
 export interface Clock { now(): string }
 export interface Ids { item(): string; key(): string }
 export interface Scheduler { after(ms: number, run: () => void): () => void }
+// F3: the review link has its own panel update.
+export type ReviewLinkView = { url: string; message: string }
 export interface PanelPort {
+  setLink?(view: ReviewLinkView | null): void
   upsertCard(view: CardView): void
   removeCard(id: string): void
   setOrder(ids: readonly string[]): void

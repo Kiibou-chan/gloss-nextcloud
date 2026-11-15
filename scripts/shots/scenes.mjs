@@ -149,7 +149,7 @@ async function waiting(args) {
 }
 
 async function reviewLink(args) {
-  const { page, browser, options, capture } = args;
+  const { page, browser, options, capture, prepareSynthetic } = args;
   await requireFeature(page, '#gloss-review[data-reviewable]', 'F1b and F3');
   await ready(page);
   await find(page, 'grow');
@@ -158,8 +158,13 @@ async function reviewLink(args) {
   await expect(link).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeVisible();
   const url = await link.inputValue();
+  await page.getByRole('button', { name: 'Copy', exact: true }).click();
+  // A synthetic HTTP origin may deny the clipboard, so both outcomes are usable.
+  await expect(page.locator('.gr-review-link [role="status"]')).toHaveText(/Link copied\.|Copy failed; select the link and copy it\./);
+  await capture('-copy');
   if (!/^#[A-Za-z0-9]{16}$/.test(new URL(url).hash)) throw new Error('Scene needs feature F3.');
   const fresh = await browser.newContext(options);
+  if (prepareSynthetic) await prepareSynthetic(fresh);
   try {
     const second = await fresh.newPage();
     await second.goto(url);
