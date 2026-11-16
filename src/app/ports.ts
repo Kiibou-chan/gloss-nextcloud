@@ -78,4 +78,4 @@ export interface PanelPort {
   setConflictView(view: { text: string; show: boolean }): void
 }
 export interface Clipboard { write(text: string): Promise<boolean> }
-export type Ports = { draftStore: CommentDraftStore; editor: EditorPort; pdf: PdfPort; api: ReviewApi; store: BackupStore; clock: Clock; ids: Ids; scheduler: Scheduler; clipboard: Clipboard; panel: PanelPort; reviewable: boolean; hasPdf: boolean; diagnostic(message: string): void }
+export type Ports = { draftStore: CommentDraftStore; editor: EditorPort; pdf: PdfPort; api: ReviewApi; store: BackupStore; clock: Clock; ids: Ids; scheduler: Scheduler; clipboard: Clipboard; panel: PanelPort; compiler: CompilerPort | null; reviewable: boolean; hasPdf: boolean; diagnostic(message: string): void }

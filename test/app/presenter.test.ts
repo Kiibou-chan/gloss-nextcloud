@@ -37,3 +37,14 @@ test('a card is off the PDF only outside the editor view, and only that card is 
   s.view = 'editor'; unit.render()
   expect(f.panel.upsertCard).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: b, offPdf: false }))
 })
+
+test('the head carries the quiet line, and a card the compiler left out is off the PDF', () => {
+  const f = fakes(), s = new SessionState(f.ports)
+  const unit = new Presenter(s, { publishLink: vi.fn(), overallText: () => '', deferPdf: vi.fn() })
+  s.draft = 'alpha beta'; s.file = 'draft.txt'; s.review = new DraftReview(s.file, s.draft)
+  s.review.comment({ from: 0, to: 5 }, 'one', f.ids.item(), f.clock.now())
+  s.view = 'pdf'; s.pdfNote = 'Showing your PDF while the draft compiles.'; s.omitted = new Set([s.review.items()[0]!.id])
+  unit.render()
+  expect(f.panel.setHead).toHaveBeenLastCalledWith(expect.objectContaining({ pdfNote: 'Showing your PDF while the draft compiles.' }))
+  expect(f.panel.upsertCard).toHaveBeenLastCalledWith(expect.objectContaining({ offPdf: true }))
+})

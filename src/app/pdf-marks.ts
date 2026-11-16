@@ -11,23 +11,25 @@ export class PdfMarks {
   private cancelPdf: (() => void) | null = null
   private pdfLoading: Promise<void> | null = null
   private pdfScheduledSignature: string | null = null
+  private swaps = 0
+  private swapped = false
   private pdfIndex: ReturnType<typeof pdfKey> | null = null
   private offPlaced = new Set<string>()
   private undrawn = new Set<string>()
   private unsubscribeUndrawn: (() => void) | null = null
   private pdfCache = new Map<string, { signature: string; marks: PdfMark[] }>()
-  constructor(private readonly s: SessionState, private readonly actions: Pick<SessionActions, 'head' | 'render'>) {}
+  constructor(private readonly s: SessionState, private readonly actions: Pick<SessionActions, 'compile' | 'head' | 'render'>) {}
   async setView(view: ViewMode): Promise<void> {
     if (this.s.disposed) return
     if (this.s.ports.hasPdf === false) view = 'editor'
     this.s.view = view; this.s.ports.store.setView(view); this.actions.head(); this.actions.render()
-    if (view === 'editor') { this.cancelPdf?.(); this.pdfScheduledSignature = null; return }
+    if (view === 'editor') { this.cancelPdf?.(); this.pdfScheduledSignature = null; this.actions.compile(true); return }
     if (!this.pdfLoading) {
       this.s.status = 'Loading the PDF…'; this.actions.head()
       this.unsubscribeUndrawn ??= this.s.ports.pdf.onUndrawn?.(ids => { this.undrawn = new Set(ids); this.applyOff() }) || null
       this.pdfLoading = this.s.ports.pdf.show().then(({ pages }) => { this.pdfIndex = pdfKey(pages) })
     }
-    try { await this.pdfLoading; if (['Loading the PDF…', 'Could not load the PDF.'].includes(this.s.status)) { this.s.status = ''; this.actions.head() }; this.deferPdf() }
+    try { await this.pdfLoading; if (['Loading the PDF…', 'Could not load the PDF.'].includes(this.s.status)) { this.s.status = ''; this.actions.head() }; this.deferPdf(); this.actions.compile(true) }
     catch {
       this.pdfLoading = null
       if (this.s.disposed) return
@@ -41,6 +43,17 @@ export class PdfMarks {
     const reshaped = (this.s.pdfLook === 'original') !== (look === 'original')
     this.s.pdfLook = look; this.s.ports.store.setPdfLook(look); this.s.ports.pdf.setLook(look); this.actions.head()
     if (reshaped) { this.pdfCache = new Map(); this.pdfScheduledSignature = null; this.deferPdf() }
+    this.actions.compile(true)
+  }
+  showBytes(bytes: Uint8Array): Promise<void> { return this.swap(() => this.s.ports.pdf.showBytes(bytes)) }
+  showUploaded(): Promise<void> { return this.swap(() => this.s.ports.pdf.show()) }
+  private async swap(load: () => Promise<{ pages: readonly (readonly string[])[] }>): Promise<void> {
+    await this.pdfLoading?.catch(() => {})
+    const mine = ++this.swaps
+    const { pages } = await load()
+    if (this.s.disposed || mine !== this.swaps) return
+    this.pdfIndex = pdfKey(pages); this.pdfCache = new Map(); this.pdfScheduledSignature = null; this.swapped = true
+    this.deferPdf()
   }
   deferPdf(): void {
     if (this.s.disposed || this.s.view === 'editor' || !this.pdfIndex || !this.s.review) return
@@ -64,7 +77,8 @@ export class PdfMarks {
         }
         if (next.get(item.id)!.marks.length === 0 && !(this.s.pdfLook === 'original' && item.kind === 'proposal')) off.add(item.id)
       }
-      const redraw = changed || next.size !== this.pdfCache.size
+      const redraw = changed || this.swapped || next.size !== this.pdfCache.size
+      this.swapped = false
       this.pdfCache = next
       this.offPlaced = off
       if (redraw) this.s.ports.pdf.setMarks([...next.values()].flatMap(c => c.marks))

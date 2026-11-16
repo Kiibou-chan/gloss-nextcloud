@@ -1,5 +1,5 @@
 import { vi } from 'vitest'
-import type { Backup, Change, Ports, EditorPort, PdfPort, ReviewApi, BackupStore, Clock, Ids, Scheduler, PanelPort, Clipboard, Failure } from '../../src/app/ports'
+import type { Backup, Change, CompilerPort, Ports, EditorPort, PdfPort, ReviewApi, BackupStore, Clock, Ids, Scheduler, PanelPort, Clipboard, Failure } from '../../src/app/ports'
 import type { HeadView } from '../../src/app/view'
 
 export function fakes() {
@@ -33,6 +33,7 @@ export function fakes() {
   const clipboard = { write: vi.fn(async () => true) } satisfies Clipboard
   const drafts = new Map<string, string>()
   const draftStore = { read: (key: string) => drafts.get(key) ?? null, write: (key: string, value: string) => { drafts.set(key, value) }, clear: (key: string) => { drafts.delete(key) } }
-  const ports = { draftStore, editor, pdf, api, store, clock, ids, scheduler, clipboard, panel, reviewable: true, hasPdf: true, diagnostic: vi.fn<(message: string) => void>() } satisfies Ports
+  const compiler = { compile: vi.fn<CompilerPort['compile']>(async () => ({ pdf: new Uint8Array([37, 80, 68, 70]), diagnostics: [], ms: 1 })) } satisfies CompilerPort
+  const ports = { compiler, draftStore, editor, pdf, api, store, clock, ids, scheduler, clipboard, panel, reviewable: true, hasPdf: true, diagnostic: vi.fn<(message: string) => void>() } satisfies Ports
   return { ...ports, ports, attempt: () => attempt(), failure, unsubscribed: () => unsubscriptions, select: (from: number, to: number) => select({ from, to }), pdfSelect: (text: string, fraction = 0) => pdfSelect({ text, fraction }), drift: (s: string) => { text = s }, head: () => panel.setHead.mock.lastCall![0], advance: async (ms: number) => { const end = time + ms; for (;;) { const t = timers.filter(t => !t.cancelled && t.at <= end).sort((a, b) => a.at - b.at)[0]; if (!t) break; t.cancelled = true; time = t.at; t.run(); await Promise.resolve(); await Promise.resolve() } time = end } }
 }

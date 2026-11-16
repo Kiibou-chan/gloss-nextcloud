@@ -9,6 +9,7 @@ import { SessionSave } from './session-save'
 import { SessionItems } from './items'
 import { Presenter } from './presenter'
 import { PdfMarks } from './pdf-marks'
+import { CompiledPdf } from './compiled-pdf'
 import { LinkKey } from './link-key'
 import { editorTarget } from './editor-target'
 import { requestName } from './name-guard'
@@ -21,6 +22,7 @@ export class ReviewSession {
   private readonly items: SessionItems
   private readonly presenter: Presenter
   private readonly pdf: PdfMarks
+  private readonly compiled: CompiledPdf
   private readonly link: LinkKey
   constructor(ports: Ports, page = { address: '', fragment: '' }, main?: MainDraft) {
     this.s = new SessionState(ports, page, main)
@@ -29,7 +31,8 @@ export class ReviewSession {
       changed: (...args) => this.saving.changed(...args),
       clearLinkMessage: (...args) => this.link.clearLinkMessage(...args),
       createQueue: (...args) => this.saving.createQueue(...args),
-      deferPdf: (...args) => this.pdf.deferPdf(...args),
+      compile: now => this.compiled.request(now),
+      deferPdf: () => { this.pdf.deferPdf(); this.compiled.request(false) },
       editable: (...args) => this.presenter.editable(...args),
       head: (...args) => this.presenter.head(...args),
       install: (...args) => this.items.install(...args),
@@ -46,6 +49,7 @@ export class ReviewSession {
     this.items = new SessionItems(this.s, actions)
     this.presenter = new Presenter(this.s, actions)
     this.pdf = new PdfMarks(this.s, actions)
+    this.compiled = new CompiledPdf(this.s, this.pdf, actions)
     this.link = new LinkKey(this.s)
     ports.editor.setEditable(false)
     this.listen(ports.editor.onEdit(changes => this.items.edit(changes)))
@@ -100,7 +104,7 @@ export class ReviewSession {
   dispose(): void {
     if (this.s.disposed) return
     this.s.disposed = true; this.s.generation++
-    this.saving.dispose(); this.pdf.dispose()
+    this.saving.dispose(); this.pdf.dispose(); this.compiled.dispose()
     for (const unsubscribe of this.s.listeners) unsubscribe()
     this.s.listeners = []
   }

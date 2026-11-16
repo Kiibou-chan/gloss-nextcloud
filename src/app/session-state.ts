@@ -13,6 +13,7 @@ export type MainDraft = { file: string; text: string; etag: string; language: Re
 export interface SessionActions {
   backup(dirty: boolean): void
   changed(): void
+  compile(now: boolean): void
   clearLinkMessage(): void
   createQueue(backup?: Backup | null): void
   deferPdf(): void
@@ -35,6 +36,8 @@ export class SessionState {
   listeners: (() => void)[] = []
   unplaced: Item[] = []
   offPdf = new Set<string>()
+  omitted = new Set<string>()
+  pdfNote = ''
   saved = false
   blocked = false
   pendingName = ''

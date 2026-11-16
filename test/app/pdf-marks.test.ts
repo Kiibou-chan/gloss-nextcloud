@@ -9,7 +9,7 @@ import { fakes } from './fakes'
 
 test('defers PDF marks, reuses unchanged placements, and cancels on disposal', async () => {
   const f = fakes(), s = new SessionState(f.ports)
-  const unit = new PdfMarks(s, { head: vi.fn(), render: vi.fn() })
+  const unit = new PdfMarks(s, { compile: vi.fn(), head: vi.fn(), render: vi.fn() })
   s.draft = 'alpha beta gamma delta'; s.file = 'draft.txt'; s.ops = plainOps(s.draft); s.source = sourceKey(s.file, s.draft, s.ops)
   s.review = new DraftReview(s.file, s.draft)
   s.review.comment({ from: 0, to: 5 }, 'note', f.ids.item(), f.clock.now())
@@ -32,7 +32,7 @@ test('announces PDF loading before show resolves and clears it afterwards', asyn
   const f = fakes(), s = new SessionState(f.ports)
   let resolve!: (value: { pages: string[][] }) => void
   f.pdf.show.mockImplementation(() => new Promise(done => { resolve = done }))
-  const head = vi.fn(), unit = new PdfMarks(s, { head, render: vi.fn() })
+  const head = vi.fn(), unit = new PdfMarks(s, { compile: vi.fn(), head, render: vi.fn() })
   const loading = unit.setView('pdf')
   expect(s.status).toBe('Loading the PDF…')
   expect(head).toHaveBeenCalled()
@@ -42,7 +42,7 @@ test('announces PDF loading before show resolves and clears it afterwards', asyn
 
 function proposed(change: { from: number; to: number; insert: string }) {
   const f = fakes(), s = new SessionState(f.ports)
-  const unit = new PdfMarks(s, { head: vi.fn(), render: vi.fn() })
+  const unit = new PdfMarks(s, { compile: vi.fn(), head: vi.fn(), render: vi.fn() })
   s.draft = 'alpha beta gamma delta'; s.file = 'draft.txt'; s.ops = plainOps(s.draft); s.source = sourceKey(s.file, s.draft, s.ops)
   s.review = new DraftReview(s.file, s.draft)
   s.review.edit([change], f.ids.item, f.clock.now())
@@ -64,7 +64,7 @@ test.each([
 })
 
 test('a comment is a note and the editor view gets nothing', async () => {
-  const f = fakes(), s = new SessionState(f.ports), unit = new PdfMarks(s, { head: vi.fn(), render: vi.fn() })
+  const f = fakes(), s = new SessionState(f.ports), unit = new PdfMarks(s, { compile: vi.fn(), head: vi.fn(), render: vi.fn() })
   s.draft = 'alpha beta gamma delta'; s.file = 'draft.txt'; s.ops = plainOps(s.draft); s.source = sourceKey(s.file, s.draft, s.ops)
   s.review = new DraftReview(s.file, s.draft)
   s.review.comment({ from: 0, to: 5 }, 'note', f.ids.item(), f.clock.now())
@@ -86,7 +86,7 @@ test('an unchanged proposal is not placed again', async () => {
 })
 
 test('ids with no place stay in offPdf, render runs only when the set changes, and the editor view redraws', async () => {
-  const f = fakes(), s = new SessionState(f.ports), render = vi.fn(), unit = new PdfMarks(s, { head: vi.fn(), render })
+  const f = fakes(), s = new SessionState(f.ports), render = vi.fn(), unit = new PdfMarks(s, { compile: vi.fn(), head: vi.fn(), render })
   s.draft = 'alpha beta gamma delta zzzz qqqq'; s.file = 'draft.txt'; s.ops = plainOps(s.draft); s.source = sourceKey(s.file, s.draft, s.ops)
   s.review = new DraftReview(s.file, s.draft)
   s.review.comment({ from: 0, to: 5 }, 'found', f.ids.item(), f.clock.now())
@@ -106,7 +106,7 @@ test('ids with no place stay in offPdf, render runs only when the set changes, a
 })
 
 test('ids the PDF view reports as undrawn join offPdf and leave it when drawn again', async () => {
-  const f = fakes(), s = new SessionState(f.ports), render = vi.fn(), unit = new PdfMarks(s, { head: vi.fn(), render })
+  const f = fakes(), s = new SessionState(f.ports), render = vi.fn(), unit = new PdfMarks(s, { compile: vi.fn(), head: vi.fn(), render })
   let report: (ids: readonly string[]) => void = () => {}
   ;(f.pdf as PdfPort).onUndrawn = listener => { report = listener; return () => {} }
   s.draft = 'alpha beta gamma delta'; s.file = 'draft.txt'; s.ops = plainOps(s.draft); s.source = sourceKey(s.file, s.draft, s.ops)

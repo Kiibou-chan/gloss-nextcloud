@@ -3,6 +3,8 @@ import { createCommentDraftStore } from './adapters/storage/comment-draft-store'
 import { ReviewSession } from './app/session'
 import { createEditor } from './adapters/codemirror/editor'
 import { createPdfView } from './adapters/pdfjs/pdf-view'
+import { createTypstCompiler } from './adapters/typst/compiler'
+import { typstUrls } from './adapters/typst/urls'
 import { createReviewApi } from './adapters/http/review-api'
 import { createBrowserStore } from './adapters/storage/browser-store'
 import { browserClock } from './adapters/browser/clock'
@@ -12,6 +14,8 @@ import { browserClipboard } from './adapters/browser/clipboard'
 import { languageOf, spellLanguage } from './domain/source/language'
 import { createPanelModel } from './ui/panel-model'
 import { mountHead, mountPanel } from './ui/mount'
+
+declare const __APP_VERSION__: string
 
 export async function mountReview(root: HTMLElement): Promise<() => void> {
   restoreAuthFragment(root.dataset.fragmentScope ?? '')
@@ -42,8 +46,10 @@ export async function mountReview(root: HTMLElement): Promise<() => void> {
   const editor = createEditor(text, { text: main.text, language, spellLanguage: spellLanguage(main.text) ?? 'en' })
   const pdf = createPdfView(pdfSlot, { url: `${base}/pdf`, workerUrl: root.dataset.worker ?? '' })
   const model = createPanelModel()
+  const urls = typstUrls(root.dataset.worker ?? '', location.href, typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev')
+  const compiler = language === 'typst' ? createTypstCompiler(urls.workerUrl, urls.wasmUrl, urls.fontBase, urls.suffix) : null
   const session = new ReviewSession({
-    editor, pdf, api, panel: model, draftStore: createCommentDraftStore(root.dataset.token ?? ''),
+    editor, pdf, api, compiler, panel: model, draftStore: createCommentDraftStore(root.dataset.token ?? ''),
     store: createBrowserStore(root.dataset.token ?? ''), clock: browserClock,
     ids: browserIds, scheduler: browserScheduler, clipboard: browserClipboard,
     reviewable: root.dataset.reviewable === '1', hasPdf: root.dataset.hasPdf === '1',
