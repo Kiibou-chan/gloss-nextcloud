@@ -1,4 +1,4 @@
-import { latexScene } from './latex.mjs';
+import { checkPageNotClipped, latexScene } from './latex.mjs';
 import { liveScenes, sentFileRemoved } from './live.mjs';
 import { expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
@@ -213,6 +213,7 @@ async function proposalCards(page) {
 /** Joins each proposal card's data-id to its marks on the PDF page, and the off-PDF card to none. */
 async function checkProposalMarks(page) {
   await expect.poll(() => page.locator('.gr-pdf-struck').count()).toBeGreaterThan(0);
+  await checkPageNotClipped(page);
   await expect(page.locator('.gr-items > li').filter({ hasText: 'Not shown on the PDF.' })).toBeVisible();
   const expected = [
     { deleted: 'grow', inserted: 'flourish', struck: true, caret: 'flourish' },

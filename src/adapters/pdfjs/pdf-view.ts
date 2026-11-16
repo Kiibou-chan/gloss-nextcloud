@@ -3,6 +3,7 @@ import { getDocument, GlobalWorkerOptions, TextLayer } from 'pdfjs-dist'
 import type { PDFPageProxy, PageViewport, RenderTask } from 'pdfjs-dist'
 import type { PdfMark, PdfPort } from '../../app/ports'
 import { drawPageMarks } from './mark-draw'
+import { createUndrawnTracker } from './undrawn'
 type Page = {
   number: number
   pdf: PDFPageProxy
@@ -19,30 +20,16 @@ type Page = {
 }
 /** The host is the PDF scroll container; matching uses cached text, never the DOM. */
 export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string; workerUrl: string }): PdfPort {
-  let disposed = false
-  let task: ReturnType<typeof getDocument> | undefined
+  let disposed = false, task: ReturnType<typeof getDocument> | undefined
   let loading: ReturnType<PdfPort['show']> | undefined
   let pages: Page[] = []
-  let byId = new Map<string, PdfMark>()
-  let byPage = new Map<number, PdfMark[]>()
-  let observer: IntersectionObserver | undefined
-  let viewportObserver: IntersectionObserver | undefined
+  let byId = new Map<string, PdfMark>(), byPage = new Map<number, PdfMark[]>()
+  let observer: IntersectionObserver | undefined, viewportObserver: IntersectionObserver | undefined
   const visible = new Set<number>()
   let selected: Parameters<PdfPort['onSelect']>[0] | undefined
-  const missing = new Map<number, Set<string>>()
-  let undrawnListener: ((ids: readonly string[]) => void) | undefined
-  function reportUndrawn() {
-    const drawn = new Set<string>()
-    for (const page of pages) for (const child of page.marks.children) drawn.add((child as HTMLElement).dataset.id!)
-    const ids = new Set<string>()
-    for (const set of missing.values()) for (const id of set) if (!drawn.has(id)) ids.add(id)
-    undrawnListener?.([...ids])
-  }
+  const undrawn = createUndrawnTracker(() => pages)
   function drawMarks(page: Page) {
-    const none = drawPageMarks(page, byPage.get(page.number) ?? [])
-    if (none.size) missing.set(page.number, none)
-    else missing.delete(page.number)
-    reportUndrawn()
+    undrawn.set(page.number, drawPageMarks(page, byPage.get(page.number) ?? []))
   }
   function release(page: Page) {
     if (!page.canvas) return
@@ -54,7 +41,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
     page.canvas.remove()
     page.text?.remove()
     page.marks.replaceChildren()
-    missing.delete(page.number)
+    undrawn.forget(page.number)
     page.canvas = undefined
     page.text = undefined
     page.layer = undefined
@@ -161,8 +148,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
     return { pages: pages.map(page => page.content.items.flatMap(item => 'str' in item ? [item.str] : [])) }
   }
   function destroyTask() {
-    const current = task
-    task = undefined
+    const current = task; task = undefined
     if (current) void current.destroy().catch(error => console.error('Could not destroy PDF document', error))
   }
   function reportSelection() {
@@ -224,7 +210,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
       selected = undefined
       for (const page of pages) release(page)
     },
-    onUndrawn(listener) { undrawnListener = listener; return () => { if (undrawnListener === listener) undrawnListener = undefined } },
+    onUndrawn: undrawn.listen,
     onSelect(listener) { selected = listener; return () => { if (selected === listener) selected = undefined } },
   }
 }

@@ -64,9 +64,19 @@ function measure(page) {
   });
 }
 
+/** The first page's left edge lies inside the PDF pane, so the pane never clips it. */
+export async function checkPageNotClipped(page) {
+  const box = await page.evaluate(() => {
+    const pane = document.querySelector('#gr-pdf').getBoundingClientRect(), first = document.querySelector('#gr-pdf .gr-page').getBoundingClientRect();
+    return { pane: pane.left, page: first.left };
+  });
+  if (box.page < box.pane - 0.5) throw new Error(`The PDF page starts ${Math.round(box.pane - box.page)} px left of its pane.`);
+}
+
 /** Joins every case's card to its marks by data-id; the \ref card says it is off the PDF and has no mark. */
 export async function checkLatexMarks(page) {
   await expect.poll(() => page.locator('.gr-pdf-struck').count()).toBeGreaterThan(0);
+  await checkPageNotClipped(page);
   const cards = await measure(page);
   for (const want of cases) {
     const card = cards.find(c => c.deleted === want.deleted && c.inserted.trim() === (want.insert ?? want.after).trim());
