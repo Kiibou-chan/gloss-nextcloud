@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import golden from '../../fixtures/spike/pdf.json';
 import { parseTypst, plainOps } from '../../../src/domain/source/typst-parse';
 import type { PdfPlacement } from '../../../src/domain/pdf/match';
-import { keyOf, sourceKey, pdfKey, toSource, placeMarks } from '../../../src/domain/pdf/match';
+import { keyOf, sourceKey, pdfKey, toSource, placeMarks, nearestKey, segments } from '../../../src/domain/pdf/match';
 
 it.each(golden.cases)('matches the spike: $input.name', ({ input, expected }) => {
   const sk = sourceKey('draft.typ', input.text, parseTypst(input.text));
@@ -50,4 +50,14 @@ it('keeps UTF-16 offsets aligned for supplementary letters', () => {
   expect(placeMarks(pdfKey([[text]]), [{ id: 'a', shown: '𐐨', fraction: 0.5 }])).toEqual([
     { id: 'a', page: 1, startItem: 0, startOffset: 2, endItem: 0, endOffset: 4 },
   ] satisfies PdfPlacement[]);
+});
+it('searches a ready key and splits a key range into page-local segments', () => {
+  expect(nearestKey('alphabetaalpha', 'alpha', 0.9)).toEqual({ start: 9, end: 14 });
+  expect(nearestKey('alphabeta', 'gamma', 0.5)).toBeNull();
+  expect(nearestKey('alpha', '', 0.5)).toBeNull();
+  const pk = pdfKey([['alpha be'], ['ta']]);
+  expect(segments(pk, 'x', 5, 9)).toEqual([
+    { id: 'x', page: 1, startItem: 0, startOffset: 6, endItem: 0, endOffset: 8 },
+    { id: 'x', page: 2, startItem: 0, startOffset: 0, endItem: 0, endOffset: 2 },
+  ]);
 });
