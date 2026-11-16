@@ -3,7 +3,7 @@ import type { Backup, Change, Ports, EditorPort, PdfPort, ReviewApi, BackupStore
 import type { HeadView } from '../../src/app/view'
 
 export function fakes() {
-  let text = '', key: string | null = null, view: 'editor' | 'pdf' | 'both' | null = null, sequence = 0
+  let text = '', key: string | null = null, view: 'editor' | 'pdf' | 'both' | null = null, pdfLook: 'changes' | 'new' | null = null, sequence = 0
   let edit: (c: readonly Change[]) => void = () => {}, select: (r: { from: number; to: number }) => void = () => {}
   let pdfSelect: (s: { text: string; fraction: number }) => void = () => {}
   let attempt = () => {}
@@ -23,10 +23,10 @@ export function fakes() {
     onAttempt: (fn: () => void) => { attempt = fn },
     onEdit: (fn: typeof edit) => { edit = fn; return () => { unsubscriptions++; edit = () => {} } }, onSelect: (fn: typeof select) => { select = fn; return () => { unsubscriptions++; select = () => {} } },
   } satisfies EditorPort
-  const pdf = { show: vi.fn(async () => ({ pages: [['alpha beta gamma delta']] })), setMarks: vi.fn<PdfPort['setMarks']>(), scrollToMark: vi.fn(), onSelect: (fn: typeof pdfSelect) => { pdfSelect = fn; return () => { unsubscriptions++; pdfSelect = () => {} } } } satisfies PdfPort
+  const pdf = { show: vi.fn(async () => ({ pages: [['alpha beta gamma delta']] })), setMarks: vi.fn<PdfPort['setMarks']>(), setLook: vi.fn<PdfPort['setLook']>(), scrollToMark: vi.fn(), onSelect: (fn: typeof pdfSelect) => { pdfSelect = fn; return () => { unsubscriptions++; pdfSelect = () => {} } } } satisfies PdfPort
   const failure: Failure = { status: 0, error: 'network' }
   const api = { draft: vi.fn(async () => ({ main: 'draft.txt', files: [{ file: 'draft.txt', text: 'alpha beta gamma delta', etag: 'v1' }] })), open: vi.fn<Ports['api']['open']>(async () => ({ review: null })), save: vi.fn<Ports['api']['save']>(async (_key, _body, base) => ({ revision: base + 1 })) } satisfies ReviewApi
-  const store = { rememberedKey: () => key, remember: vi.fn((k: string) => { key = k }), read: (k: string) => backups.get(k) ?? null, write: (k: string, b: Backup) => { backups.set(k, b); return true }, keepConflict: vi.fn(), readConflict: () => null, view: () => view, setView: vi.fn((v: 'editor' | 'pdf' | 'both') => { view = v }) } satisfies BackupStore
+  const store = { rememberedKey: () => key, remember: vi.fn((k: string) => { key = k }), read: (k: string) => backups.get(k) ?? null, write: (k: string, b: Backup) => { backups.set(k, b); return true }, keepConflict: vi.fn(), readConflict: () => null, view: () => view, setView: vi.fn((v: 'editor' | 'pdf' | 'both') => { view = v }), pdfLook: () => pdfLook, setPdfLook: vi.fn((v: 'changes' | 'new') => { pdfLook = v }) } satisfies BackupStore
   const clock = { now: () => '2026-11-15T20:00:00.000Z', local: (at: string) => at } satisfies Clock
   const ids = { item: () => (++sequence).toString().padStart(10, '0'), key: () => 'Abcdef1234567890' } satisfies Ids
   const scheduler = { after: (ms: number, run: () => void) => { const t = { at: time + ms, run, cancelled: false }; timers.push(t); return () => { t.cancelled = true } } } satisfies Scheduler

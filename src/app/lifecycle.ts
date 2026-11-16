@@ -12,7 +12,7 @@ import type { Backup } from './ports'
 import { SessionState, type SessionActions } from './session-state'
 
 export class Lifecycle {
-  constructor(private readonly s: SessionState, private readonly actions: Pick<SessionActions, 'backup' | 'changed' | 'createQueue' | 'head' | 'install' | 'refusal' | 'render' | 'setView'>) {}
+  constructor(private readonly s: SessionState, private readonly actions: Pick<SessionActions, 'backup' | 'changed' | 'createQueue' | 'head' | 'install' | 'refusal' | 'render' | 'setView' | 'restoreLook'>) {}
   async start(): Promise<void> {
     try {
       const d = this.s.main ? null : await this.s.ports.api.draft()
@@ -25,6 +25,7 @@ export class Lifecycle {
       this.s.source = sourceKey(this.s.file, this.s.draft, this.s.ops)
       this.s.review = new DraftReview(this.s.file, this.s.draft)
       this.s.ports.editor.setText(this.s.review.applied()); this.actions.render()
+      this.actions.restoreLook()
       await this.actions.setView(this.s.ports.store.view() ?? 'editor')
       if (!this.s.ports.reviewable) { this.s.status = 'This link is not set up for reviewing.'; this.actions.head(); return }
       const fragment = this.s.page.fragment.startsWith('#') && REVIEW_KEY.test(this.s.page.fragment.slice(1)) ? this.s.page.fragment.slice(1) : null

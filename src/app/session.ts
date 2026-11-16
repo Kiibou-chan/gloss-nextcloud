@@ -1,7 +1,7 @@
 import type { Ports } from './ports'
 import type { Target } from '../domain/review/model'
 import { toSource } from '../domain/pdf/match'
-import type { ViewMode } from './view'
+import type { PdfLook, ViewMode } from './view'
 import { refusal } from './failure'
 import { SessionState, type MainDraft, type SessionActions } from './session-state'
 import { Lifecycle } from './lifecycle'
@@ -39,6 +39,7 @@ export class ReviewSession {
       refusal,
       render: (...args) => this.presenter.render(...args),
       setView: (...args) => this.pdf.setView(...args),
+      restoreLook: (...args) => this.pdf.restoreLook(...args),
     }
     this.lifecycle = new Lifecycle(this.s, actions)
     this.saving = new SessionSave(this.s, actions)
@@ -91,6 +92,7 @@ export class ReviewSession {
   focusItem(id: string): void { return this.items.focusItem(id) }
   setOverall(text: string): void { return this.items.setOverall(text) }
   setView(view: ViewMode): Promise<void> { return this.pdf.setView(view) }
+  setPdfLook(look: PdfLook): void { this.pdf.setPdfLook(look) }
   copyReviewLink(): Promise<void> { return this.link.copyReviewLink() }
   send(): Promise<void> { return this.saving.send() }
   showKeptChanges(): void { return this.lifecycle.showKeptChanges() }

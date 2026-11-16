@@ -1,7 +1,7 @@
 import type { PdfPlacement } from '../domain/pdf/match'
 import type { PdfCaret } from '../domain/pdf/proposal-marks'
 import type { Change } from '../domain/review/model'
-import type { UnplacedView, CardView, DeletedWords, EditorMark, HeadView, ViewMode } from './view'
+import type { UnplacedView, CardView, DeletedWords, EditorMark, HeadView, ViewMode, PdfLook } from './view'
 export type { Change } from '../domain/review/model'
 export interface EditorPort {
   onAttempt?(listener: () => void): void | (() => void)
@@ -22,6 +22,7 @@ export interface PdfPort {
   dispose?(): void
   show(): Promise<{ pages: readonly (readonly string[])[] }>
   setMarks(marks: readonly PdfMark[]): void
+  setLook(look: PdfLook): void
   scrollToMark(id: string): void
   onSelect(listener: (s: { text: string; fraction: number }) => void): void | (() => void)
 }
@@ -46,6 +47,8 @@ export interface BackupStore {
   readConflict(key: string): Backup | null
   view(): ViewMode | null
   setView(v: ViewMode): void
+  pdfLook(): PdfLook | null
+  setPdfLook(look: PdfLook): void
 }
 export interface CommentDraftStore { read(key: string): string | null; write(key: string, value: string): void; clear(key: string): void }
 export interface Clock { now(): string; local?(at: string): string }

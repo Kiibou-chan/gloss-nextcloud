@@ -3,7 +3,7 @@ import { placeItem } from '../domain/pdf/proposal-marks'
 import { proposalLabel } from './brief'
 import type { Note, Proposal } from '../domain/review/model'
 import type { PdfMark } from './ports'
-import type { ViewMode } from './view'
+import type { PdfLook, ViewMode } from './view'
 
 import { SessionState, type SessionActions } from './session-state'
 
@@ -30,6 +30,11 @@ export class PdfMarks {
       this.s.view = 'editor'; this.s.ports.store.setView('editor')
       this.s.status = 'Could not load the PDF.'; this.actions.head()
     }
+  }
+  restoreLook(): void { this.s.pdfLook = this.s.ports.store.pdfLook() ?? 'changes'; this.s.ports.pdf.setLook(this.s.pdfLook) }
+  setPdfLook(look: PdfLook): void {
+    if (this.s.disposed) return
+    this.s.pdfLook = look; this.s.ports.store.setPdfLook(look); this.s.ports.pdf.setLook(look); this.actions.head()
   }
   deferPdf(): void {
     if (this.s.disposed || this.s.view === 'editor' || !this.pdfIndex || !this.s.review) return

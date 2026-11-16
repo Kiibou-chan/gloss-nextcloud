@@ -11,9 +11,9 @@ import { mountHead, mountPanel } from '../../src/ui/mount'
 
 const renderOptions = options as typeof options & { __r?: (vnode: { type: unknown; props: { id?: string } }) => void }
 
-const head = (extra: Partial<HeadView> = {}): HeadView => ({ name: 'Ada', title: 'synthetic.typ', hasPdf: true, view: 'editor', editable: true, canSend: true, status: '', form: null, ...extra })
+const head = (extra: Partial<HeadView> = {}): HeadView => ({ name: 'Ada', title: 'synthetic.typ', hasPdf: true, view: 'editor', pdfLook: 'changes', editable: true, canSend: true, status: '', form: null, ...extra })
 const card = (id: string, extra: Partial<CardView> = {}): CardView => ({ id, kind: 'proposal', from: 0, shown: 'old', proposalShown: 'new', comments: [], editable: true, offPdf: false, ...extra })
-const commands = () => ({ setName: vi.fn(), setView: vi.fn(), openForm: vi.fn(), cancelForm: vi.fn(), commentOn: vi.fn(), deleteComment: vi.fn(), undoProposal: vi.fn(), focusItem: vi.fn(), send: vi.fn(), setOverall: vi.fn(), showKeptChanges: vi.fn(), copyReviewLink: vi.fn() } satisfies Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges' | 'copyReviewLink'>)
+const commands = () => ({ setName: vi.fn(), setView: vi.fn(), setPdfLook: vi.fn(), openForm: vi.fn(), cancelForm: vi.fn(), commentOn: vi.fn(), deleteComment: vi.fn(), undoProposal: vi.fn(), focusItem: vi.fn(), send: vi.fn(), setOverall: vi.fn(), showKeptChanges: vi.fn(), copyReviewLink: vi.fn() } satisfies Pick<ReviewSession, 'setName' | 'setView' | 'setPdfLook' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges' | 'copyReviewLink'>)
 let dispose: (() => void)[] = []
 afterEach(() => { act(() => dispose.forEach(fn => fn())); dispose = []; document.body.replaceChildren() })
 function slot() { const el = document.createElement('div'); document.body.append(el); return el }
@@ -141,6 +141,17 @@ describe('review islands', () => {
     act(() => model.setHead(head({ hasPdf: false, view: 'both', canSend: false, status: 'Review sent. Thank you.' })))
     expect(el.querySelector('.gr-views')?.hasAttribute('hidden')).toBe(true); expect(el.querySelector('#gr-view-both')?.getAttribute('aria-pressed')).toBe('true')
     expect(el.querySelector<HTMLButtonElement>('#gr-send')?.disabled).toBe(true); expect(el.querySelector('[role="status"]')?.textContent).toBe('Review sent. Thank you.')
+  })
+  it('renders the PDF look switch with Changes pressed, hidden in the editor view, and calling setPdfLook', () => {
+    const model = createPanelModel(), session = commands(), el = slot()
+    act(() => { model.setHead(head({ view: 'pdf' })); dispose.push(mountHead(el, model, session)) })
+    const group = el.querySelector('.gr-pdf-look')!
+    expect(group.getAttribute('role')).toBe('group'); expect(group.getAttribute('aria-label')).toBe('PDF shows'); expect(group.hasAttribute('hidden')).toBe(false)
+    expect(el.querySelector('#gr-pdf-look-changes')?.getAttribute('aria-pressed')).toBe('true'); expect(el.querySelector('#gr-pdf-look-new')?.getAttribute('aria-pressed')).toBe('false')
+    click(el.querySelector('#gr-pdf-look-new')); expect(session.setPdfLook).toHaveBeenLastCalledWith('new')
+    act(() => model.setHead(head({ view: 'both', pdfLook: 'new' }))); expect(group.hasAttribute('hidden')).toBe(false); expect(el.querySelector('#gr-pdf-look-new')?.getAttribute('aria-pressed')).toBe('true')
+    act(() => model.setHead(head({ view: 'editor' }))); expect(group.hasAttribute('hidden')).toBe(true)
+    act(() => model.setHead(head({ view: 'pdf', hasPdf: false }))); expect(group.hasAttribute('hidden')).toBe(true)
   })
   it('supports direct head vnodes and disposes subscriptions in both mounts', () => {
     const model = createPanelModel(), session = commands(), el = slot(), panel = slot()

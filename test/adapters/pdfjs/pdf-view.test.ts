@@ -165,6 +165,15 @@ describe('PDF view', () => {
     expect(host.querySelector('.gr-pdf-mark')).toBeNull()
   })
 
+  it('setLook redraws the drawn pages and draws nothing differently yet', async () => {
+    const view = create(); await view.show(); observe(0); await settle()
+    view.setMarks([placement()])
+    const before = boxes()[0]!.querySelector('.gr-pdf-mark')!
+    view.setLook('new')
+    const after = boxes()[0]!.querySelector('.gr-pdf-mark')!
+    expect(after).not.toBe(before); expect(after.getAttribute('data-id')).toBe('abcdefghij')
+  })
+
   it('scrolls to a pending mark before the target page has drawn', async () => {
     const scroll = vi.fn()
     Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: scroll })

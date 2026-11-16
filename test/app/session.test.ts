@@ -185,6 +185,15 @@ describe('ReviewSession', () => {
     f.editor.replace({ from: 6, to: 14, insert: 'bright' }); await f.advance(200); f.editor.replace({ from: 6, to: 12, insert: 'blue' }); await f.advance(399); expect(f.pdf.setMarks).not.toHaveBeenCalled(); await f.advance(1); expect(f.pdf.setMarks).toHaveBeenCalledTimes(1)
     await s.setView('editor'); await s.setView('pdf'); expect(f.pdf.show).toHaveBeenCalledTimes(1)
   })
+  it('restores the stored PDF look at start, defaulting to changes', async () => {
+    const f = fakes(); await new ReviewSession(f.ports).start(); expect(f.pdf.setLook).toHaveBeenLastCalledWith('changes'); expect(f.head().pdfLook).toBe('changes')
+    const g = fakes(); g.store.setPdfLook('new'); await new ReviewSession(g.ports).start(); expect(g.pdf.setLook).toHaveBeenLastCalledWith('new'); expect(g.head().pdfLook).toBe('new')
+  })
+  it('stores the look and calls setLook without placing again', async () => {
+    const { f, s } = await ready(); await s.setView('both'); await f.advance(400); f.pdf.setMarks.mockClear()
+    await s.setPdfLook('new'); await f.advance(1000)
+    expect(f.store.setPdfLook).toHaveBeenLastCalledWith('new'); expect(f.pdf.setLook).toHaveBeenLastCalledWith('new'); expect(f.pdf.setMarks).not.toHaveBeenCalled(); expect(f.head().pdfLook).toBe('new')
+  })
   it('restores the remembered view', async () => { const f = fakes(); f.store.setView('pdf'); const s = new ReviewSession(f.ports); await s.start(); expect(f.pdf.show).toHaveBeenCalledTimes(1) })
   it('saves after 5 s and reconciles drift before serialising', async () => {
     const { f } = await ready(); f.editor.replace(change); await f.advance(4999); expect(f.api.save).not.toHaveBeenCalled()

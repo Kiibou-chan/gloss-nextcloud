@@ -5,7 +5,7 @@ import type { DraftReview } from '../domain/review/draft-review'
 import type { sourceKey } from '../domain/pdf/match'
 import type { plainOps } from '../domain/source/typst-parse'
 import type { Backup, Failure, Ports } from './ports'
-import type { HeadView, ViewMode } from './view'
+import type { HeadView, PdfLook, ViewMode } from './view'
 import type { SaveQueue } from './save-queue'
 import type { languageOf } from '../domain/source/language'
 
@@ -25,6 +25,7 @@ export interface SessionActions {
   refusal(failure: Failure, prefix: string): { text: string; blocks: boolean }
   render(): void
   setView(view: ViewMode): Promise<void>
+  restoreLook(): void
 }
 
 /** Shared review data; each job owns its timers and presentation caches. */
@@ -48,6 +49,7 @@ export class SessionState {
   status = ''
   form: HeadView['form'] = null
   view: ViewMode = 'editor'
+  pdfLook: PdfLook = 'changes'
   loading = false
   generation = 0
   queue: SaveQueue | null = null

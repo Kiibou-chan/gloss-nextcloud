@@ -29,9 +29,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
   let viewportObserver: IntersectionObserver | undefined
   const visible = new Set<number>()
   let selected: Parameters<PdfPort['onSelect']>[0] | undefined
-  function drawMarks(page: Page) {
-    drawPageMarks(page, byPage.get(page.number) ?? [])
-  }
+  function drawMarks(page: Page) { drawPageMarks(page, byPage.get(page.number) ?? []) }
   function release(page: Page) {
     if (!page.canvas) return
     // A cancelled render may settle after this page has started drawing again.
@@ -195,6 +193,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
       }
       for (const page of pages) drawMarks(page)
     },
+    setLook() { for (const page of pages) drawMarks(page) },
     scrollToMark(id) {
       const mark = byId.get(id)
       const page = mark && pages[mark.page - 1]

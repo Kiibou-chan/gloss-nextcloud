@@ -6,7 +6,7 @@ import type { UnplacedView, CardView, HeadView } from '../app/view'
 import { flushIslands } from './island'
 
 /** Only the public session commands are available to the islands and their fakes. */
-export type PanelCommands = Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges'> & Pick<ReviewSession, 'copyReviewLink'> & Partial<Pick<ReviewSession, 'requestName' | 'commentSelection' | 'setCommentDraft'>>
+export type PanelCommands = Pick<ReviewSession, 'setName' | 'setView' | 'setPdfLook' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges'> & Pick<ReviewSession, 'copyReviewLink'> & Partial<Pick<ReviewSession, 'requestName' | 'commentSelection' | 'setCommentDraft'>>
 export interface PanelModel extends PanelPort {
   readonly unplaced: Signal<readonly UnplacedView[]>
   readonly commentDraft: Signal<string>
@@ -28,7 +28,7 @@ export function createPanelModel(): PanelModel {
   const cards = new Map<string, Signal<CardView>>()
   const order = signal<readonly string[]>([])
   const count = signal({ changes: 0, comments: 0 })
-  const head = signal<HeadView>({ name: '', title: '', hasPdf: false, view: 'editor', editable: false, canSend: false, status: '', form: null })
+  const head = signal<HeadView>({ name: '', title: '', hasPdf: false, view: 'editor', pdfLook: 'changes', editable: false, canSend: false, status: '', form: null })
   const conflict = signal<{ text: string; show: boolean } | null>(null)
   return {
     link, unplaced, commentDraft,
