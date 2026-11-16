@@ -1,5 +1,6 @@
 import type { PdfPlacement } from '../domain/pdf/match'
 import type { PdfCaret } from '../domain/pdf/proposal-marks'
+import type { Diagnostic } from '../domain/typst/diagnostic'
 import type { Change } from '../domain/review/model'
 import type { UnplacedView, CardView, DeletedWords, EditorMark, HeadView, ViewMode, PdfLook } from './view'
 export type { Change } from '../domain/review/model'
@@ -27,6 +28,9 @@ export interface PdfPort {
   scrollToMark(id: string): void
   onSelect(listener: (s: { text: string; fraction: number }) => void): void | (() => void)
 }
+export type CompileJob = { main: string; sources: readonly { path: string; text: string }[]; files: readonly { path: string; bytes: Uint8Array }[] }
+export type CompileResult = { pdf: Uint8Array | null; diagnostics: readonly Diagnostic[]; ms: number } | { failed: 'start' }
+export interface CompilerPort { compile(job: CompileJob): Promise<CompileResult> }
 export type Failure = { status: number; error: string }
 export interface CancelSignal {
   readonly aborted: boolean

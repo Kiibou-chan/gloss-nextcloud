@@ -3,6 +3,7 @@
   "entry": [
     "src/main.ts",
     "src/adapters/pdfjs/worker-entry.ts",
+    "src/adapters/typst/worker-entry.ts",
     "scripts/*.mjs",
     "test/**/*.test.{ts,tsx}"
   ],

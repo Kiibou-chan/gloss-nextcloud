@@ -127,3 +127,12 @@ The author chose B: on the PDF, an inserted spot shows a thin caret, and its wor
 The caret takes keyboard focus and is named by its words for screen readers.
 It sits above the PDF's text layer, so the pointer reaches it, and the layer holding the marks still passes every other click through.
 The pressed look and view buttons use Nextcloud's primary colours with a bold label and an inset outline, so the pressed one reads plainly in light and dark.
+
+## PDFDIFF-1: the Typst draft compiles in the reviewer's browser
+
+The PDF view shows a Typst draft's proposals as a real inline diff and as the real new version, compiled by typst.ts's low-level compiler in a worker, with the uploaded PDF kept as Original and as the fallback.
+The compiler is `@myriaddreamin/typst-ts-web-compiler` pinned exactly at 0.7.0, the latest stable release, with Typst 0.14.2 bundled; its wasm is 28,325,178 bytes, 10,767,665 bytes at `gzip -9`.
+Gate G1 compiled the synthetic Typst fixture with its APA bibliography, the wrapper constructs of the diff source, the proposals fixture, and an error and a package import in a real browser, so the release candidate 0.8.0-rc4 (Typst 0.15.1) was not needed and is not used; a draft that needs 0.15-only syntax falls back to the overlay with its quiet line.
+The compiler's `evict_cache` exists only from 0.8.0-rc4 on, so the worker calls it only when present.
+The build replaces the glue's two `new Function(` call sites with a lookup of the constant bodies the dummy access model and package registry hand it, and fails unless it replaces exactly two, so no `js/*.js` file generates code at run time.
+The compiler gives no diagnostics for a successful compile, and its error ranges count lines from zero; the worker therefore takes warnings from compiling the snapshot world and adds one to every line.

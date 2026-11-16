@@ -12,6 +12,10 @@ test('built page scripts and the PDF worker contain no runtime code generation',
   }
 })
 
+test('the Typst worker and its wasm are built', () => {
+  expect(readdirSync(resolve('js'))).toEqual(expect.arrayContaining(['typst.worker.js', 'typst-compiler.wasm']))
+})
+
 // The build helper is JavaScript, so load it by URL without adding a TS declaration file.
 const helperUrl = new URL('../../scripts/text-layer-css.mjs', import.meta.url).href
 

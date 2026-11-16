@@ -28,7 +28,8 @@
     "pdfjs-dist": "6.5.438",
     "preact": "10.29.8",
     "@preact/signals": "2.11.4",
-    "@types/node": "26.6.6"
+    "@types/node": "26.6.6",
+    "@myriaddreamin/typst-ts-web-compiler": "0.7.0"
   },
   "type": "module"
 }
