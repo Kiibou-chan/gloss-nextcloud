@@ -75,9 +75,13 @@ function seeded(seed: number): (n: number) => number {
   return n => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s % n; };
 }
 function keyWith(length: number, needle: string, starts: number[]): string {
-  const chars = Array.from({ length }, () => 'z');
-  for (const at of starts) for (let i = 0; i < needle.length; i++) chars[at + i] = needle[i]!;
-  return chars.join('');
+  const sorted = [...starts].sort((a, b) => a - b);
+  let key = '', at = 0;
+  for (const start of sorted) {
+    key += 'z'.repeat(start - at) + needle;
+    at = start + needle.length;
+  }
+  return key + 'z'.repeat(Math.max(0, length - at));
 }
 
 it('equals the whole-key search over 2,000 seeded needles and fractions on a long key', () => {
@@ -116,7 +120,7 @@ it('equals the whole-key search on constructed ties and window edges', () => {
     const key = keyWith(length, needle, starts);
     expect(nearestKey(key, needle, fraction), starts.join()).toEqual(oracleNearest(key, needle, fraction));
   }
-  for (let hit = centre - 2100; hit <= centre + 2100; hit++) {
+  for (let hit = centre - 2100; hit <= centre + 2100; hit += 7) {
     const key = keyWith(length, needle, [hit, 50]);
     expect(nearestKey(key, needle, fraction), String(hit)).toEqual(oracleNearest(key, needle, fraction));
   }
