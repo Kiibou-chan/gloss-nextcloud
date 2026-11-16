@@ -61,3 +61,39 @@ test('the overall scene keeps its garden draft and no PDF', async () => {
   expect(page.body).toContain('data-has-pdf="0"');
   expect(draft.json.main).toBe('garden.txt');
 });
+
+test('the Typst folder serves the compiler worker, wasm, fonts, and the files the draft reads', async () => {
+  const base = 'http://gloss.invalid/index.php/apps/gloss/r/synthetic';
+  const file = path => `${base}/file?path=${encodeURIComponent(path)}`;
+  const [page, worker, wasm, font, missingFont, bib, draft] = await serve('typst-compile', 'Typst', [
+    [base], ['http://gloss.invalid/typst.worker.js?v=dev'], ['http://gloss.invalid/typst-compiler.wasm?v=dev'],
+    ['http://gloss.invalid/fonts/NewCM10-Regular.otf?v=dev'], ['http://gloss.invalid/fonts/nothing.otf'],
+    [file('references.bib')], [`${base}/draft`],
+  ]);
+  expect(page.body).toContain('data-worker="/pdf.worker.js"');
+  expect(worker.contentType).toBe('text/javascript');
+  expect(Buffer.from(wasm.body).equals(await readFile('js/typst-compiler.wasm'))).toBe(true);
+  expect(wasm.contentType).toBe('application/wasm');
+  expect(Buffer.from(font.body).equals(await readFile('fonts/NewCM10-Regular.otf'))).toBe(true);
+  expect(missingFont).toBe('aborted');
+  expect(Buffer.from(bib.body).equals(await readFile('test/fixtures/nc/Typst/references.bib'))).toBe(true);
+  expect(draft.json.main).toBe('paper.typ');
+});
+
+test('the file route refuses what the server refuses', async () => {
+  const base = 'http://gloss.invalid/index.php/apps/gloss/r/synthetic';
+  const file = path => [`${base}/file?path=${encodeURIComponent(path)}`];
+  const paths = ['../paper.typ', 'a/../paper.typ', '/etc/passwd', '.gloss-review/x.json', '.hidden', 'a\\b', 'a\0b', '', 'a//b', 'x/'.repeat(17) + 'y', 'nothing.bib'];
+  const replies = await serve('typst-compile', 'Typst', paths.map(file));
+  for (const reply of replies) expect(reply.status).toBe(404);
+});
+
+test('typst-fallback opens the draft that imports a package', async () => {
+  const base = 'http://gloss.invalid/index.php/apps/gloss/r/synthetic';
+  const [draft] = await serve('typst-fallback', 'Typst', [[`${base}/draft`]]);
+  expect(draft.json.main).toBe('package.typ');
+  expect(draft.json.files[0].text).toContain('#import "@preview/');
+  expect(syntheticScenes).toEqual(expect.arrayContaining(['typst-compile', 'typst-fallback']));
+  expect(scenes['typst-compile'].folder).toBe('Typst');
+  expect(scenes['typst-fallback'].folder).toBe('Typst');
+});

@@ -27,7 +27,7 @@ async function main() {
   let state;
   if (fixture) {
     const link = 'http://gloss.invalid/index.php/apps/gloss/r/synthetic';
-    state = { base: 'http://gloss.invalid', links: { Review: link, Latex: link } };
+    state = { base: 'http://gloss.invalid', links: { Review: link, Latex: link, Typst: link } };
   } else {
     // This is the generated, ignored fixture state, never the real instance's credentials.
     const script = new URL('./dev-nc.sh', import.meta.url);

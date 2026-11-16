@@ -464,6 +464,25 @@ describe('showBytes', () => {
     expect(boxes()[0]!.querySelector('canvas')).not.toBeNull()
   })
 
+  it('draws none of the old document\'s marks on the new one', async () => {
+    const view = create(); await view.show()
+    view.setMarks([placement()])
+    observe(0)
+    await settle()
+    expect(boxes()[0]!.querySelector('.gr-pdf-mark')).not.toBeNull()
+    pdf.getDocument.mockReturnValueOnce(taskOf(3))
+    await view.showBytes!(bytes())
+    observe(0)
+    await settle()
+    expect(host.querySelector('.gr-pdf-mark')).toBeNull()
+    pdf.getDocument.mockReturnValueOnce(taskOf(3))
+    view.setMarks([placement()])
+    await view.show()
+    observe(0)
+    await settle()
+    expect(host.querySelector('.gr-pdf-mark')).toBeNull()
+  })
+
   it('keeps the old document when the new bytes fail to load', async () => {
     const view = create(); await view.show()
     const old = boxes()
