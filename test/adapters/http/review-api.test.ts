@@ -24,6 +24,37 @@ describe('review HTTP adapter', () => {
     expect(await api.draft()).toEqual(draft)
     expect(fetcher).toHaveBeenCalledWith(base + '/draft', expect.objectContaining({ headers: { requesttoken: 'initial-token' } }))
   })
+  describe('file', () => {
+    const bytesOf = (text: string) => new TextEncoder().encode(text)
+    const octets = (bytes: Uint8Array, status = 200) => new Response(bytes.buffer as ArrayBuffer, { status })
+    it('fetches the path encoded, with the request token, and answers bytes', async () => {
+      const { api, fetcher } = setup()
+      fetcher.mockResolvedValueOnce(octets(bytesOf('@book{a}')))
+      const got = await api.file('data/my refs.bib')
+      expect(fetcher).toHaveBeenCalledWith(base + '/file?path=' + encodeURIComponent('data/my refs.bib'), expect.objectContaining({ headers: { requesttoken: 'initial-token' } }))
+      expect(Array.from(got!.bytes)).toEqual(Array.from(bytesOf('@book{a}')))
+      expect(got!.text).toBeNull()
+    })
+    it('decodes text for a .typ path', async () => {
+      const { api, fetcher } = setup()
+      fetcher.mockResolvedValueOnce(octets(bytesOf('= Titel ä')))
+      expect((await api.file('a.typ'))!.text).toBe('= Titel ä')
+    })
+    it('gives null text for a .typ whose bytes are not UTF-8', async () => {
+      const { api, fetcher } = setup()
+      fetcher.mockResolvedValueOnce(octets(new Uint8Array([0x61, 0xff, 0xfe])))
+      const got = await api.file('a.typ')
+      expect(got!.text).toBeNull()
+      expect(got!.bytes.length).toBe(3)
+    })
+    it('answers null on a refusal and on a network failure', async () => {
+      const { api, fetcher } = setup()
+      fetcher.mockResolvedValueOnce(reply({ error: 'no' }, 404))
+      expect(await api.file('a.typ')).toBeNull()
+      fetcher.mockRejectedValueOnce(new Error('offline'))
+      expect(await api.file('a.typ')).toBeNull()
+    })
+  })
   it('opens through POST with the key in the body and preserves the server revision', async () => {
     const { api, fetcher } = setup()
     const review = { name: 'Synthetic Reviewer', items: [] }

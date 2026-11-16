@@ -35,6 +35,7 @@ export interface CancelSignal {
 }
 export interface ReviewApi {
   draft(): Promise<{ main: string; files: readonly { file: string; text: string; etag: string }[] }>
+  file(path: string): Promise<{ bytes: Uint8Array; text: string | null } | null>
   open(key: string): Promise<{ review: unknown; revision: number; rawReview?: string } | { review: null } | Failure>
   save(key: string, body: string, baseRevision: number, options?: { keepalive?: boolean; signal?: CancelSignal }): Promise<{ revision: number } | Failure>
 }

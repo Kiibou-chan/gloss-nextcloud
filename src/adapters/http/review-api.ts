@@ -68,6 +68,15 @@ export function createReviewApi(base: string, requestToken: string, csrfTokenUrl
       if ('status' in result) throw Object.assign(new Error(result.error), { status: result.status })
       return result.data as Awaited<ReturnType<ReviewApi['draft']>>
     },
+    async file(path) {
+      try {
+        const response = await fetch(root + '/file?path=' + encodeURIComponent(path), { headers: { requesttoken: token } })
+        if (!response.ok) return null
+        const bytes = new Uint8Array(await response.arrayBuffer())
+        if (!path.endsWith('.typ')) return { bytes, text: null }
+        try { return { bytes, text: new TextDecoder('utf-8', { fatal: true }).decode(bytes) } } catch { return { bytes, text: null } }
+      } catch { return null }
+    },
     async open(key) {
       const result = await request('/review/open', { method: 'POST', body: new URLSearchParams({ key }) })
       if ('status' in result) return result
