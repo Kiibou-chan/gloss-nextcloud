@@ -9,6 +9,7 @@ use OCA\Gloss\Service\DraftLocator;
 use OCA\Gloss\Service\ReviewStore;
 use OCA\Gloss\Service\SentNotifier;
 use OCA\Gloss\Service\ReviewKey;
+use OCA\Gloss\Service\SharedFiles;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\Attribute\PublicPage;
@@ -45,6 +46,7 @@ class ReviewController extends AuthPublicShareController {
 		private DraftLocator $draftLocator,
 		private ReviewStore $reviewStore,
 		private SentNotifier $sentNotifier,
+		private SharedFiles $sharedFiles,
 	) {
 		parent::__construct($appName, $request, $session, $urls);
 	}
@@ -52,7 +54,7 @@ class ReviewController extends AuthPublicShareController {
 	public function isAuthenticated(): bool {
 		$authenticated = parent::isAuthenticated();
 		$action = substr(strrchr((string)$this->request->getParam('_route'), '.') ?: '', 1);
-		if (!$authenticated && in_array($action, ['draft', 'pdf', 'open', 'save'], true)) {
+		if (!$authenticated && in_array($action, ['draft', 'pdf', 'file', 'open', 'save'], true)) {
 			throw new NotFoundException();
 		}
 		return $authenticated;
@@ -134,6 +136,18 @@ class ReviewController extends AuthPublicShareController {
 		}
 		$response = new StreamResponse($pdf->fopen('rb'));
 		$response->addHeader('Content-Type', 'application/pdf');
+		return $response;
+	}
+
+	#[PublicPage]
+	#[NoCSRFRequired]
+	public function file(string $path): Response {
+		$file = $this->sharedFiles->read($this->requireShare(), $this->folder(), $path);
+		if ($file === null) {
+			return new DataResponse(['error' => 'The draft reads a file this link cannot serve.'], Http::STATUS_NOT_FOUND);
+		}
+		$response = new StreamResponse($file->fopen('rb'));
+		$response->addHeader('Content-Type', 'application/octet-stream');
 		return $response;
 	}
 

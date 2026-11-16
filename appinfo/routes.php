@@ -10,6 +10,7 @@ return [
 		['name' => 'review#authenticate', 'url' => '/r/{token}/authenticate', 'verb' => 'POST'],
 		['name' => 'review#draft', 'url' => '/r/{token}/draft', 'verb' => 'GET'],
 		['name' => 'review#pdf', 'url' => '/r/{token}/pdf', 'verb' => 'GET'],
+		['name' => 'review#file', 'url' => '/r/{token}/file', 'verb' => 'GET'],
 		['name' => 'review#open', 'url' => '/r/{token}/review/open', 'verb' => 'POST'],
 		['name' => 'review#save', 'url' => '/r/{token}/review', 'verb' => 'POST'],
 	],
