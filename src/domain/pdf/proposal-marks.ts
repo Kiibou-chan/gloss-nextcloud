@@ -30,6 +30,7 @@ export function placeItem(
   const lo = lower(sk.at, item.from);
   const hi = lower(sk.at, item.to);
   const words = sk.key.slice(lo, hi);
+  if (!words && /[\p{L}\p{N}]/u.test(sk.text.slice(item.from, item.to))) return null;
   const before = sk.key.slice(Math.max(0, lo - CONTEXT), lo);
   const after = sk.key.slice(hi, hi + CONTEXT);
   const ladder: [Rung, string, string][] = [

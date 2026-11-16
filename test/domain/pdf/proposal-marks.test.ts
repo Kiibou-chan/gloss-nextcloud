@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { plainOps } from '../../../src/domain/source/typst-parse';
+import { parseTypst, plainOps } from '../../../src/domain/source/typst-parse';
 import { pdfKey, sourceKey } from '../../../src/domain/pdf/match';
 import type { PdfCaret } from '../../../src/domain/pdf/proposal-marks';
 import { placeItem } from '../../../src/domain/pdf/proposal-marks';
@@ -88,4 +88,20 @@ it('counts both units of an astral letter and splits a ligature across items', (
     caret: { id: 'a', page: 1, item: 1, offset: 3, edge: 'after' },
     rung: 'both',
   });
+});
+
+const typstPlace = (text: string, pdf: string[], item: Item) =>
+  placeItem(sourceKey('draft.typ', text, parseTypst(text)), pdfKey([pdf]), { id: 'a', ...item }, 0.5);
+const commented = 'Alpha beta gamma.\n\n// Theta notes stay here.\n';
+const theta = commented.indexOf('Theta');
+it('does not place a replacement whose words sit in a Typst comment', () => {
+  expect(typstPlace(commented, ['Alpha beta gamma.'], { from: theta, to: theta + 5, inserts: true })).toBeNull();
+});
+it('does not place a deletion of a word inside a Typst comment', () => {
+  expect(typstPlace(commented, ['Alpha beta gamma.'], { from: theta, to: theta + 5, inserts: false })).toBeNull();
+});
+it('still places a whitespace-only range and a plain insertion in a Typst source', () => {
+  const text = 'Alpha beta gamma.\n';
+  expect(typstPlace(text, ['Alpha beta gamma.'], { from: 5, to: 6, inserts: true })?.caret).toEqual({ id: 'a', page: 1, item: 0, offset: 4, edge: 'after' });
+  expect(typstPlace(text, ['Alpha beta gamma.'], { from: 10, to: 10, inserts: true })?.caret).toEqual({ id: 'a', page: 1, item: 0, offset: 9, edge: 'after' });
 });

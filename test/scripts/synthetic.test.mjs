@@ -29,9 +29,9 @@ test('the synthetic fixture mode accepts the pdf-proposals and both scenes', () 
   expect(scenes['pdf-proposals']).toBeDefined();
 });
 
-test('the Typst fixture ends in hidden text whose words are not on the PDF', async () => {
+test('the Typst fixture ends in a comment whose words are not on the PDF', async () => {
   const source = await readFile('test/fixtures/nc/Review/paper.typ', 'utf8');
-  expect(source.trimEnd().split('\n').at(-1)).toBe('#hide[Theta notes stay in the source only.]');
+  expect(source.trimEnd().split('\n').at(-1)).toBe('// Theta notes stay in the source only.');
 });
 
 test('pdf-proposals routes serve the page, bundle, worker, draft, PDF, and the review routes', async () => {
@@ -47,7 +47,7 @@ test('pdf-proposals routes serve the page, bundle, worker, draft, PDF, and the r
   expect(bundle.contentType).toBe('text/javascript');
   expect(worker.contentType).toBe('text/javascript');
   expect(draft.json.main).toBe('paper.typ');
-  expect(draft.json.files[0].text.trimEnd().split('\n').at(-1)).toBe('#hide[Theta notes stay in the source only.]');
+  expect(draft.json.files[0].text.trimEnd().split('\n').at(-1)).toBe('// Theta notes stay in the source only.');
   expect(Buffer.from(pdf.body).equals(await readFile('test/fixtures/nc/Review/paper.pdf'))).toBe(true);
   expect(pdf.contentType).toBe('application/pdf');
   expect(open.json).toEqual({ review: null });
