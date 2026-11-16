@@ -188,6 +188,70 @@ async function reviewLink(args) {
   } finally { await fresh.close(); }
 }
 
+async function proposalCards(page) {
+  return page.evaluate(() => [...document.querySelectorAll('.gr-items > li')].filter(li => li.querySelector('ins, del')).map(li => {
+    const id = li.dataset.id;
+    const spans = [...document.querySelectorAll('#gr-pdf .textLayer span')].map(span => ({ text: span.textContent, rect: span.getBoundingClientRect() }));
+    const struck = [...document.querySelectorAll(`.gr-pdf-struck[data-id="${id}"]`)];
+    return {
+      id,
+      deleted: li.querySelector('del')?.textContent ?? '',
+      inserted: li.querySelector('ins')?.textContent ?? '',
+      line: li.querySelector('.gr-off-pdf')?.textContent ?? null,
+      marks: document.querySelectorAll(`.gr-pdf-mark[data-id="${id}"]`).length,
+      struck: struck.length,
+      carets: [...document.querySelectorAll(`.gr-pdf-caret[data-id="${id}"]`)].map(caret => caret.querySelector('.gr-pdf-label')?.textContent ?? ''),
+      under: struck.map(mark => {
+        const box = mark.getBoundingClientRect(), x = box.left + box.width / 2, y = box.top + box.height / 2;
+        return spans.find(span => x >= span.rect.left && x <= span.rect.right && y >= span.rect.top && y <= span.rect.bottom)?.text ?? '';
+      }),
+    };
+  }));
+}
+
+/** Joins each proposal card's data-id to its marks on the PDF page, and the off-PDF card to none. */
+async function checkProposalMarks(page) {
+  await expect.poll(() => page.locator('.gr-pdf-struck').count()).toBeGreaterThan(0);
+  await expect(page.locator('.gr-items > li').filter({ hasText: 'Not shown on the PDF.' })).toBeVisible();
+  const expected = [
+    { deleted: 'grow', inserted: 'flourish', struck: true, caret: 'flourish' },
+    { deleted: 'drift', inserted: '', struck: true, caret: null },
+    { deleted: '', inserted: 'softly', struck: false, caret: 'softly' },
+    { deleted: 'Observations', inserted: 'Notes', struck: true, caret: 'Notes' },
+    { deleted: '', inserted: 'Truly', struck: false, caret: 'Truly' },
+  ];
+  const cards = await proposalCards(page);
+  for (const want of expected) {
+    const card = cards.find(c => c.deleted === want.deleted && c.inserted.trim() === want.inserted);
+    if (!card) throw new Error(`No proposal card for ${want.deleted || '(insertion)'} ${want.inserted}.`);
+    if (card.line) throw new Error(`The ${want.inserted || want.deleted} card says "${card.line}" although it has a place.`);
+    if (want.struck && (!card.struck || card.under.some(text => !text.includes(want.deleted)))) throw new Error(`Struck marks of "${want.deleted}" join no or the wrong PDF words: ${JSON.stringify(card)}.`);
+    if (!want.struck && card.struck) throw new Error(`The insertion "${want.inserted}" has struck marks.`);
+    if (want.caret === null ? card.carets.length : card.carets.length !== 1 || card.carets[0].trim() !== want.caret) throw new Error(`Caret labels of "${want.deleted || want.inserted}" are ${JSON.stringify(card.carets)}.`);
+  }
+  const theta = cards.find(c => c.deleted === 'Theta');
+  if (!theta || theta.line !== 'Not shown on the PDF.' || theta.marks) throw new Error(`The Theta card has no line or has marks: ${JSON.stringify(theta)}.`);
+  await expect(page.locator('.gr-pdf-note').first()).toBeVisible();
+  await page.locator('.gr-items > li').filter({ hasText: 'Not shown on the PDF.' }).scrollIntoViewIfNeeded();
+}
+
+async function proposals(args, view) {
+  const { page } = args;
+  await editor(args);
+  await find(page, 'Observations');
+  await page.keyboard.insertText('Notes');
+  await find(page, 'fountain.');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.insertText(' Truly');
+  await find(page, 'Theta');
+  await page.keyboard.insertText('Iota');
+  await expect(page.locator('.gr-items > li').filter({ has: page.locator('ins', { hasText: 'Iota' }) })).toHaveCount(1);
+  await expect(status(page)).toHaveText('Saved', { timeout: 30_000 });
+  await page.getByRole('button', { name: view, exact: true }).click();
+  await expect(page.locator('#gr-pdf canvas').first()).toBeVisible();
+  await checkProposalMarks(page);
+}
+
 async function long({ page, out, prefix }) {
   await ready(page);
   await content(page).click();
@@ -226,11 +290,8 @@ export const scenes = {
   ...liveScenes({ ready, find, comment, content, name, status }),
   editor: { run: editor },
   pdf: { run: pdf },
-  both: { run: async args => {
-    await editor(args);
-    await args.page.getByRole('button', { name: 'Both', exact: true }).click();
-    await expect(args.page.locator('#gr-pdf canvas').first()).toBeVisible();
-  } },
+  'pdf-proposals': { run: args => proposals(args, 'PDF') },
+  both: { run: args => proposals(args, 'Both') },
   search: { run: async ({ page, capture }) => {
     await ready(page);
     await content(page).click();

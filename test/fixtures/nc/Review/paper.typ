@@ -17,3 +17,5 @@ Epsilon seeds travel towards the orchard.
 Zeta leaves gather around the fountain.
 
 All words in this fixture describe an invented garden.
+
+#hide[Theta notes stay in the source only.]

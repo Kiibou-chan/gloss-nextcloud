@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { scenes } from './shots/scenes.mjs';
+import { syntheticRoutes, syntheticScenes } from './shots/synthetic.mjs';
 
 export { scenes };
 
@@ -18,14 +19,15 @@ async function main() {
     if (!args[i + 1]) throw new Error('An option is missing its value.');
     if (args[i] === '--out') out = args[i + 1];
     else if (args[i] === '--browser') browserName = args[i + 1];
-    else if (args[i] === '--fixture' && args[i + 1] === 'synthetic' && ['overall', 'review-link'].includes(sceneName)) fixture = true;
+    else if (args[i] === '--fixture' && args[i + 1] === 'synthetic' && syntheticScenes.includes(sceneName)) fixture = true;
     else throw new Error('Unknown screenshot option.');
   }
   const browserType = { chromium, firefox, webkit }[browserName];
   if (!browserType) throw new Error('Choose chromium, firefox, or webkit.');
   let state;
   if (fixture) {
-    state = { base: 'http://gloss.invalid', links: { Review: 'http://gloss.invalid/index.php/apps/gloss/r/synthetic' } };
+    const link = 'http://gloss.invalid/index.php/apps/gloss/r/synthetic';
+    state = { base: 'http://gloss.invalid', links: { Review: link, Latex: link } };
   } else {
     // This is the generated, ignored fixture state, never the real instance's credentials.
     const script = new URL('./dev-nc.sh', import.meta.url);
@@ -85,7 +87,7 @@ async function main() {
           shots.push(resolve(out, `${prefix}${suffix}.png`));
           console.log(`Wrote ${prefix}${suffix}.png`);
         };
-        const prepareSynthetic = fixture ? target => syntheticOverall(target, sceneName, reviews) : undefined;
+        const prepareSynthetic = fixture ? target => syntheticRoutes(target, sceneName, reviews, folder) : undefined;
         if (fixture) await prepareSynthetic(context);
         if (scene.navigate !== false) await page.goto(url, { waitUntil: 'networkidle' });
         await scene.run({ page, context, browser, options, state, capture, out, prefix, prepareSynthetic });
@@ -114,7 +116,7 @@ async function main() {
           if (contrast.opacity < .8 || contrast.ratio < 4.5) throw new Error(`Read-only contrast failed: ${contrast.ratio.toFixed(2)}:1, opacity ${contrast.opacity}.`);
           console.log(`Read-only draft contrast ${contrast.ratio.toFixed(2)}:1, opacity ${contrast.opacity}.`);
         }
-        if (['editor', 'pdf', 'both'].includes(sceneName)) {
+        if (!fixture && ['editor', 'pdf', 'both'].includes(sceneName)) {
           for (const width of [1600, 640]) {
             await page.setViewportSize({ width, height: 1000 });
             await page.locator('.gr-items > li').last().scrollIntoViewIfNeeded();
@@ -172,41 +174,6 @@ async function main() {
   await writeFile(resolve(out, `${sceneName}-${browserName}-results.json`), JSON.stringify(results, null, 2));
   for (const result of results) console.log(`${result.result.toUpperCase()} ${sceneName} ${browserName} ${result.colour}`);
   if (results.some(result => result.result === 'fail')) process.exitCode = 1;
-}
-
-async function syntheticOverall(context, sceneName, reviews) {
-  const script = await readFile(new URL('../js/gloss-review.js', import.meta.url), 'utf8');
-  const css = await readFile(new URL('../css/review.css', import.meta.url), 'utf8');
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><title>Synthetic review fixture</title>
-    <style>
-      :root { color-scheme: light dark; --color-main-background: #fff; --color-main-text: #222; --color-text-maxcontrast: #555; --color-border: #bbb; --color-background-hover: #eee; --color-primary-element: #006da3; --color-primary-element-light: #d9edf8; --border-radius: 6px; --border-radius-large: 10px; }
-      @media (prefers-color-scheme: dark) { :root { --color-main-background: #181818; --color-main-text: #eee; --color-text-maxcontrast: #bbb; --color-border: #666; --color-background-hover: #292929; --color-primary-element: #80cfff; --color-primary-element-light: #244459; } }
-      body { margin: 32px; font: 16px/1.5 system-ui; background: var(--color-main-background); color: var(--color-main-text); }
-      input, textarea, button { box-sizing: border-box; font: inherit; padding: 8px; color: inherit; background: var(--color-main-background); border: 1px solid var(--color-border); border-radius: 6px; }
-      label { display: flex; flex-direction: column; } button:enabled { cursor: pointer; } button:disabled { opacity: .5; }
-      ${css}
-    </style><body><p>Synthetic ${sceneName} fixture, with the application bundle and simulated API.</p>
-    <div id="gloss-review" data-token="synthetic" data-reviewable="1" data-has-pdf="0" data-view="editor">
-      <header class="gr-head"></header><main class="gr-body"><article id="gr-text" class="gr-text"></article><article id="gr-pdf" class="gr-pdf" hidden></article><aside class="gr-side"></aside></main>
-    </div><script src="/gloss-review.js"></script></body></html>`;
-  await context.route('http://gloss.invalid/**', async route => {
-    const path = new URL(route.request().url()).pathname;
-    if (path === '/gloss-review.js') return route.fulfill({ contentType: 'text/javascript', body: script });
-    if (path.endsWith('/draft')) return route.fulfill({ json: { main: 'garden.txt', files: [{ file: 'garden.txt', text: 'Synthetic garden observations.\nThe seedlings grow beside the window.\n', etag: 'synthetic-v1' }] } });
-    if (path.endsWith('/review/open')) {
-      const params = new URLSearchParams(route.request().postData() ?? '');
-      const review = reviews.get(params.get('key')) ?? null;
-      return route.fulfill({ json: review ? { review, revision: review.revision } : { review: null } });
-    }
-    if (path.endsWith('/review')) {
-      const params = new URLSearchParams(route.request().postData() ?? '');
-      const review = JSON.parse(params.get('review'));
-      reviews.set(params.get('key'), review);
-      return route.fulfill({ json: { revision: Number(params.get('baseRevision')) + 1 } });
-    }
-    if (path.endsWith('/synthetic')) return route.fulfill({ contentType: 'text/html', body: html });
-    return route.abort();
-  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
