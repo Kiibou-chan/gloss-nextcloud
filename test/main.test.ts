@@ -119,3 +119,13 @@ it.each(['', '1'])('reads the password protection template flag %s', async flag 
   expect(readFileSync('templates/review.php', 'utf8')).toContain('data-password-protected=')
   dispose()
 })
+
+it('reserves the footer height and its fixed bottom inset', async () => {
+  state.f = fakes(); const el = root()
+  const footer = document.createElement('footer'); document.body.append(footer)
+  vi.spyOn(footer, 'getBoundingClientRect').mockReturnValue({ top: 939, bottom: 992, height: 53 } as DOMRect)
+  vi.stubGlobal('innerHeight', 1000)
+  const dispose = await mountReview(el)
+  try { expect(el.style.getPropertyValue('--gr-footer-height')).toBe('61px') }
+  finally { dispose(); vi.unstubAllGlobals() }
+})

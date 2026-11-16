@@ -25,7 +25,7 @@ export async function mountReview(root: HTMLElement): Promise<() => void> {
   const api = createReviewApi(base, requestToken, root.dataset.webroot ?? (globalThis as typeof globalThis & { OC?: { webroot?: string } }).OC?.webroot, root.dataset.passwordProtected === '1')
   const footer = document.querySelector('footer')
   const measureFooter = () => {
-    root.style.setProperty('--gr-footer-height', `${footer?.getBoundingClientRect().height ?? 0}px`)
+    root.style.setProperty('--gr-footer-height', `${footer ? Math.max(0, innerHeight - footer.getBoundingClientRect().top) : 0}px`)
     root.style.setProperty('--gr-panel-top', `${Math.max(60, side.getBoundingClientRect().top)}px`)
   }
   const footerObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measureFooter)
