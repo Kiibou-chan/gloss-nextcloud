@@ -66,11 +66,3 @@ test('unplaced evidence extracts the requested raw object after an overall item'
   }
 })
 
-test('review layout reserves footer space and scrolls the capped panel', () => {
-  const css = readFileSync('css/review.css', 'utf8')
-  expect(css).toContain('--gr-footer-height:')
-  expect(css).toContain('padding-bottom: calc(12px + var(--gr-footer-height))')
-  expect(css).toContain('max-height: calc(100dvh - var(--gr-panel-top, 60px) - var(--gr-footer-height))')
-  expect(css).toMatch(/\.gr-side\s*\{[^}]*overflow-y: auto/)
-  expect(css).toMatch(/\.gr-text \.cm-content\[contenteditable="false"\]\s*\{[^}]*opacity: 1/)
-})

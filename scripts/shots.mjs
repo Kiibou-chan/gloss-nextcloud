@@ -123,10 +123,11 @@ async function main() {
               const panel = document.querySelector('.gr-side'), footer = document.querySelector('footer');
               const rect = element => { const r = element.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, height: r.height }; };
               const last = panel.querySelector('.gr-items > li:last-child');
-              return { panel: rect(panel), last: rect(last), footer: rect(footer), overflow: getComputedStyle(panel).overflowY, columns: getComputedStyle(document.querySelector('.gr-body')).gridTemplateColumns };
+              return { panel: rect(panel), last: rect(last), footer: rect(footer), paddingBottom: getComputedStyle(document.querySelector('#gloss-review')).paddingBottom, buttons: [...last.querySelectorAll('button')].map(rect), overflow: getComputedStyle(panel).overflowY, columns: getComputedStyle(document.querySelector('.gr-body')).gridTemplateColumns };
             });
             await writeFile(resolve(out, `${prefix}-layout-${width}.json`), JSON.stringify(geometry, null, 2));
-            if (geometry.panel.bottom > geometry.footer.top + 1 || geometry.last.bottom > geometry.footer.top + 1 || geometry.overflow !== 'auto') throw new Error(`Footer overlap at ${width}px.`);
+            if (geometry.panel.bottom > geometry.footer.top + 1 || geometry.last.bottom > geometry.footer.top + 1 || geometry.overflow !== (width === 640 ? 'visible' : 'auto')) throw new Error(`Footer overlap at ${width}px.`);
+            if (parseFloat(geometry.paddingBottom) < geometry.footer.height || geometry.buttons.some(button => button.bottom > geometry.footer.top || button.top < 0)) throw new Error(`Footer covers a button or page padding is too small at ${width}px.`);
             if (width === 640 && geometry.columns.split(' ').length !== 1) throw new Error('Narrow layout is not stacked.');
             await capture(`-layout-${width}`);
           }

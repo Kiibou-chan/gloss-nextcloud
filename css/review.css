@@ -90,3 +90,9 @@ body[data-themes*="dark"] .gr-card-head ins { color: #7ee29b; }
 
 /* Read-only text stays selectable and legible against the inactive background. */
 .gr-text .cm-content[contenteditable="false"] { opacity: 1; color: var(--color-main-text); }
+
+/* Let stacked editor, PDF, and review cards scroll above the public footer. */
+#content.app-gloss { overflow-y: auto; }
+@media (max-width: 800px) {
+  .gr-side { position: static; max-height: none; overflow: visible; }
+}

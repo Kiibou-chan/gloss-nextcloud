@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { EditorView } from '@codemirror/view'
 import { EditorSelection } from '@codemirror/state'
 import { redo, undo } from '@codemirror/commands'
@@ -168,4 +169,17 @@ it.each([['Backspace', 'alphabeta'], ['Delete', 'alpha eta']])('keeps normal edi
   expect(attempt).not.toHaveBeenCalled()
   expect(undo(view)).toBe(true)
   expect(editor.text()).toBe('alpha beta')
+})
+
+it('keeps read-only draft text readable despite Nextcloud disabled-control fading', () => {
+  const styles = document.createElement('style')
+  styles.textContent = '.cm-content[contenteditable="false"] { opacity: 0.5; }\n' + readFileSync('css/review.css', 'utf8')
+  document.head.append(styles)
+  document.querySelector('.cm-editor')!.parentElement!.classList.add('gr-text')
+  try {
+    editor.setEditable(false)
+    expect(view.state.readOnly).toBe(true)
+    expect(view.contentDOM.getAttribute('contenteditable')).toBe('false')
+    expect(Number(getComputedStyle(view.contentDOM).opacity)).toBeGreaterThanOrEqual(0.8)
+  } finally { styles.remove(); document.body.classList.remove('gr-text') }
 })
