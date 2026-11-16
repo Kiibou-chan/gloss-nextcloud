@@ -191,6 +191,19 @@ describe('margin bars', () => {
     ])
   })
 
+  it('ignores text divs that have no box when it finds the text column', () => {
+    const page = makePage()
+    const hidden = document.createElement('span')
+    page.layer.textDivs.push(hidden)
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this === hidden) return { left: 0, top: 0, width: 0, height: 0 } as DOMRect
+      const index = page.layer.textDivs.indexOf(this)
+      return { left: index < 0 ? 11 : 90 + index * 10, top: 21 } as DOMRect
+    })
+    drawPageMarks(page, [{ id: 'mmmmmmmmmm', page: 1, startItem: 0, startOffset: 6, endItem: 1, endOffset: 5, look: 'margin' }], 'changes')
+    expect(kids().map(k => k.style.left)).toEqual(['73px'])
+  })
+
   it('reports a margin mark that drew nothing', () => {
     const missing = drawPageMarks(makePage(), [{ id: 'mmmmmmmmmm', page: 1, startItem: 0, startOffset: 20, endItem: 0, endOffset: 25, look: 'margin' }], 'changes')
     expect([...missing]).toEqual(['mmmmmmmmmm'])

@@ -1,19 +1,28 @@
 // The route-mocked synthetic mode: the real bundle and adapters against a page and API simulated in the browser context.
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 
-export const syntheticScenes = ['overall', 'review-link', 'pdf-proposals', 'both', 'latex-proposals'];
+export const syntheticScenes = ['overall', 'review-link', 'pdf-proposals', 'both', 'latex-proposals', 'typst-compile', 'typst-fallback'];
 const gardenScenes = ['overall', 'review-link'];
 const root = new URL('../../', import.meta.url);
-const fixtureMain = { Review: 'paper.typ', Latex: 'paper.tex' };
+const fixtureMain = { Review: 'paper.typ', Latex: 'paper.tex', Typst: 'paper.typ' };
+const sceneMain = { 'typst-fallback': 'package.typ' };
 
-async function fixtureFiles(sceneName, folder) {
+/** What the server's SharedPath refuses: an empty, absolute, backslash, NUL, dot-led, empty-segment, long, or deep path. */
+export function refusedPath(path) {
+  if (!path || path.startsWith('/') || path.includes('\\') || path.includes('\0')) return true;
+  if (Buffer.byteLength(path) > 512) return true;
+  const segments = path.split('/');
+  return segments.length > 16 || segments.some(segment => segment === '' || segment.startsWith('.'));
+}
+
+async function fixtureFiles(sceneName, folder, draft) {
   if (gardenScenes.includes(sceneName)) {
     return { main: 'garden.txt', text: 'Synthetic garden observations.\nThe seedlings grow beside the window.\n', pdf: null };
   }
   const dir = new URL(`test/fixtures/nc/${folder}/`, root);
-  const main = fixtureMain[folder];
+  const main = draft?.main ?? sceneMain[sceneName] ?? fixtureMain[folder];
   if (!main) throw new Error(`No synthetic fixture for the ${folder} folder.`);
-  return { main, text: await readFile(new URL(main, dir), 'utf8'), pdf: await readFile(new URL('paper.pdf', dir)) };
+  return { main, text: draft?.text ?? await readFile(new URL(main, dir), 'utf8'), pdf: await readFile(new URL('paper.pdf', dir)) };
 }
 
 function pageHtml(sceneName, css, pdfCss, withPdf) {
@@ -32,11 +41,17 @@ function pageHtml(sceneName, css, pdfCss, withPdf) {
     </div><script src="/gloss-review.js"></script></body></html>`;
 }
 
-export async function syntheticRoutes(context, sceneName, reviews, folder = 'Review') {
+/** `draft` ({ main, text }) replaces the fixture's draft text; the fixture folder's PDF still stands in for the uploaded one. */
+export async function syntheticRoutes(context, sceneName, reviews, folder = 'Review', draft = null) {
   const [script, css, files] = await Promise.all([
-    readFile(new URL('js/gloss-review.js', root), 'utf8'), readFile(new URL('css/review.css', root), 'utf8'), fixtureFiles(sceneName, folder),
+    readFile(new URL('js/gloss-review.js', root), 'utf8'), readFile(new URL('css/review.css', root), 'utf8'), fixtureFiles(sceneName, folder, draft),
   ]);
   const withPdf = files.pdf !== null;
+  const typst = folder === 'Typst' && sceneName.startsWith('typst-');
+  const [typstWorker, typstWasm, fonts] = typst
+    ? await Promise.all([readFile(new URL('js/typst.worker.js', root), 'utf8'), readFile(new URL('js/typst-compiler.wasm', root)), readdir(new URL('fonts/', root))])
+    : [null, null, []];
+  const fixtureDir = new URL('test/fixtures/nc/Typst/', root);
   const [worker, pdfCss] = withPdf
     ? await Promise.all([readFile(new URL('js/pdf.worker.js', root), 'utf8'), readFile(new URL('css/pdf-text-layer.css', root), 'utf8')])
     : ['', ''];
@@ -46,6 +61,14 @@ export async function syntheticRoutes(context, sceneName, reviews, folder = 'Rev
     if (path === '/gloss-review.js') return route.fulfill({ contentType: 'text/javascript', body: script });
     if (withPdf && path === '/pdf.worker.js') return route.fulfill({ contentType: 'text/javascript', body: worker });
     if (withPdf && path.endsWith('/pdf')) return route.fulfill({ contentType: 'application/pdf', body: files.pdf });
+    if (typst && path === '/typst.worker.js') return route.fulfill({ contentType: 'text/javascript', body: typstWorker });
+    if (typst && path === '/typst-compiler.wasm') return route.fulfill({ contentType: 'application/wasm', body: typstWasm });
+    if (typst && path.startsWith('/fonts/') && fonts.includes(path.slice(7)) && path !== '/fonts/NOTICE') return route.fulfill({ contentType: 'application/octet-stream', body: await readFile(new URL(`fonts/${path.slice(7)}`, root)) });
+    if (typst && path.endsWith('/file')) {
+      const wanted = new URL(route.request().url()).searchParams.get('path') ?? '';
+      const body = refusedPath(wanted) ? null : await readFile(new URL(wanted, fixtureDir)).catch(() => null);
+      return body ? route.fulfill({ contentType: 'application/octet-stream', body }) : route.fulfill({ status: 404, json: { error: 'The draft reads a file this link cannot serve.' } });
+    }
     if (path.endsWith('/draft')) return route.fulfill({ json: { main: files.main, files: [{ file: files.main, text: files.text, etag: 'synthetic-v1' }] } });
     if (path.endsWith('/review/open')) {
       const params = new URLSearchParams(route.request().postData() ?? '');

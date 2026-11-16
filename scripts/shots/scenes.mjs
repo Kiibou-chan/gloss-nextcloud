@@ -1,5 +1,6 @@
 import { checkPageNotClipped, latexScene } from './latex.mjs';
 import { checkLookKept, checkNewText } from './new-text.mjs';
+import { typstScenes } from './typst.mjs';
 import { liveScenes, sentFileRemoved } from './live.mjs';
 import { expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
@@ -316,6 +317,7 @@ export const scenes = {
   'pdf-proposals': { run: args => proposals(args, 'PDF') },
   both: { run: args => proposals(args, 'Both') },
   'latex-proposals': latexScene({ ready, find, status }),
+  ...typstScenes({ ready, find, comment, status, pdfSelection }),
   search: { run: async ({ page, capture }) => {
     await ready(page);
     await content(page).click();

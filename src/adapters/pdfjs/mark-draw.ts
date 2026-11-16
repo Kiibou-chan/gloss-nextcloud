@@ -100,7 +100,8 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[], look: P
     if (!drew) missing.add(mark.id)
   }
   if (bars.size) {
-    const column = Math.min(...layer.textDivs.map(div => div.getBoundingClientRect().left).filter(Number.isFinite))
+    const boxes = layer.textDivs.map(div => div.getBoundingClientRect()).filter(box => !(box.width === 0 && box.height === 0))
+    const column = Math.min(...boxes.map(box => box.left).filter(Number.isFinite))
     for (const bar of bars.values()) {
       place({ id: bar.id } as PdfMark, 'margin', { left: column - MARGIN_GAP, top: bar.top, width: MARGIN_WIDTH, height: bar.bottom - bar.top })
     }

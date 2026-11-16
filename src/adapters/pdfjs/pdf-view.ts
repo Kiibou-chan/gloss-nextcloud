@@ -111,7 +111,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
     stopObserving?.(); visible.clear()
     destroyTask()
     task = opened.task
-    pages = opened.pages
+    pages = opened.pages; if (old.length) { byId = new Map(); byPage = new Map() }
     el.replaceChildren(...pages.map(page => page.box))
     el.scrollTop = Math.min(top, Math.max(0, el.scrollHeight - el.clientHeight))
     for (const page of old) { release(page); undrawn.forget(page.number) }
