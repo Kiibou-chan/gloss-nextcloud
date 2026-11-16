@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Package committed runtime assets; building and signing are separate operations.
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-allowlist=(appinfo lib templates css js/gloss-review.js js/pdf.worker.js LICENSE README.md THIRD-PARTY.md)
+allowlist=(appinfo lib templates css js/gloss-review.js js/pdf.worker.js js/typst.worker.js js/typst-compiler.wasm fonts LICENSE README.md THIRD-PARTY.md)
 if [[ -n $(git -C "$root" status --porcelain --untracked-files=all -- "${allowlist[@]}") ]]; then
   echo 'Refusing to package dirty allowlisted runtime paths.' >&2
   exit 1
