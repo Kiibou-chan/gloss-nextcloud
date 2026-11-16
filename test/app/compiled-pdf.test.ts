@@ -262,3 +262,26 @@ test('a failed reload of the uploaded PDF still redraws', async () => {
   s.pdfLook = 'original'; unit.request(true); await flush()
   expect(render).toHaveBeenCalled()
 })
+
+test('a draft over the cutoff starts no compile, reads no file, and shows the uploaded PDF with its line', async () => {
+  const big = Array.from({ length: 2001 }, (_, i) => `Line ${i} of the draft.`).join('\n') + '\n'
+  const { f, s, unit, propose } = await setup(big)
+  propose(); unit.request(true); await flush()
+  expect(s.pdfNote).toBe('Draft too large to compile live; showing your PDF.')
+  expect(f.compiler.compile).not.toHaveBeenCalled(); expect(f.api.file).not.toHaveBeenCalled()
+  expect(f.pdf.showBytes).not.toHaveBeenCalled()
+  s.pdfLook = 'new'; unit.request(true); await flush()
+  expect(f.compiler.compile).not.toHaveBeenCalled()
+})
+
+test('401 proposals start no compile, and 400 do', async () => {
+  const words = Array.from({ length: 401 }, (_, i) => `w${i} keep`).join('\n') + '\n'
+  const { f, s, unit } = await setup(words)
+  const edit = (i: number) => { const at = words.search(new RegExp(`\\bw${i}\\b`)); s.review!.edit([{ from: at, to: at + `w${i}`.length, insert: 'z'.repeat(`w${i}`.length) }], f.ids.item, f.clock.now()) }
+  for (let i = 0; i < 400; i++) edit(i)
+  unit.request(true); await flush()
+  expect(f.compiler.compile).toHaveBeenCalledTimes(1)
+  edit(400); unit.request(true); await flush()
+  expect(f.compiler.compile).toHaveBeenCalledTimes(1)
+  expect(s.pdfNote).toBe('Draft too large to compile live; showing your PDF.')
+})

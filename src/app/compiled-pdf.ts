@@ -1,5 +1,6 @@
 import { languageOf } from '../domain/source/language'
 import { diffSource, newSource, type Generated, type Shape } from '../domain/typst/generated'
+import { tooLargeToCompile } from '../domain/typst/limits'
 import { nextShape } from '../domain/typst/rounds'
 import { compiledDoc } from './compiled-doc'
 import { COMPILING, FALLBACK, type Fallback } from './compile-messages'
@@ -59,6 +60,7 @@ export class CompiledPdf {
   private async run(): Promise<void> {
     const token = this.latest
     const stale = () => !this.wanted() || token !== this.latest
+    if (tooLargeToCompile(this.s.draft, this.s.review!.items().filter(i => i.kind === 'proposal').length)) { await this.fallback('large'); return }
     if (!this.s.pdfNote) this.note(COMPILING)
     const inputs = await this.inputs.gather(this.s.file, this.s.draft)
     if (stale()) return
