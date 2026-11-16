@@ -21,6 +21,7 @@ export function createBrowserStore(shareToken: string): BackupStore {
   const preference = (prefix: string): string | null => {
     const key = prefix + shareToken, current = get(key)
     if (current !== null) return current
+    if (!base.endsWith('/' + shareToken)) return null
     const legacy = get(prefix + base)
     if (legacy !== null && put(key, legacy)) {
       try { localStorage.removeItem(prefix + base) } catch { /* Token preference is already stored. */ }

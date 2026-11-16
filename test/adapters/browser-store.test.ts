@@ -4,6 +4,23 @@ import { createBrowserStore } from '../../src/adapters/storage/browser-store'
 const backup: Backup = { review: '{}', pending: { body: '{}', revision: 2 }, revision: 1, saved: true, dirty: true, at: '2026-11-15T20:00:00Z' }
 beforeEach(() => { localStorage.clear(); history.replaceState(null, '', '/index.php/apps/gloss/r/synthetic/') })
 afterEach(() => vi.restoreAllMocks())
+it.each(['/apps/gloss/r', '/apps/gloss/r/synthetic-extra'])('leaves unrelated legacy path preferences unread and untouched at %s', path => {
+  history.replaceState(null, '', path)
+  localStorage.setItem('gloss-review-id:' + path, 'legacy-review')
+  localStorage.setItem('gloss-review-view:' + path, 'both')
+  const reads = vi.spyOn(Storage.prototype, 'getItem')
+  const removals = vi.spyOn(Storage.prototype, 'removeItem')
+  for (const token of ['synthetic', 'other']) {
+    const store = createBrowserStore(token)
+    expect(store.rememberedKey()).toBeNull()
+    expect(store.view()).toBeNull()
+  }
+  expect(reads).not.toHaveBeenCalledWith('gloss-review-id:' + path)
+  expect(reads).not.toHaveBeenCalledWith('gloss-review-view:' + path)
+  expect(removals).not.toHaveBeenCalled()
+  expect(localStorage.getItem('gloss-review-id:' + path)).toBe('legacy-review')
+  expect(localStorage.getItem('gloss-review-view:' + path)).toBe('both')
+})
 it.each(['/index.php/apps/gloss/r/synthetic', '/apps/gloss/r/synthetic'])('migrates path preferences once and shares them across route forms from %s', path => {
   history.replaceState(null, '', path)
   localStorage.setItem('gloss-review-id:' + path, 'remembered')
