@@ -103,4 +103,4 @@ body[data-themes*="dark"] .gr-card-head ins { color: #7ee29b; }
   .gr-side { position: static; max-height: none; overflow: visible; }
 }
 .gr-pdf-new { box-sizing: border-box; overflow: visible; white-space: nowrap; line-height: 1; color: #1b1b1b; background: rgba(46, 157, 79, 0.14); border-bottom: 2px solid #2e9d4f; }
-.gr-pdf-callout { max-width: 22em; padding: 0 3px; border: 1px solid #2e9d4f; background: linear-gradient(rgba(46, 157, 79, 0.14), rgba(46, 157, 79, 0.14)) #fff; color: #1b1b1b; font: 11px/1.3 sans-serif; transform: translateY(-100%); }
+.gr-pdf-callout { box-sizing: border-box; max-width: 242px; padding: 0 3px; border: 1px solid #2e9d4f; background: linear-gradient(rgba(46, 157, 79, 0.14), rgba(46, 157, 79, 0.14)), rgba(255, 255, 255, 0.85); color: #1b1b1b; font: 11px/1.3 sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: translateY(-100%); }

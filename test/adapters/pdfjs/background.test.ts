@@ -14,9 +14,14 @@ const image = (width: number, height: number, fill: (x: number, y: number) => nu
 it('gives white for a white ring', () => {
   expect(backgroundOf(new Uint8ClampedArray(px('#ffffff', 20)))).toBe('#ffffff');
 });
-it('rounds to multiples of 8 and ignores a few dark pixels', () => {
+it('groups by multiples of 8, ignores a few dark pixels, and returns the mean of the winning group', () => {
   const ring = new Uint8ClampedArray([...px('#f4ecd8', 20), ...px('#000000', 3)]);
-  expect(backgroundOf(ring)).toBe('#f0e8d8');
+  expect(backgroundOf(ring)).toBe('#f4ecd8');
+  expect(backgroundOf(new Uint8ClampedArray([...px('#f7f7f7', 10), ...px('#f0f0f0', 10), ...px('#f1f1f1', 1)]))).toBe('#f3f3f3');
+});
+it('skips pixels that are not fully opaque', () => {
+  expect(backgroundOf(Uint8ClampedArray.from([0, 0, 0, 0]))).toBe('#ffffff');
+  expect(backgroundOf(Uint8ClampedArray.from([0, 0, 0, 0, 0, 0, 0, 0, 240, 240, 240, 255]))).toBe('#f0f0f0');
 });
 it('gives white for an empty ring', () => {
   expect(backgroundOf(new Uint8ClampedArray(0))).toBe('#ffffff');
@@ -33,7 +38,7 @@ it('reads the one-pixel ring outside the rectangle at the pixel ratio', () => {
   const dark = Array.from({ length: ring.length / 4 }, (_, i) => ring[i * 4]).filter(v => v === 0).length;
   expect(dark).toBe(ring.length / 4);
   const outside = ringOf(img, { left: 15, top: 15, width: 2, height: 2 }, 2);
-  expect(backgroundOf(outside)).toBe('#f0e8d8');
+  expect(backgroundOf(outside)).toBe('#f4ecd8');
 });
 it('clips the ring to the image', () => {
   const img = image(10, 10, () => [255, 255, 255, 255]);

@@ -1,21 +1,23 @@
 const WHITE = '#ffffff';
 
 export function backgroundOf(ring: Uint8ClampedArray): string {
-  const counts = new Map<number, number>();
-  let best = -1;
-  let bestCount = 0;
+  const groups = new Map<number, { n: number; r: number; g: number; b: number }>();
+  let best: { n: number; r: number; g: number; b: number } | undefined;
   for (let i = 0; i + 3 < ring.length; i += 4) {
-    const key = (((ring[i] ?? 0) >> 3) << 16) | (((ring[i + 1] ?? 0) >> 3) << 8) | ((ring[i + 2] ?? 0) >> 3);
-    const n = (counts.get(key) ?? 0) + 1;
-    counts.set(key, n);
-    if (n > bestCount) {
-      best = key;
-      bestCount = n;
-    }
+    if (ring[i + 3] !== 255) continue;
+    const [r, g, b] = [ring[i] ?? 0, ring[i + 1] ?? 0, ring[i + 2] ?? 0];
+    const key = ((r >> 3) << 16) | ((g >> 3) << 8) | (b >> 3);
+    let group = groups.get(key);
+    if (!group) groups.set(key, (group = { n: 0, r: 0, g: 0, b: 0 }));
+    group.n++;
+    group.r += r;
+    group.g += g;
+    group.b += b;
+    if (!best || group.n > best.n) best = group;
   }
-  if (best < 0) return WHITE;
-  const hex = (v: number) => (v === 31 ? 255 : v << 3).toString(16).padStart(2, '0');
-  return `#${hex(best >> 16)}${hex((best >> 8) & 31)}${hex(best & 31)}`;
+  if (!best) return WHITE;
+  const hex = (sum: number) => Math.round(sum / best!.n).toString(16).padStart(2, '0');
+  return `#${hex(best.r)}${hex(best.g)}${hex(best.b)}`;
 }
 
 export function ringOf(

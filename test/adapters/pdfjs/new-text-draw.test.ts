@@ -20,7 +20,7 @@ function paper(rect: { left: number; top: number; width: number; height: number 
 }
 function makePage(extra: { measure?: (text: string, size: number, family: string) => number; noCanvas?: boolean } = {}) {
   marks = document.createElement('div')
-  const divs = TEXTS.map(text => { const div = document.createElement('span'); div.textContent = text; return div })
+  const divs = TEXTS.map(text => { const div = document.createElement('span'); div.textContent = text; div.style.fontSize = '12px'; return div })
   const canvas = document.createElement('canvas')
   canvas.width = 400; canvas.height = 200; canvas.style.width = '200px'
   canvas.getContext = (() => ({ getImageData })) as unknown as HTMLCanvasElement['getContext']
@@ -58,12 +58,12 @@ describe('undrawn ids in New text', () => {
 })
 
 describe('a replacement in New text', () => {
-  it('covers the struck rectangle two pixels larger left and right and one above and below in the colour of the ring, measured from the canvas', () => {
+  it('covers the struck rectangle two pixels larger beside spaces and at the item edge, one above and below, in the colour of the ring, measured from the canvas', () => {
     drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, 0, 0, 5), caret('aaaaaaaaaa', 0, 4, 'after', 'Omega')], 'new')
     const [cover] = cls('gr-pdf-cover')
     expect(cover!.dataset.id).toBe('aaaaaaaaaa')
     expect([cover!.style.left, cover!.style.top, cover!.style.width, cover!.style.height]).toEqual(['87px', '28px', '54px', '14px'])
-    expect(cover!.style.backgroundColor).toBe('rgb(240, 232, 216)')
+    expect(cover!.style.backgroundColor).toBe('rgb(244, 236, 216)')
     expect(cls('gr-pdf-struck')).toHaveLength(0)
   })
 
@@ -90,6 +90,50 @@ describe('a replacement in New text', () => {
     expect(cls('gr-pdf-cover')).toHaveLength(2)
     expect(cls('gr-pdf-new').map(k => k.textContent)).toEqual(['one', 'two'])
     expect(cls('gr-pdf-callout').map(k => k.textContent)).toEqual(['three four'])
+  })
+})
+
+describe('the cover padding in New text', () => {
+  const coverOf = (start: number, end: number) => { drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, start, 0, end)], 'new'); const c = cls('gr-pdf-cover')[0]!; return [parseFloat(c.style.left), parseFloat(c.style.left) + parseFloat(c.style.width)] }
+  it('does not pad a side that has a letter or punctuation beside it', () => {
+    TEXTS[0] = 'grow, beside'
+    expect(coverOf(0, 4)).toEqual([89 - 2, 89 + 40])
+    expect(coverOf(1, 3)).toEqual([89 + 10, 89 + 30])
+    TEXTS[0] = 'Alpha beta'
+    expect(coverOf(6, 10)).toEqual([89 + 60 - 2, 89 + 100 + 2])
+  })
+})
+
+describe('the new words in New text', () => {
+  it('takes the font size from the text div where it is known', () => {
+    const real = window.getComputedStyle
+    vi.spyOn(window, 'getComputedStyle').mockImplementation(el => { const s = real(el); return new Proxy(s, { get: (t, k) => (k === 'fontSize' ? '10px' : Reflect.get(t, k)) }) })
+    drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, 0, 0, 5), caret('aaaaaaaaaa', 0, 4, 'after', 'Omega')], 'new')
+    expect(cls('gr-pdf-new')[0]!.style.fontSize).toBe('10px')
+  })
+  it('draws only the cover for a blank replacement and not the line-break label', () => {
+    drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, 0, 0, 5), caret('aaaaaaaaaa', 0, 4, 'after', '(line break)')], 'new')
+    expect(cls('gr-pdf-cover')).toHaveLength(1)
+    expect(cls('gr-pdf-new')).toHaveLength(0)
+    expect(cls('gr-pdf-callout')).toHaveLength(0)
+  })
+})
+
+describe('the callout in New text', () => {
+  it('is cut at forty characters like a Changes label', () => {
+    drawPageMarks(makePage(), [caret('cccccccccc', 0, 4, 'after', 'x'.repeat(60))], 'new')
+    expect(cls('gr-pdf-callout')[0]!.textContent).toBe(`${'x'.repeat(39)}…`)
+  })
+  it('stays inside the page horizontally and below its top', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return (this instanceof HTMLCanvasElement ? { ...canvasBox, width: 200, height: 100 } : { left: 11, top: 21, width: 170, height: 100 }) as DOMRect
+    })
+    drawPageMarks(makePage(), [caret('cccccccccc', 0, 4, 'after', 'flourish')], 'new')
+    const [callout] = cls('gr-pdf-callout')
+    // 8 characters at 6 px per character plus padding and border, so at most 170 - width from the page's left edge
+    expect(parseFloat(callout!.style.left)).toBeLessThanOrEqual(170 - 48)
+    expect(parseFloat(callout!.style.left)).toBeGreaterThanOrEqual(0)
+    expect(parseFloat(callout!.style.top)).toBeGreaterThanOrEqual(16)
   })
 })
 

@@ -1,13 +1,12 @@
 import type { PdfMark } from '../../app/ports'
 import type { PdfLook } from '../../app/view'
-import { drawNewText, type Entry, type NewTextPage } from './new-text-draw'
+import { cut, drawNewText, type Entry, type NewTextPage } from './new-text-draw'
 
 export type MarkPage = NewTextPage & {
   number: number
   marks: HTMLElement
   layer?: { textDivs: HTMLElement[]; textContentItemsStr: string[] }
 }
-const LABEL_LIMIT = 40
 
 function textRange(page: MarkPage & { layer: NonNullable<MarkPage['layer']> }, item: number, start: number, end: number): Range | null {
   const node = page.layer.textDivs[item]?.firstChild
@@ -18,10 +17,6 @@ function textRange(page: MarkPage & { layer: NonNullable<MarkPage['layer']> }, i
   range.setStart(node, start)
   range.setEnd(node, end)
   return range
-}
-
-function cut(words: string): string {
-  return words.length > LABEL_LIMIT ? `${words.slice(0, LABEL_LIMIT - 1)}…` : words
 }
 
 /** Draws the marks of one page, replacing what its marks layer held; positions come from the layer's own rectangle. Returns the ids of marks that drew nothing. */
@@ -38,7 +33,8 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[], look: P
   const entries = new Map<string, Entry>()
   const entry = (mark: PdfMark, item: number): Entry => {
     let found = entries.get(mark.id)
-    if (!found) entries.set(mark.id, found = { id: mark.id, n: order.get(mark.id) ?? 0, struck: [], family: getComputedStyle(layer.textDivs[item] ?? page.marks).fontFamily || 'sans-serif', caret: null })
+    const style = getComputedStyle(layer.textDivs[item] ?? page.marks)
+    if (!found) entries.set(mark.id, found = { id: mark.id, n: order.get(mark.id) ?? 0, struck: [], family: style.fontFamily || 'sans-serif', size: Number.parseFloat(style.fontSize) > 0 ? Number.parseFloat(style.fontSize) : null, caret: null })
     return found
   }
   const place = (mark: PdfMark, look: string, rect: { left: number; top: number; width: number; height: number }) => {
@@ -71,11 +67,17 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[], look: P
       const length = layer.textContentItemsStr[item]?.length ?? 0
       const range = textRange(sized, item, item === mark.startItem ? mark.startOffset : 0, item === mark.endItem ? mark.endOffset : length)
       if (!range) continue
-      for (const rect of range.getClientRects()) {
-        if (!rect.width || !rect.height) continue
+      const rects = [...range.getClientRects()].filter(r => r.width && r.height)
+      const text = layer.textContentItemsStr[item] ?? ''
+      const from = item === mark.startItem ? mark.startOffset : 0, to = item === mark.endItem ? mark.endOffset : length
+      const spaceBefore = from === 0 || /\s/.test(text[from - 1] ?? '')
+      const spaceAfter = to >= length || /\s/.test(text[to] ?? '')
+      for (const [index, rect] of rects.entries()) {
         drew = true
-        if (look === 'new' && mark.look === 'struck') entry(mark, item).struck.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height })
-        else place(mark, mark.look, rect)
+        if (look === 'new' && mark.look === 'struck') {
+          const padLeft = index > 0 || spaceBefore, padRight = index < rects.length - 1 || spaceAfter
+          entry(mark, item).struck.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height, padLeft, padRight })
+        } else place(mark, mark.look, rect)
       }
     }
     if (!drew) missing.add(mark.id)
