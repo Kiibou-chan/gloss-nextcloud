@@ -119,7 +119,7 @@ The PDF stays the uploaded file, unchanged.
 Each proposal is drawn on it: deleted words are struck through in place, and inserted words appear in a small mark at that spot.
 This works for Typst and LaTeX alike, because it builds on the existing PDF-to-source match.
 It fits the Wednesday 2026-11-18 release, where compiling in the browser would not.
-Turned down for now: option A, compiling the edited source in the browser (Typst WebAssembly), which is left for a later release.
+Compiling the edited source in the browser shipped in 0.2.0 under PDFDIFF-1.
 
 ## PDFLBL-1: an insertion shows its caret only, and its words on hover
 
@@ -136,3 +136,13 @@ Gate G1 compiled the synthetic Typst fixture with its APA bibliography, the wrap
 The compiler's `evict_cache` exists only from 0.8.0-rc4 on, so the worker calls it only when present.
 The build replaces the glue's two `new Function(` call sites with a lookup of the constant bodies the dummy access model and package registry hand it, and fails unless it replaces exactly two, so no `js/*.js` file generates code at run time.
 The compiler gives no diagnostics for a successful compile, and its error ranges count lines from zero; the worker therefore takes warnings from compiling the snapshot world and adds one to every line.
+The bundled Typst is 0.14.2, while your own Typst is 0.15.1.
+The stable typst.ts release 0.7.0 carries 0.14.2, and the release candidate 0.8.0-rc4 carries 0.15.1; the stable one was taken because it compiled every fixture, and `#sys.version` in the browser reads 0.14.2.
+A draft that needs 0.15-only syntax does not compile there and shows your uploaded PDF with its quiet line, so nothing breaks; moving to the stable 0.8 release later changes only the pinned version, the wasm, and the fonts.
+The 17 fonts of typst-assets 0.15.1 are committed under `fonts/` (9,683,068 bytes), so no font is fetched from elsewhere.
+The compiler, its wasm, and the fonts are fetched only when a PDF view first shows "Changes" or "New text" for a Typst draft, and their addresses carry the app version so that an update refetches them.
+Measured in the browser's wasm, a recompile after an edit takes 3.1 seconds at 200 proposals in a 10,000-line draft, and 5 to 7 seconds at 2,000 proposals (Changes 6.9 seconds, New text 5.1 seconds at the median); your own draft has 265 lines.
+Past 2,000 lines or 400 proposals the draft is therefore not compiled: the uploaded PDF shows with the proposals drawn on it and the line "Draft too large to compile live; showing your PDF.", the same path as any other fallback, with the Changes and New text switch still present.
+Both limits are constants in `src/domain/typst/limits.ts`.
+Release 0.2.0 is an archive of 17,919,584 bytes (17.09 MiB, 57 % of the App Store's 30 MiB limit); the wasm is 28,325,178 bytes of it uncompressed.
+Notices for typst.ts, Typst, and the fonts (the SIL Open Font License, the GUST Font License, and the Bitstream Vera and Arev licences) are in `THIRD-PARTY.md`, with their source texts in `notices/` and `fonts/NOTICE`.
