@@ -1,4 +1,6 @@
 import { expect, it } from 'vitest';
+import { latexOps } from '../../../src/domain/source/latex-ops';
+import { toSource } from '../../../src/domain/pdf/match';
 import { parseTypst, plainOps } from '../../../src/domain/source/typst-parse';
 import { pdfKey, sourceKey } from '../../../src/domain/pdf/match';
 import type { PdfCaret } from '../../../src/domain/pdf/proposal-marks';
@@ -104,4 +106,17 @@ it('still places a whitespace-only range and a plain insertion in a Typst source
   const text = 'Alpha beta gamma.\n';
   expect(typstPlace(text, ['Alpha beta gamma.'], { from: 5, to: 6, inserts: true })?.caret).toEqual({ id: 'a', page: 1, item: 0, offset: 4, edge: 'after' });
   expect(typstPlace(text, ['Alpha beta gamma.'], { from: 10, to: 10, inserts: true })?.caret).toEqual({ id: 'a', page: 1, item: 0, offset: 9, edge: 'after' });
+});
+
+const tex = '\\begin{document}\nalpha \\textbf{beta} gamma\\vspace{1em} delta\n\\end{document}';
+const texKey = sourceKey('a.tex', tex, latexOps(tex));
+it('places a LaTeX span across \\textbf{} on the first rung', () => {
+  const from = tex.indexOf('alpha'), to = tex.indexOf(' delta');
+  const r = placeItem(texKey, pdfKey([['alpha beta gamma delta']]), { id: 'a', from, to, inserts: false }, 0.5);
+  expect(r?.rung).toBe('both');
+  expect(r?.struck).toEqual([{ id: 'a', page: 1, startItem: 0, startOffset: 0, endItem: 0, endOffset: 16 }]);
+});
+it('places a PDF selection across \\textbf{} in the LaTeX source', () => {
+  const r = toSource(texKey, 'alpha beta gamma', 0.5);
+  expect(r).toEqual({ file: 'a.tex', from: tex.indexOf('alpha'), to: tex.indexOf('gamma') + 5 });
 });

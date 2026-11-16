@@ -5,6 +5,7 @@ import type { ReviewRecord } from '../domain/format/record'
 import { sourceKey } from '../domain/pdf/match'
 import { DraftReview } from '../domain/review/draft-review'
 import { languageOf } from '../domain/source/language'
+import { latexOps } from '../domain/source/latex-ops'
 import { parseTypst, plainOps } from '../domain/source/typst-parse'
 import type { Backup } from './ports'
 
@@ -19,7 +20,8 @@ export class Lifecycle {
       const main = this.s.main ?? d?.files.find(f => f.file === d.main)
       if (!main) { this.s.status = 'The draft could not be found.'; this.actions.head(); return }
       this.s.file = main.file; this.s.draft = main.text; this.s.etag = main.etag
-      this.s.ops = (this.s.main?.language ?? languageOf(this.s.file)) === 'typst' ? parseTypst(this.s.draft) : plainOps(this.s.draft)
+      const language = this.s.main?.language ?? languageOf(this.s.file)
+      this.s.ops = language === 'typst' ? parseTypst(this.s.draft) : language === 'latex' ? latexOps(this.s.draft) : plainOps(this.s.draft)
       this.s.source = sourceKey(this.s.file, this.s.draft, this.s.ops)
       this.s.review = new DraftReview(this.s.file, this.s.draft)
       this.s.ports.editor.setText(this.s.review.applied()); this.actions.render()

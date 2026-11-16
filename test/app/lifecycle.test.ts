@@ -33,6 +33,17 @@ test('uses the resolved main file and language without fetching the draft again'
   expect(shown(main.text, s.ops, 0, main.text.length)).toBe('alpha')
 })
 
+test('reads a LaTeX draft through latexOps, hiding markup from the key and from shown', async () => {
+  const f = fakes()
+  const text = '\\begin{document}\\textbf{alpha}\\vspace{1em} beta\\end{document}'
+  const main = { file: 'main.tex', text, etag: 'v1', language: 'latex' as const }
+  const s = new SessionState(f.ports, { address: '', fragment: '' }, main)
+  const actions = { backup: vi.fn(), changed: vi.fn(), createQueue: vi.fn(), head: vi.fn(), install: vi.fn(), refusal: vi.fn(), render: vi.fn(), setView: vi.fn() }
+  await new Lifecycle(s, actions).start()
+  expect(s.source?.key).toBe('alphabeta')
+  expect(shown(text, s.ops, 0, text.length)).toBe('{alpha} beta')
+})
+
 test.each([403, 404, 410, 413])('applies explicit refusal editability at the open call site for %i', async status => {
   const f = fakes(), s = new SessionState(f.ports)
   const actions = { backup: vi.fn(), changed: vi.fn(), createQueue: vi.fn(), head: vi.fn(), install: vi.fn(), refusal: vi.fn(() => ({ text: 'Refused.', blocks: status !== 413 })), render: vi.fn(), setView: vi.fn() }
