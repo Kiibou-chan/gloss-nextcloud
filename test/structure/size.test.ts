@@ -5,7 +5,7 @@ import { expect, test } from 'vitest'
 const baseline: Record<string, { lines: number; reason: string }> = {
   'src/domain/review/draft-review.ts': { lines: 154, reason: 'Domain implementation; outside the session split.' },
   'src/domain/source/typst-parse.ts': { lines: 164, reason: 'Domain implementation; outside the session split.' },
-  'src/adapters/pdfjs/pdf-view.ts': { lines: 240, reason: 'Adapter implementation; outside the session split.' },
+  'src/adapters/pdfjs/pdf-view.ts': { lines: 216, reason: 'Adapter implementation; outside the session split.' },
 }
 function sources(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {

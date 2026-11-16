@@ -1,8 +1,8 @@
 import { isCommentShortcut } from '../browser/comment-shortcut'
 import { getDocument, GlobalWorkerOptions, TextLayer } from 'pdfjs-dist'
 import type { PDFPageProxy, PageViewport, RenderTask } from 'pdfjs-dist'
-import type { PdfPort } from '../../app/ports'
-import type { PdfPlacement } from '../../domain/pdf/match'
+import type { PdfMark, PdfPort } from '../../app/ports'
+import { drawPageMarks } from './mark-draw'
 type Page = {
   number: number
   pdf: PDFPageProxy
@@ -23,45 +23,14 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
   let task: ReturnType<typeof getDocument> | undefined
   let loading: ReturnType<PdfPort['show']> | undefined
   let pages: Page[] = []
-  let placements: readonly PdfPlacement[] = []
+  let byId = new Map<string, PdfMark>()
+  let byPage = new Map<number, PdfMark[]>()
   let observer: IntersectionObserver | undefined
   let viewportObserver: IntersectionObserver | undefined
   const visible = new Set<number>()
   let selected: Parameters<PdfPort['onSelect']>[0] | undefined
   function drawMarks(page: Page) {
-    page.marks.replaceChildren()
-    if (!page.layer) return
-    const divs = page.layer.textDivs
-    const strings = page.layer.textContentItemsStr
-    for (const placement of placements) {
-      if (placement.page !== page.number) continue
-      const index = placements.findIndex(p => p.id === placement.id)
-      for (let item = placement.startItem; item <= placement.endItem; item++) {
-        const div = divs[item]
-        const node = div?.firstChild
-        if (!node || node.nodeType !== Node.TEXT_NODE) continue
-        const range = document.createRange()
-        const length = strings[item]?.length ?? 0
-        const start = item === placement.startItem ? placement.startOffset : 0
-        const end = item === placement.endItem ? placement.endOffset : length
-        if (start < 0 || end > length || end <= start) continue
-        range.setStart(node, start)
-        range.setEnd(node, end)
-        const box = page.box.getBoundingClientRect()
-        for (const rect of range.getClientRects()) {
-          if (!rect.width || !rect.height) continue
-          const mark = document.createElement('div')
-          mark.className = 'gr-pdf-mark'
-          mark.dataset.id = placement.id
-          mark.dataset.n = String(index)
-          Object.assign(mark.style, {
-            left: `${rect.left - box.left}px`, top: `${rect.top - box.top}px`,
-            width: `${rect.width}px`, height: `${rect.height}px`,
-          })
-          page.marks.append(mark)
-        }
-      }
-    }
+    drawPageMarks(page, byPage.get(page.number) ?? [])
   }
   function release(page: Page) {
     if (!page.canvas) return
@@ -216,15 +185,22 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
       return loading
     },
     setMarks(next) {
-      placements = next.filter((m): m is PdfPlacement & { look: 'note' | 'struck' } => m.look !== 'insert')
+      byId = new Map()
+      byPage = new Map()
+      for (const mark of next) {
+        if (!byId.has(mark.id)) byId.set(mark.id, mark)
+        const list = byPage.get(mark.page)
+        if (list) list.push(mark)
+        else byPage.set(mark.page, [mark])
+      }
       for (const page of pages) drawMarks(page)
     },
     scrollToMark(id) {
-      const placement = placements.find(p => p.id === id)
-      const page = placement && pages[placement.page - 1]
+      const mark = byId.get(id)
+      const page = mark && pages[mark.page - 1]
       if (!page) return
-      const mark = [...page.marks.children].find(child => (child as HTMLElement).dataset.id === id)
-      ;(mark ?? page.box).scrollIntoView({ block: 'center', behavior: 'smooth' })
+      const drawn = [...page.marks.children].find(child => (child as HTMLElement).dataset.id === id)
+      ;(drawn ?? page.box).scrollIntoView({ block: 'center', behavior: 'smooth' })
     },
     dispose() {
       if (disposed) return

@@ -181,6 +181,25 @@ describe('PDF view', () => {
     expect(scroll).toHaveBeenCalledTimes(2)
   })
 
+  it('draws struck words and carets together and scrolls to a caret', async () => {
+    const scroll = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: scroll })
+    const view = create()
+    await view.show()
+    view.setMarks([
+      { ...placement(1, 'struckmark1'), look: 'struck' },
+      { id: 'caretmark01', page: 3, item: 0, offset: 1, edge: 'after', look: 'insert', words: 'new words' },
+    ])
+    observe(0)
+    observe(2)
+    await settle()
+    expect(boxes()[0]!.querySelector('.gr-pdf-struck')!.getAttribute('data-id')).toBe('struckmark1')
+    const bar = boxes()[2]!.querySelector<HTMLElement>('.gr-pdf-caret')!
+    expect(bar.querySelector('.gr-pdf-label')!.textContent).toBe('new words')
+    view.scrollToMark('caretmark01')
+    expect(scroll.mock.instances.at(-1)).toBe(bar)
+  })
+
   it.each([0, 1, 2])('reports selected text and the centre fraction of page %i', async index => {
     const view = create()
     const listener = vi.fn()
