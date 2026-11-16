@@ -362,3 +362,16 @@ Each runs on `scripts/dev-nc.sh up` (or `reset` after a route or fixture change)
 ## Question for you
 
 None; the one value question, what a deletion leaves in "New text", was ruled by the coordinator (R17).
+
+## Recheck leftovers (build rules)
+
+The dev Nextcloud is one exclusive resource.
+Picture runs happen in this order only: A4, A5, C1b, L, then N4 on `pdf-proposals-new`, then L again after the merge.
+Task N4 does not start its picture runs before L has finished on `pdf-proposals`.
+`pdf-proposals` is reviewed (Sonnet, correctness) after C1b, before L.
+`pdf-proposals-new` is reviewed after N4, and passing that review is a condition of R18's merge.
+Task R11's port also drops `\begin{env}[ht]` and `\\[2pt]` optional arguments from the key; task C1a tests both.
+Task A4 resets the dev instance after changing its fixture.
+Task R4 reuses `nearest`'s exact distance expression.
+The checkpoint at 14:00 on Tuesday cuts C1b and C1a first, then C2.
+C1a, N1, and N2 may use Sonnet builders before 16:11 on Monday.
