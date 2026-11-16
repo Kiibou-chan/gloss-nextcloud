@@ -124,7 +124,7 @@ async function main() {
               const panel = document.querySelector('.gr-side'), footer = document.querySelector('footer');
               const rect = element => { const r = element.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, height: r.height }; };
               const last = panel.querySelector('.gr-items > li:last-child');
-              const ancestors = []; for (let node = panel.parentElement; node; node = node.parentElement) ancestors.push({ tag: node.tagName, id: node.id, overflow: getComputedStyle(node).overflowY, scrollTop: node.scrollTop, scrollHeight: node.scrollHeight, clientHeight: node.clientHeight, ...rect(node) });
+              const ancestors = []; for (let node = panel.parentElement; node; node = node.parentElement) ancestors.push({ tag: node.tagName, id: node.id, overflow: getComputedStyle(node).overflowY, flex: getComputedStyle(node).flex, minHeight: getComputedStyle(node).minHeight, heightStyle: getComputedStyle(node).height, scrollTop: node.scrollTop, scrollHeight: node.scrollHeight, clientHeight: node.clientHeight, ...rect(node) });
               return { ancestors, panel: rect(panel), last: rect(last), footer: rect(footer), paddingBottom: getComputedStyle(document.querySelector('#gloss-review')).paddingBottom, buttons: [...last.querySelectorAll('button')].map(rect), overflow: getComputedStyle(panel).overflowY, columns: getComputedStyle(document.querySelector('.gr-body')).gridTemplateColumns };
             });
             await writeFile(resolve(out, `${prefix}-layout-${width}.json`), JSON.stringify(geometry, null, 2));
