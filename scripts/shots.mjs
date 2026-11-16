@@ -114,16 +114,18 @@ async function main() {
           if (contrast.opacity < .8 || contrast.ratio < 4.5) throw new Error(`Read-only contrast failed: ${contrast.ratio.toFixed(2)}:1, opacity ${contrast.opacity}.`);
           console.log(`Read-only draft contrast ${contrast.ratio.toFixed(2)}:1, opacity ${contrast.opacity}.`);
         }
-        if (['editor', 'both'].includes(sceneName)) {
+        if (['editor', 'pdf', 'both'].includes(sceneName)) {
           for (const width of [1600, 640]) {
             await page.setViewportSize({ width, height: 1000 });
             await page.locator('.gr-items > li').last().scrollIntoViewIfNeeded();
+            if (width === 640) await page.locator('#content').evaluate(element => { element.scrollTop = element.scrollHeight; });
             await page.waitForTimeout(150);
             const geometry = await page.evaluate(() => {
               const panel = document.querySelector('.gr-side'), footer = document.querySelector('footer');
               const rect = element => { const r = element.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, height: r.height }; };
               const last = panel.querySelector('.gr-items > li:last-child');
-              return { panel: rect(panel), last: rect(last), footer: rect(footer), paddingBottom: getComputedStyle(document.querySelector('#gloss-review')).paddingBottom, buttons: [...last.querySelectorAll('button')].map(rect), overflow: getComputedStyle(panel).overflowY, columns: getComputedStyle(document.querySelector('.gr-body')).gridTemplateColumns };
+              const ancestors = []; for (let node = panel.parentElement; node; node = node.parentElement) ancestors.push({ tag: node.tagName, id: node.id, overflow: getComputedStyle(node).overflowY, scrollTop: node.scrollTop, scrollHeight: node.scrollHeight, clientHeight: node.clientHeight, ...rect(node) });
+              return { ancestors, panel: rect(panel), last: rect(last), footer: rect(footer), paddingBottom: getComputedStyle(document.querySelector('#gloss-review')).paddingBottom, buttons: [...last.querySelectorAll('button')].map(rect), overflow: getComputedStyle(panel).overflowY, columns: getComputedStyle(document.querySelector('.gr-body')).gridTemplateColumns };
             });
             await writeFile(resolve(out, `${prefix}-layout-${width}.json`), JSON.stringify(geometry, null, 2));
             if (geometry.panel.bottom > geometry.footer.top + 1 || geometry.last.bottom > geometry.footer.top + 1 || geometry.overflow !== (width === 640 ? 'visible' : 'auto')) throw new Error(`Footer overlap at ${width}px.`);

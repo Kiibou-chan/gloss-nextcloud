@@ -1,4 +1,4 @@
-#gloss-review { --gr-footer-height: 61px; flex: 1 1 auto; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 12px max(16px, 2vw); padding-bottom: calc(12px + var(--gr-footer-height)); max-width: 1200px; margin: 0 auto;
+#gloss-review { --gr-footer-height: 61px; flex: 1 0 auto; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 12px max(16px, 2vw); padding-bottom: calc(12px + var(--gr-footer-height)); max-width: 1200px; margin: 0 auto;
 	background: var(--color-main-background); border-radius: var(--border-radius-large); }
 .gr-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .gr-title { font-weight: bold; font-size: 1.2em; flex: 1 1 auto; }

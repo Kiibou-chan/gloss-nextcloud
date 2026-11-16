@@ -65,4 +65,3 @@ test('unplaced evidence extracts the requested raw object after an overall item'
     expect(refused.log).not.toContain('exec ')
   }
 })
-
