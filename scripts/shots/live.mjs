@@ -35,19 +35,6 @@ async function passwordPrompt(page, password, link) {
 export function liveScenes({ ready, find, comment, content, name, status }) {
   return {
     'password-lapse': { navigate: false, run: async ({ page, context, state, capture }) => {
-      // The Docker Apache front controller still strips index.php after the
-      // disposable pretty-URL toggle, so pin the supplied template URL live.
-      await page.addInitScript(() => {
-        const supplyNonPrettyRoute = () => {
-          const root = document.querySelector('#gloss-review');
-          if (!root) return;
-          if (root.dataset.csrfTokenUrl === '/csrftoken') root.dataset.csrfTokenUrl = '/index.php/csrftoken';
-          observer.disconnect();
-        };
-        const observer = new MutationObserver(supplyNonPrettyRoute);
-        observer.observe(document, { childList: true, subtree: true });
-        supplyNonPrettyRoute();
-      });
       const password = randomBytes(24).toString('hex');
       const response = await ownerRequest(state, '/ocs/v2.php/apps/files_sharing/api/v1/shares?format=json', {
         method: 'POST', body: new URLSearchParams({ path: '/Review', shareType: '3', permissions: '1', password }),
@@ -89,28 +76,35 @@ export function liveScenes({ ready, find, comment, content, name, status }) {
           await expect(reviewer.getByRole('textbox', { name: 'Your review link' })).toHaveValue(reviewLink);
           await capture('-other-device', reviewer);
         } finally { await otherDevice.close(); await page.bringToFront(); }
-        const csrfUrl = await page.locator('#gloss-review').getAttribute('data-csrf-token-url');
-        console.log(`CSRF supplied route: ${csrfUrl}.`);
-        const csrfPath = new URL(csrfUrl, page.url()).pathname;
-        expect(csrfPath).toContain('/index.php/csrftoken');
-        let staleOnce = true;
-        let refreshed = false;
-        const staleRoute = async route => {
-          if (staleOnce) {
-            staleOnce = false;
-            await route.continue({ headers: { ...route.request().headers(), requesttoken: 'synthetic-stale-token' } });
-          } else await route.continue();
-        };
-        page.on('response', response => {
-          if (new URL(response.url()).pathname === csrfPath && response.status() === 200) refreshed = true;
+        await recoverStaleToken(page, async () => {
+          await page.getByRole('textbox', { name: 'Overall comment' }).fill('Synthetic stale-token recovery.');
+          await saved(page);
         });
-        await page.route('**/review', staleRoute);
-        await page.getByRole('textbox', { name: 'Overall comment' }).fill('Synthetic stale-token recovery.');
-        await saved(page);
-        expect(staleOnce).toBe(false);
-        expect(refreshed).toBe(true);
-        await page.unroute('**/review', staleRoute);
         await capture('-csrf-refreshed');
+        // Reopen the plain link in this authenticated browser, with no review hash.
+        // N2 must preserve the same review across every path form the server serves.
+        let reopened = 0;
+        let lastServed = page.url();
+        for (const front of ['/index.php', '']) {
+          const plain = `${state.base}${front}/apps/gloss/r/${share.data.token}`;
+          await page.goto('about:blank');
+          const navigation = await page.goto(plain, { waitUntil: 'networkidle' });
+          if (navigation.status() === 404) {
+            console.log(`Plain-link reopen: ${front || 'pretty'} form is not served (404).`);
+            await page.goto(lastServed, { waitUntil: 'networkidle' });
+            continue;
+          }
+          expect(navigation.status()).toBe(200);
+          await expect(name(page)).toHaveValue('Ada Example');
+          await expect(content(page)).toContainText('flourish');
+          await expect(page.getByRole('textbox', { name: 'Overall comment' })).toHaveValue('Synthetic stale-token recovery.');
+          const reopenedLink = await page.getByRole('textbox', { name: 'Your review link' }).inputValue();
+          expect(new URL(reopenedLink).hash).toBe(new URL(reviewLink).hash);
+          lastServed = plain;
+          await capture(front ? '-reopened-index' : '-reopened-pretty');
+          reopened++;
+        }
+        expect(reopened).toBeGreaterThan(0);
         const cookies = await context.cookies();
         // Gloss uses browser storage for backups, and sets no authentication cookies.
         for (const cookie of cookies.filter(cookie => !cookie.name.toLowerCase().startsWith('gloss'))) {
@@ -153,8 +147,22 @@ export function liveScenes({ ready, find, comment, content, name, status }) {
       await page.keyboard.press('x');
       await expect(status(page)).toHaveText('Enter your name first.');
       await expect(name(page)).toBeFocused();
+      await expect(name(page)).toHaveValue('');
+      const typography = () => content(page).evaluate(element => {
+        const style = getComputedStyle(element);
+        const lines = [...element.querySelectorAll('.cm-line')];
+        return { fontSize: style.fontSize, lineHeight: style.lineHeight,
+          pitch: lines.length > 1 ? lines[1].getBoundingClientRect().top - lines[0].getBoundingClientRect().top : null };
+      });
+      const readOnly = await typography();
       await capture('-name');
+      await page.getByRole('textbox', { name: 'Overall comment' }).press('x');
+      await expect(name(page)).toBeFocused();
+      await expect(name(page)).toHaveValue('');
       await ready(page);
+      expect(await typography()).toEqual(readOnly);
+      console.log(`Editor typography unchanged: ${JSON.stringify(readOnly)}.`);
+      await capture('-named');
       await content(page).click();
       await page.keyboard.press('Control+a');
       await expect(page.locator('#gr-comment')).toBeHidden();
@@ -217,4 +225,40 @@ export function rawItem(text, id) {
     } else if (c === ']' && depth === 0) break;
   }
   throw new Error('Review item missing.');
+}
+
+// Exercise the supplied template URL without changing it, and require the full recovery order.
+export async function recoverStaleToken(page, change) {
+  const csrfUrl = await page.locator('#gloss-review').getAttribute('data-csrf-token-url');
+  expect(csrfUrl).toBeTruthy();
+  const supplied = new URL(csrfUrl, page.url()).href;
+  const replies = [];
+  const response = reply => {
+    if (reply.url() === supplied) replies.push({ kind: 'refresh', status: reply.status() });
+    else if (reply.request().method() === 'POST' && /\/review$/.test(new URL(reply.url()).pathname)) {
+      replies.push({ kind: 'save', status: reply.status() });
+    }
+  };
+  let staleOnce = true;
+  const staleRoute = async route => {
+    if (staleOnce) {
+      staleOnce = false;
+      await route.continue({ headers: { ...route.request().headers(), requesttoken: 'synthetic-stale-token' } });
+    } else await route.continue();
+  };
+  page.on('response', response);
+  await page.route('**/review', staleRoute);
+  try {
+    await change();
+    expect(staleOnce).toBe(false);
+    expect(replies).toEqual([
+      { kind: 'save', status: 412 },
+      { kind: 'refresh', status: 200 },
+      { kind: 'save', status: 200 },
+    ]);
+    console.log(`CSRF recovery probe: 412, refresh 200, retry 200 via ${new URL(supplied).pathname}.`);
+  } finally {
+    await page.unroute('**/review', staleRoute);
+    page.off('response', response);
+  }
 }

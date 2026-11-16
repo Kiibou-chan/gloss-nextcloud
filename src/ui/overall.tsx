@@ -10,7 +10,7 @@ export function Overall({ model, session }: { model: PanelModel; session: PanelC
     <label for="gr-overall">Overall comment
       <textarea id="gr-overall" rows={5} value={model.overall.value} readOnly={!model.head.value.editable}
         onPaste={() => { if (!editable) session.requestName?.() }}
-        onKeyDown={event => { if (!editable && entersText(event)) session.requestName?.() }}
+        onKeyDown={event => { if (!editable && entersText(event)) { event.preventDefault(); session.requestName?.() } }}
         onInput={event => { if (model.head.value.editable) session.setOverall(event.currentTarget.value) }} />
     </label>
   </div>
