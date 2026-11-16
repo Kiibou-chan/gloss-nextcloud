@@ -12,6 +12,7 @@ use OCA\Gloss\Service\ReviewKey;
 use OCA\Gloss\Service\StoredReview;
 use OCA\Gloss\Service\SaveResult;
 use OCA\Gloss\Service\SentNotifier;
+use OCA\Gloss\Service\SharedFiles;
 use OCP\AppFramework\Http\Attribute\BruteForceProtection;
 use OCP\AppFramework\Http\Attribute\AnonRateLimit;
 use OCP\Files\File;
@@ -30,7 +31,7 @@ final class ReviewControllerTest extends TestCase {
 		$share->method('getNode')->willReturn($folder);
 		$manager = $this->createMock(IManager::class);
 		$manager->method('getShareByToken')->with('synthetic-link')->willReturn($share);
-		$controller = new ReviewController('gloss', $this->createMock(IRequest::class), $this->createMock(ISession::class), $manager, $this->createMock(IURLGenerator::class), new DraftLocator(), $store ?? $this->createMock(ReviewStore::class), $notifier ?? $this->createMock(SentNotifier::class));
+		$controller = new ReviewController('gloss', $this->createMock(IRequest::class), $this->createMock(ISession::class), $manager, $this->createMock(IURLGenerator::class), new DraftLocator(), $store ?? $this->createMock(ReviewStore::class), $notifier ?? $this->createMock(SentNotifier::class), new SharedFiles());
 		$controller->setToken('synthetic-link');
 		return $controller;
 	}
@@ -66,7 +67,7 @@ final class ReviewControllerTest extends TestCase {
 		$manager->method('getShareByToken')->willReturn($share);
 		$urls = $this->createMock(IURLGenerator::class);
 		$urls->method('linkToRoute')->willReturnCallback(static fn (string $route): string => $route === 'core.CSRFToken.index' ? '/cloud/index.php/csrftoken' : '/cloud/index.php/apps/gloss/r/synthetic-link');
-		$controller = new ReviewController('gloss', $this->createMock(IRequest::class), $this->createMock(ISession::class), $manager, $urls, new DraftLocator(), $this->createMock(ReviewStore::class), $this->createMock(SentNotifier::class));
+		$controller = new ReviewController('gloss', $this->createMock(IRequest::class), $this->createMock(ISession::class), $manager, $urls, new DraftLocator(), $this->createMock(ReviewStore::class), $this->createMock(SentNotifier::class), new SharedFiles());
 		$controller->setToken('synthetic-link');
 		$params = $controller->page()->getParams();
 		self::assertSame('/cloud/index.php/csrftoken', $params['csrfTokenUrl']);
@@ -89,7 +90,7 @@ final class ReviewControllerTest extends TestCase {
 			self::assertSame(['token' => 'synthetic-link'], $params);
 			return '/apps/gloss/r/synthetic-link/view';
 		});
-		$controller = new ReviewController('gloss', $this->createMock(IRequest::class), $session, $manager, $urls, new DraftLocator(), $this->createMock(ReviewStore::class), $this->createMock(SentNotifier::class));
+		$controller = new ReviewController('gloss', $this->createMock(IRequest::class), $session, $manager, $urls, new DraftLocator(), $this->createMock(ReviewStore::class), $this->createMock(SentNotifier::class), new SharedFiles());
 		$controller->setToken('synthetic-link');
 		self::assertTrue($controller->authenticate('wrong-synthetic')->getParams()['wrongpw']);
 		$response = $controller->authenticate('correct-synthetic');
@@ -97,7 +98,7 @@ final class ReviewControllerTest extends TestCase {
 	}
 
 	public function testApiLapseDoesNotRedirectOrStoreRequestBody(): void {
-		foreach (['page', 'showShare', 'showAuthenticate', 'authenticate', 'draft', 'pdf', 'open', 'save'] as $action) {
+		foreach (['page', 'showShare', 'showAuthenticate', 'authenticate', 'draft', 'pdf', 'file', 'open', 'save'] as $action) {
 			foreach ([false, true] as $authenticated) {
 				$request = $this->createMock(IRequest::class);
 				$request->method('getParam')->with('_route')->willReturn('gloss.review.' . $action);
@@ -108,14 +109,14 @@ final class ReviewControllerTest extends TestCase {
 				$share->method('getPassword')->willReturn('synthetic-hash');
 				$manager = $this->createMock(IManager::class);
 				$manager->method('getShareByToken')->willReturn($share);
-				$controller = new ReviewController('gloss', $request, $session, $manager, $this->createMock(IURLGenerator::class), new DraftLocator(), $this->createMock(ReviewStore::class), $this->createMock(SentNotifier::class));
+				$controller = new ReviewController('gloss', $request, $session, $manager, $this->createMock(IURLGenerator::class), new DraftLocator(), $this->createMock(ReviewStore::class), $this->createMock(SentNotifier::class), new SharedFiles());
 				$controller->setToken('synthetic-link');
 				try {
 					self::assertSame($authenticated, $controller->isAuthenticated());
-					self::assertTrue($authenticated || !in_array($action, ['draft', 'pdf', 'open', 'save'], true));
+					self::assertTrue($authenticated || !in_array($action, ['draft', 'pdf', 'file', 'open', 'save'], true));
 				} catch (\OCP\Files\NotFoundException) {
 					self::assertFalse($authenticated);
-					self::assertContains($action, ['draft', 'pdf', 'open', 'save']);
+					self::assertContains($action, ['draft', 'pdf', 'file', 'open', 'save']);
 				}
 			}
 		}
@@ -171,6 +172,28 @@ final class ReviewControllerTest extends TestCase {
 		$controller = $this->controller($folder);
 		foreach ([$controller->draft(), $controller->pdf()] as $response) {
 			self::assertSame(404, $response->getStatus());
+		}
+	}
+
+	public function testFileStreamsAServedFileAndRefusesTheRest(): void {
+		$stream = fopen('php://memory', 'rb');
+		$file = $this->createMock(File::class);
+		$file->method('getPath')->willReturn('/u/files/Review/refs.bib');
+		$file->method('getSize')->willReturn(3);
+		$file->method('fopen')->with('rb')->willReturn($stream);
+		$folder = $this->createMock(Folder::class);
+		$folder->method('getPath')->willReturn('/u/files/Review');
+		$folder->method('get')->willReturnCallback(static fn (string $p) => $p === 'refs.bib' ? $file : throw new \OCP\Files\NotFoundException());
+		$share = $this->createMock(IShare::class);
+		$share->method('getPermissions')->willReturn(\OCP\Constants::PERMISSION_READ);
+		$controller = $this->controller($folder, null, $share);
+		$ok = $controller->file('refs.bib');
+		self::assertInstanceOf(\OCP\AppFramework\Http\StreamResponse::class, $ok);
+		self::assertSame('application/octet-stream', $ok->getHeaders()['Content-Type']);
+		foreach (['gone.bib', '../x', '.gloss-review'] as $path) {
+			$refused = $controller->file($path);
+			self::assertSame(404, $refused->getStatus());
+			self::assertSame(['error' => 'The draft reads a file this link cannot serve.'], $refused->getData());
 		}
 	}
 
@@ -256,6 +279,7 @@ final class ReviewControllerTest extends TestCase {
 			['name' => 'review#authenticate', 'url' => '/r/{token}/authenticate', 'verb' => 'POST'],
 			['name' => 'review#draft', 'url' => '/r/{token}/draft', 'verb' => 'GET'],
 			['name' => 'review#pdf', 'url' => '/r/{token}/pdf', 'verb' => 'GET'],
+			['name' => 'review#file', 'url' => '/r/{token}/file', 'verb' => 'GET'],
 			['name' => 'review#open', 'url' => '/r/{token}/review/open', 'verb' => 'POST'],
 			['name' => 'review#save', 'url' => '/r/{token}/review', 'verb' => 'POST'],
 		], $routes);
