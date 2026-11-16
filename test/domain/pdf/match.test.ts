@@ -61,3 +61,71 @@ it('searches a ready key and splits a key range into page-local segments', () =>
     { id: 'x', page: 2, startItem: 0, startOffset: 0, endItem: 0, endOffset: 2 },
   ]);
 });
+
+function oracleNearest(key: string, needle: string, fraction: number): { start: number; end: number } | null {
+  if (!needle) return null;
+  let best = -1;
+  for (let hit = key.indexOf(needle); hit >= 0; hit = key.indexOf(needle, hit + 1)) {
+    if (best < 0 || Math.abs(hit / key.length - fraction) < Math.abs(best / key.length - fraction)) best = hit;
+  }
+  return best < 0 ? null : { start: best, end: best + needle.length };
+}
+function seeded(seed: number): (n: number) => number {
+  let s = seed;
+  return n => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s % n; };
+}
+function keyWith(length: number, needle: string, starts: number[]): string {
+  const chars = Array.from({ length }, () => 'z');
+  for (const at of starts) for (let i = 0; i < needle.length; i++) chars[at + i] = needle[i]!;
+  return chars.join('');
+}
+
+it('equals the whole-key search over 2,000 seeded needles and fractions on a long key', () => {
+  const random = seeded(0x4a3);
+  const words = ['alpha', 'beta', 'gamma', 'delta', 'eps', 'zeta'];
+  let key = '';
+  while (key.length < 120000) key += words[random(words.length)]! + String(random(40));
+  for (let i = 0; i < 2000; i++) {
+    const from = random(key.length - 40);
+    const needle = key.slice(from, from + 1 + random(30));
+    const fraction = random(1000) / 1000 + (i % 7 === 0 ? 0.0005 : 0);
+    expect(nearestKey(key, needle, fraction)).toEqual(oracleNearest(key, needle, fraction));
+  }
+  expect(nearestKey(key, 'absent!', 0.5)).toBeNull();
+});
+it('equals the whole-key search on constructed ties and window edges', () => {
+  const needle = 'abc';
+  const length = 20000;
+  const centre = 10000;
+  const fraction = centre / length;
+  const cases: number[][] = [
+    [centre - 100, centre + 100],
+    [centre + 100, centre - 100],
+    [centre - 1999, centre + 1999],
+    [centre - 2000, centre + 2000],
+    [centre - 2001, centre + 2001],
+    [centre + 2000 + needle.length - 1],
+    [centre + 2000 + needle.length],
+    [centre + 1999, centre + 2000 + needle.length - 1],
+    [centre - 2000, centre + 2000 + needle.length - 1],
+    [centre - 2000],
+    [centre - 2001],
+    [centre + 1990, centre - 2005],
+  ];
+  for (const starts of cases) {
+    const key = keyWith(length, needle, starts);
+    expect(nearestKey(key, needle, fraction), starts.join()).toEqual(oracleNearest(key, needle, fraction));
+  }
+  for (let hit = centre - 2100; hit <= centre + 2100; hit++) {
+    const key = keyWith(length, needle, [hit, 50]);
+    expect(nearestKey(key, needle, fraction), String(hit)).toEqual(oracleNearest(key, needle, fraction));
+  }
+  const random = seeded(0x77);
+  for (let i = 0; i < 300; i++) {
+    const a = centre + random(4200) - 2100;
+    const b = centre + random(4200) - 2100;
+    const key = keyWith(length, needle, [Math.min(a, b), Math.max(a, b) + needle.length]);
+    const f = (centre + random(5) - 2) / length;
+    expect(nearestKey(key, needle, f)).toEqual(oracleNearest(key, needle, f));
+  }
+});

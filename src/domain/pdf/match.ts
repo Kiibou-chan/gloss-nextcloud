@@ -54,13 +54,29 @@ export function pdfKey(pages: readonly (readonly string[])[]): PdfKey {
   return keyOf(chars());
 }
 
-/** Keep the first occurrence on a tie, as in the spike. The needle is already a key. */
+const WINDOW = 2000;
+
+/** Keep the first occurrence on a tie, as in the spike. The needle is already a key.
+ * Hits starting within WINDOW of the fraction's position are searched first; the whole key is searched only when none is strictly closer than WINDOW.
+ */
 export function nearestKey(key: string, needle: string, fraction: number): { start: number; end: number } | null {
   if (!needle) return null;
-  let best = -1;
-  for (let hit = key.indexOf(needle); hit >= 0; hit = key.indexOf(needle, hit + 1)) {
-    if (best < 0 || Math.abs(hit / key.length - fraction) < Math.abs(best / key.length - fraction)) best = hit;
+  const centre = fraction * key.length;
+  const from = Math.max(0, Math.floor(centre - WINDOW));
+  const to = centre + WINDOW + needle.length;
+  const bestIn = (haystack: string, offset: number, limit: number): number => {
+    let best = -1;
+    for (let at = haystack.indexOf(needle); at >= 0 && at + offset < limit; at = haystack.indexOf(needle, at + 1)) {
+      const hit = at + offset;
+      if (best < 0 || Math.abs(hit / key.length - fraction) < Math.abs(best / key.length - fraction)) best = hit;
+    }
+    return best;
+  };
+  const near = bestIn(key.slice(from, Math.ceil(to) + needle.length - 1), from, to);
+  if (near >= 0 && Math.abs(near / key.length - fraction) * key.length < WINDOW - 1e-6) {
+    return { start: near, end: near + needle.length };
   }
+  const best = bestIn(key, 0, Infinity);
   return best < 0 ? null : { start: best, end: best + needle.length };
 }
 
