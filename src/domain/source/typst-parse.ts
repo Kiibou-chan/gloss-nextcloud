@@ -1,4 +1,5 @@
 /** Ported from the spike's js/typst-view.js parse and dropBlankParagraphs. */
+import { skipBalanced, skipComment, statementEnd } from './typst-scan'
 export type Op =
   | { readonly op: 'open'; readonly tag: string; readonly cls?: string }
   | { readonly op: 'close' }
@@ -18,30 +19,6 @@ const BLANK = /^[ \t]*(\n|$)/
 const IDENT = /^[A-Za-z_][\w-]*(\.[A-Za-z_][\w-]*)*/
 const LABEL = /^<[\w:.-]+>/
 const REF = /^@[\w:.-]*[\w]/
-
-/** The position just past the bracket that closes the one at i, skipping strings; the source's end if none. */
-const skipBalanced = (src: string, i: number): number => {
-	const open = src[i]!; const close = ({ '(': ')', '[': ']', '{': '}' } as Record<string, string>)[open]
-	let depth = 0
-	for (let j = i; j < src.length; j++) {
-		const c = src[j]
-		if (c === '"') { j++; while (j < src.length && src[j] !== '"') { if (src[j] === '\\') j++; j++ } continue }
-		if (c === open) depth++
-		else if (c === close && --depth === 0) return j + 1
-	}
-	return src.length
-}
-
-/** The end of a statement line, carried over further lines while a bracket is open. */
-const statementEnd = (src: string, i: number): number => {
-	let j = i
-	while (j < src.length && src[j] !== '\n') {
-		if ('([{'.includes(src[j]!)) { j = skipBalanced(src, j); continue }
-		if (src[j] === '"') { j++; while (j < src.length && src[j] !== '"') { if (src[j] === '\\') j++; j++ } }
-		j++
-	}
-	return j
-}
 
 export const parseTypst = (src: string): Op[] => {
 	const ops: Op[] = []
@@ -92,14 +69,7 @@ export const parseTypst = (src: string): Op[] => {
 			if (inLine) { flush(i); closeLine(); i++; lineStart = true; continue }
 			ensureBlock(); show(i); i++; lineStart = true; continue
 		}
-		if (c === '/' && src[i + 1] === '/') {
-			flush(i)
-			const nl = src.indexOf('\n', i); i = nl < 0 ? src.length : nl; continue
-		}
-		if (c === '/' && src[i + 1] === '*') {
-			flush(i)
-			const end = src.indexOf('*/', i + 2); i = end < 0 ? src.length : end + 2; continue
-		}
+		if (c === '/' && skipComment(src, i) > i) { flush(i); i = skipComment(src, i); continue }
 		if (c === '\\' && i + 1 < src.length && src[i + 1] !== '\n') {
 			flush(i); ensureBlock(); show(i + 1); i += 2; continue
 		}
