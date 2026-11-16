@@ -34,7 +34,7 @@ function runAt(all: readonly Run[], pos: number): Run | undefined {
 const SYNTAX = /[\\[\]#$`*_<>@]/
 const BLOCK_START = /^[ \t]*([=\-+/]|\d+\.[ \t])/
 const BLOCK_AFTER_BREAK = /\n[ \t]*([=\-+/]|\d+\.)/
-const BLANK_LINE = /\n[ \t]*\n/
+const BLANK_LINE = /\n[ \t\r]*\n/
 
 /** Words that can sit inside a wrapper's brackets without starting markup or code. */
 const safeWords = (words: string): boolean =>
@@ -51,6 +51,7 @@ const backslashesBefore = (draft: string, at: number): number => {
 export function wrappable(draft: string, ops: readonly Op[], from: number, to: number, words: string): boolean {
 	const old = draft.slice(from, to)
 	if (!safeWords(old) || !safeWords(words) || backslashesBefore(draft, from) % 2 === 1) return false
+	if ((to === 0 || draft[to - 1] === '\n') && BLOCK_START.test(draft.slice(to))) return false
 	const all = runsOf(ops)
 	let line = false
 	if (from < to) {

@@ -81,3 +81,23 @@ test('no line break inside a heading or a list item', () => {
   expect(ok(fixture, 'Zeta leaves', 'a\nb')).toBe(false)
   expect(ok(fixture, 'grow', 'a\nb')).toBe(true)
 })
+
+test.each(['- item one', '+ item one', '= Head', '/ Term: x', '1. item one', '  - item one'])('a closing wrapper right before the block line %j is refused', line => {
+  const draft = `Alpha gamma.\n${line}\nrest\n`
+  expect(ok(draft, 'gamma.\n', 'gamma. ')).toBe(false)
+  expect(ok(draft, 'gamma.\n', 'gamma.\n')).toBe(false)
+  expect(at(draft, line, 'new\n')).toBe(false)
+  expect(at(draft, line, 'new ')).toBe(false)
+  expect(ok(draft, 'gamma.', 'gamma!')).toBe(true)
+})
+
+test('a wrapper ending at a line start before plain text stays wrappable', () => {
+  const draft = 'Alpha gamma.\nplain line\n'
+  expect(ok(draft, 'gamma.\n', 'gamma. ')).toBe(true)
+  expect(at(draft, 'plain', 'new ')).toBe(true)
+})
+
+test('a blank line with CRLF line ends refuses, in the words and in the old range', () => {
+  expect(ok(fixture, 'grow', 'x\r\n\r\ny')).toBe(false)
+  expect(ok('Alpha gamma.\r\n\r\nDelta end.\r\n', 'gamma.\r\n\r\nDelta', 'gamma. Delta')).toBe(false)
+})
