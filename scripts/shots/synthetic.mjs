@@ -15,14 +15,14 @@ export function refusedPath(path) {
   return segments.length > 16 || segments.some(segment => segment === '' || segment.startsWith('.'));
 }
 
-async function fixtureFiles(sceneName, folder) {
+async function fixtureFiles(sceneName, folder, draft) {
   if (gardenScenes.includes(sceneName)) {
     return { main: 'garden.txt', text: 'Synthetic garden observations.\nThe seedlings grow beside the window.\n', pdf: null };
   }
   const dir = new URL(`test/fixtures/nc/${folder}/`, root);
-  const main = sceneMain[sceneName] ?? fixtureMain[folder];
+  const main = draft?.main ?? sceneMain[sceneName] ?? fixtureMain[folder];
   if (!main) throw new Error(`No synthetic fixture for the ${folder} folder.`);
-  return { main, text: await readFile(new URL(main, dir), 'utf8'), pdf: await readFile(new URL('paper.pdf', dir)) };
+  return { main, text: draft?.text ?? await readFile(new URL(main, dir), 'utf8'), pdf: await readFile(new URL('paper.pdf', dir)) };
 }
 
 function pageHtml(sceneName, css, pdfCss, withPdf) {
@@ -41,9 +41,10 @@ function pageHtml(sceneName, css, pdfCss, withPdf) {
     </div><script src="/gloss-review.js"></script></body></html>`;
 }
 
-export async function syntheticRoutes(context, sceneName, reviews, folder = 'Review') {
+/** `draft` ({ main, text }) replaces the fixture's draft text; the fixture folder's PDF still stands in for the uploaded one. */
+export async function syntheticRoutes(context, sceneName, reviews, folder = 'Review', draft = null) {
   const [script, css, files] = await Promise.all([
-    readFile(new URL('js/gloss-review.js', root), 'utf8'), readFile(new URL('css/review.css', root), 'utf8'), fixtureFiles(sceneName, folder),
+    readFile(new URL('js/gloss-review.js', root), 'utf8'), readFile(new URL('css/review.css', root), 'utf8'), fixtureFiles(sceneName, folder, draft),
   ]);
   const withPdf = files.pdf !== null;
   const typst = folder === 'Typst' && sceneName.startsWith('typst-');
