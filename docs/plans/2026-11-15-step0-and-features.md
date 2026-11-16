@@ -3,8 +3,8 @@
 > **For agentic workers:** build task by task, test-first; steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** the spike's review page rebuilt in layers (a pure domain, an application layer with ports, adapters, a Preact panel, and wiring), in strict TypeScript with structure checks, PHPUnit, and CI, with no behaviour lost; then the review features: read-only links with reviews written beside the shared folder (RVW-3 B), saving that survives a bad network, a review link that opens the review on any device, an overall comment, and a notification on Send.
-**Status:** revised from plan review 1 (`/home/kiibou/.cache/gloss-work/rvw/plan-review-1.md`, at `c8d1077`); each finding's change is in "Review 1 findings" at the end.
-**Request:** the brief `/home/kiibou/.cache/gloss-work/rvw/brief-plan.md`, with your rulings of 2026-11-15 as it quotes them: RVW-1 = C, RVW-2 = "A and B ideally", raw source with the PDF beside it, RVW-3 = B, "at least in the long run" multi-file drafts, good coding practice and clean architecture, and "Sounds good" to step 0 and the feature list.
+**Status:** revised from plan review 1 (`$GLOSS_WORK/../plan-review-1.md`, at `c8d1077`); each finding's change is in "Review 1 findings" at the end.
+**Request:** the brief `$GLOSS_WORK/../brief-plan.md`, with your rulings of 2026-11-15 as it quotes them: RVW-1 = C, RVW-2 = "A and B ideally", raw source with the PDF beside it, RVW-3 = B, "at least in the long run" multi-file drafts, good coding practice and clean architecture, and "Sounds good" to step 0 and the feature list.
 **Base:** branch `spike-review` at `baf4dad`; every handle below holds there unless it names another repository.
 **Plan branch:** `plan-step0`, from the base; it changes only this plan.
 **Deadline:** reviewers from Wednesday 2026-11-18; gloss's import of reviews on Wednesday morning reads format 1 (task S2 freezes it first); you sign and release on the App Store on Wednesday afternoon, and no task touches a signing key.
@@ -41,7 +41,7 @@ Each is a line of acceptance test A0 and of hand check H1 to H4; a ruling below 
 
 ## Probes
 
-On this laptop, Node 26.10.0, on synthetic text only; the scripts are kept in `/home/kiibou/.cache/gloss-work/rvw/`.
+On this laptop, Node 26.10.0, on synthetic text only; the scripts are kept in `$GLOSS_WORK/../`.
 
 - **P1, the diff on every change does not scale.** `diffprobe.mjs` runs the spike's `GlossDiff.changes` on a 10,000-line draft of seeded Greek-letter words (572,902 characters, 200,971 tokens) against the same draft with k one-word insertions spread through it.
 
@@ -581,7 +581,7 @@ Nextcloud caches routes for 3,600 s unless `debug` is on (I9): `dev-nc.sh up` tu
 
 ## Review 1 findings
 
-Each finding of plan review 1 (`/home/kiibou/.cache/gloss-work/rvw/plan-review-1.md`, plan at `c8d1077`) and where this revision answers it.
+Each finding of plan review 1 (`$GLOSS_WORK/../plan-review-1.md`, plan at `c8d1077`) and where this revision answers it.
 Counts: 24 findings (C1, I1 to I9, M1 to M14, M14's five points as one), 24 fixed, 0 ruled not a defect.
 
 | Finding | Outcome | Where and why |

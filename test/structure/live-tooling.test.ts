@@ -14,6 +14,7 @@ function probe(args: string[]) {
 printf '%s\\n' "$*" >> "$PWD/docker.log"
 if [[ "$1" = inspect && "$3" = *gloss.dev.root* ]]; then pwd
 elif [[ "$1" = inspect ]]; then echo true
+elif [[ "$*" = *"config:system:get htaccess.RewriteBase"* || "$*" = *"config:system:get gloss.dev.rewriteBase"* ]]; then echo /synthetic-base
 elif [[ "$1" = exec && "$2" = -i ]]; then cat > "$PWD/input.tar.gz"
 fi
 `, { mode: 0o700 })
@@ -64,4 +65,20 @@ test('unplaced evidence extracts the requested raw object after an overall item'
     expect(refused.status).not.toBe(0)
     expect(refused.log).not.toContain('exec ')
   }
+})
+
+test('pretty URL toggling preserves RewriteBase and refreshes Apache rules', () => {
+  const off = probe(['pretty-urls', 'false'])
+  expect(off.status).toBe(0)
+  expect(off.log).toContain('config:system:get htaccess.RewriteBase')
+  expect(off.log).toContain('config:system:set gloss.dev.rewriteBase --value=/synthetic-base')
+  expect(off.log).toContain('config:system:set htaccess.RewriteBase --value=')
+  expect(off.log).toContain('config:system:set htaccess.IgnoreFrontController --value=false --type=boolean')
+  expect(off.log).toContain('maintenance:update:htaccess')
+  const on = probe(['pretty-urls', 'true'])
+  expect(on.status).toBe(0)
+  expect(on.log).toContain('config:system:get gloss.dev.rewriteBase')
+  expect(on.log).toContain('config:system:set htaccess.RewriteBase --value=/synthetic-base')
+  expect(on.log).toContain('maintenance:update:htaccess')
+  expect(probe(['pretty-urls', 'invalid']).status).not.toBe(0)
 })

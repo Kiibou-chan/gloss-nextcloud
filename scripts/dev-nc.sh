@@ -208,6 +208,23 @@ debug() {
   owned
   occ config:system:set debug --value="$1" --type=boolean
 }
+pretty_urls() {
+  [[ $# = 1 && ( "$1" = true || "$1" = false ) ]] || { echo 'Choose pretty-urls true or false.' >&2; exit 2; }
+  exists || { echo 'Disposable Nextcloud is not running.' >&2; exit 1; }
+  owned
+  local rewrite_base
+  if [[ $1 = false ]]; then
+    rewrite_base=$(occ config:system:get htaccess.RewriteBase || true)
+    occ config:system:set gloss.dev.rewriteBase --value="$rewrite_base" >/dev/null
+    occ config:system:set htaccess.IgnoreFrontController --value=false --type=boolean >/dev/null
+    occ config:system:set htaccess.RewriteBase --value='' >/dev/null
+  else
+    rewrite_base=$(occ config:system:get gloss.dev.rewriteBase)
+    occ config:system:set htaccess.RewriteBase --value="$rewrite_base" >/dev/null
+    occ config:system:delete gloss.dev.rewriteBase >/dev/null
+  fi
+  occ maintenance:update:htaccess
+}
 archive_probe() {
   exists || { echo 'Disposable Nextcloud is not running.' >&2; exit 1; }
   owned
@@ -226,6 +243,7 @@ read_source() {
   docker exec "$container" cat "$1"
 }
 case "${1:-}" in
+  pretty-urls) shift; pretty_urls "$@";;
   read-source) shift; read_source "$@";;
   install-archive) shift; install_archive "$@";;
   debug) shift; debug "$@";;
@@ -237,5 +255,5 @@ case "${1:-}" in
   empty-reviews) state_action empty-reviews;;
   count-reviews) state_action count-reviews;;
   url) sync_app; state_action url "${2:-Review}";;
-  *) echo 'Usage: scripts/dev-nc.sh up|down|reset|sync|empty-reviews|count-reviews|url <folder>|install-archive <tar.gz>|debug true|false|archive-probe' >&2; exit 2;;
+  *) echo 'Usage: scripts/dev-nc.sh up|down|reset|sync|empty-reviews|count-reviews|url <folder>|install-archive <tar.gz>|debug true|false|archive-probe|pretty-urls true|false' >&2; exit 2;;
 esac

@@ -27,10 +27,10 @@ Run heavy jobs, including npm dependency installation, Vitest, Playwright, and D
 For example, from the repository root:
 
 ```bash
-HEAVY_MODE=none /home/kiibou/.cache/gloss-work/tools/heavy-job.sh start /tmp/gloss-jobs unit -- npm test -- --maxWorkers=2
-/home/kiibou/.cache/gloss-work/tools/heavy-job.sh wait /tmp/gloss-jobs unit
-HEAVY_MODE=none /home/kiibou/.cache/gloss-work/tools/heavy-job.sh start /tmp/gloss-jobs check -- npm run check
-/home/kiibou/.cache/gloss-work/tools/heavy-job.sh wait /tmp/gloss-jobs check
+HEAVY_MODE=none $GLOSS_WORK/../../tools/heavy-job.sh start /tmp/gloss-jobs unit -- npm test -- --maxWorkers=2
+$GLOSS_WORK/../../tools/heavy-job.sh wait /tmp/gloss-jobs unit
+HEAVY_MODE=none $GLOSS_WORK/../../tools/heavy-job.sh start /tmp/gloss-jobs check -- npm run check
+$GLOSS_WORK/../../tools/heavy-job.sh wait /tmp/gloss-jobs check
 ```
 
 Use the same start/wait pattern for `npm ci` or `npm install`.

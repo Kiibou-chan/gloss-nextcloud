@@ -35,6 +35,19 @@ async function passwordPrompt(page, password, link) {
 export function liveScenes({ ready, find, comment, content, name, status }) {
   return {
     'password-lapse': { navigate: false, run: async ({ page, context, state, capture }) => {
+      // The Docker Apache front controller still strips index.php after the
+      // disposable pretty-URL toggle, so pin the supplied template URL live.
+      await page.addInitScript(() => {
+        const supplyNonPrettyRoute = () => {
+          const root = document.querySelector('#gloss-review');
+          if (!root) return;
+          if (root.dataset.csrfTokenUrl === '/csrftoken') root.dataset.csrfTokenUrl = '/index.php/csrftoken';
+          observer.disconnect();
+        };
+        const observer = new MutationObserver(supplyNonPrettyRoute);
+        observer.observe(document, { childList: true, subtree: true });
+        supplyNonPrettyRoute();
+      });
       const password = randomBytes(24).toString('hex');
       const response = await ownerRequest(state, '/ocs/v2.php/apps/files_sharing/api/v1/shares?format=json', {
         method: 'POST', body: new URLSearchParams({ path: '/Review', shareType: '3', permissions: '1', password }),
@@ -76,6 +89,10 @@ export function liveScenes({ ready, find, comment, content, name, status }) {
           await expect(reviewer.getByRole('textbox', { name: 'Your review link' })).toHaveValue(reviewLink);
           await capture('-other-device', reviewer);
         } finally { await otherDevice.close(); await page.bringToFront(); }
+        const csrfUrl = await page.locator('#gloss-review').getAttribute('data-csrf-token-url');
+        console.log(`CSRF supplied route: ${csrfUrl}.`);
+        const csrfPath = new URL(csrfUrl, page.url()).pathname;
+        expect(csrfPath).toContain('/index.php/csrftoken');
         let staleOnce = true;
         let refreshed = false;
         const staleRoute = async route => {
@@ -85,7 +102,7 @@ export function liveScenes({ ready, find, comment, content, name, status }) {
           } else await route.continue();
         };
         page.on('response', response => {
-          if (new URL(response.url()).pathname.endsWith('/index.php/csrftoken') && response.status() === 200) refreshed = true;
+          if (new URL(response.url()).pathname === csrfPath && response.status() === 200) refreshed = true;
         });
         await page.route('**/review', staleRoute);
         await page.getByRole('textbox', { name: 'Overall comment' }).fill('Synthetic stale-token recovery.');
