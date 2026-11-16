@@ -110,3 +110,12 @@ test('1,100 replacements plus one keystroke keep every id through edit and rebui
   fresh.rebuild(text, (() => { let i = 0; return () => String(i++).padStart(10, '0') })(), now)
   expect(fresh.items()).toEqual(records)
 })
+
+test('rewrite with the proposal text is the applied text and hands out generated offsets', () => {
+  const review = new DraftReview('a.txt', draft)
+  review.edit([{ from: 0, to: 5, insert: 'ALPHA' }, { from: 11, to: 16, insert: 'g' }], ids(), now)
+  expect(review.rewrite(p => p.proposal)).toBe(review.applied())
+  const seen: [string, number][] = []
+  expect(review.rewrite((p, at) => { seen.push([p.proposal, at]); return '<' + p.proposal + '>' })).toBe('<ALPHA> beta <g>')
+  expect(seen).toEqual([['ALPHA', 0], ['g', 13]])
+})

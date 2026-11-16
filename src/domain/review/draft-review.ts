@@ -29,12 +29,18 @@ export class DraftReview {
     }
     this.current = [...proposals, ...this.current.filter(i => i.kind === 'comment')].sort((a, b) => a.from - b.from)
     this.map = new AppliedMap(proposals)
+    this.text = this.rewrite(p => p.proposal)
+  }
+
+  /** The draft with each proposal's span replaced by `wrap(proposal, offset)`, offset being where that text starts in the result. */
+  rewrite(wrap: (p: Proposal, at: number) => string): string {
     let text = '', pos = 0
     for (const { item: p, end } of this.map.spans()) {
-      text += draft.slice(pos, p.from) + p.proposal
+      text += this.draft.slice(pos, p.from)
+      text += wrap(p, text.length)
       pos = end
     }
-    this.text = text + draft.slice(pos)
+    return text + this.draft.slice(pos)
   }
 
   private proposals(): Proposal[] { return this.current.filter(i => i.kind === 'proposal') }
