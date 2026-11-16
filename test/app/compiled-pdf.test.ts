@@ -216,3 +216,49 @@ test('PdfMarks.showBytes shows the bytes and places every mark again on the new 
   await f.advance(400)
   expect(f.pdf.setMarks).toHaveBeenCalledTimes(2)
 })
+
+async function withPdf(draft = DRAFT) {
+  const base = await setup(draft)
+  const pdf = { showBytes: vi.fn(async (_b: Uint8Array) => ({ pages: [] as string[][] })), showUploaded: vi.fn(async () => ({ pages: [] as string[][] })) }
+  const unit = new CompiledPdf(base.s, pdf as unknown as PdfMarks, { head: base.head, render: base.render })
+  return { ...base, unit, pdf }
+}
+
+test('Original pressed during the first showBytes puts the uploaded PDF back last', async () => {
+  const { s, unit, pdf, propose } = await withPdf()
+  let release!: () => void
+  pdf.showBytes.mockImplementationOnce(() => new Promise(r => { release = () => r({ pages: [] }) }))
+  propose(); unit.request(true); await flush()
+  s.pdfLook = 'original'; unit.request(true); await flush()
+  release(); await flush()
+  const shown = pdf.showBytes.mock.invocationCallOrder[0]!
+  const restored = pdf.showUploaded.mock.invocationCallOrder
+  expect(restored[restored.length - 1]!).toBeGreaterThan(shown)
+  expect(s.omitted.size).toBe(0)
+  expect(s.pdfNote).toBe('')
+})
+
+test('a compile that throws after Original was pressed writes no fallback note', async () => {
+  const { f, s, unit, propose } = await setup()
+  let fail!: (e: Error) => void
+  f.compiler.compile.mockImplementationOnce(() => new Promise((_, rej) => { fail = rej }))
+  propose(); unit.request(true); await flush()
+  s.pdfLook = 'original'; unit.request(true); await flush()
+  fail(new Error('boom')); await flush()
+  expect(s.pdfNote).toBe('')
+})
+
+test('a compile that throws while still wanted gives the compile line', async () => {
+  const { f, s, unit, propose } = await setup()
+  f.compiler.compile.mockRejectedValue(new Error('boom'))
+  propose(); unit.request(true); await flush()
+  expect(s.pdfNote).toBe('Showing your PDF; the draft does not compile in the browser.')
+})
+
+test('a failed reload of the uploaded PDF still redraws', async () => {
+  const { s, unit, pdf, render, propose } = await withPdf()
+  propose(); unit.request(true); await flush()
+  pdf.showUploaded.mockRejectedValue(new Error('gone')); render.mockClear()
+  s.pdfLook = 'original'; unit.request(true); await flush()
+  expect(render).toHaveBeenCalled()
+})

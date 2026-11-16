@@ -40,13 +40,14 @@ export class CompiledPdf {
   }
   private stop(): void {
     this.cancel?.(); this.cancel = null; this.latest++; this.signature = null
-    if (this.s.view !== 'editor' && this.compiled) { this.compiled = false; this.s.omitted = new Set(); void this.pdf.showUploaded().then(() => this.actions.render()) }
+    if (this.s.view !== 'editor' && this.compiled) { this.compiled = false; this.s.omitted = new Set(); void this.pdf.showUploaded().catch(() => undefined).then(() => this.actions.render()) }
     if (this.s.pdfNote) { this.s.pdfNote = ''; this.actions.head() }
   }
   private start(): void {
     if (this.running) { this.waiting = true; return }
     this.running = true
-    void this.run().catch(() => this.fallback('compile')).finally(() => {
+    const token = this.latest
+    void this.run().catch(() => token === this.latest && this.wanted() ? this.fallback('compile') : undefined).finally(() => {
       this.running = false
       if (this.waiting) { this.waiting = false; this.start() }
     })
@@ -80,10 +81,19 @@ export class CompiledPdf {
   }
   private async land(pdf: Uint8Array, g: Generated | null, stale: () => boolean): Promise<void> {
     this.s.omitted = new Set(g ? g.omitted : this.s.review!.items().flatMap(i => i.kind === 'proposal' ? [i.id] : []))
-    await this.pdf.showBytes(pdf, compiledDoc(this.s.file, this.s.draft, this.s.ops, g))
     this.compiled = true
-    if (stale()) return
+    await this.pdf.showBytes(pdf, compiledDoc(this.s.file, this.s.draft, this.s.ops, g))
+    if (stale()) {
+      if (!this.wanted() && !this.s.disposed && this.s.view !== 'editor') await this.restore()
+      return
+    }
     this.s.pdfNote = ''
+    this.actions.head(); this.actions.render()
+  }
+  private async restore(): Promise<void> {
+    this.compiled = false; this.s.omitted = new Set()
+    await this.pdf.showUploaded().catch(() => undefined)
+    if (this.s.pdfNote) this.s.pdfNote = ''
     this.actions.head(); this.actions.render()
   }
   private async fallback(reason: Fallback): Promise<void> {
