@@ -70,7 +70,7 @@ test('a compile the worker never answers fails start at the deadline, ends the w
     let terminated = 0
     const made: number[] = []
     const silent = (): WorkerLike => ({ postMessage: () => {}, addEventListener: () => {}, terminate: () => { terminated++ } })
-    const port = createTypstCompiler('w.js', 'c.wasm', 'fonts/', '', () => { made.push(1); return silent() }, 1000)
+    const port = createTypstCompiler('w.js', 'c.wasm', 'fonts/', '', () => { made.push(1); return silent() }, 1000, 1000)
     const first = port.compile(job)
     await vi.advanceTimersByTimeAsync(999)
     expect(terminated).toBe(0)
@@ -86,8 +86,40 @@ test('an answered compile leaves no deadline running', async () => {
   vi.useFakeTimers()
   try {
     const w = fakeWorld()
-    const port = createTypstCompiler('w.js', 'c.wasm', 'fonts/', '', w.makeWorker, 1000)
+    const port = createTypstCompiler('w.js', 'c.wasm', 'fonts/', '', w.makeWorker, 1000, 1000)
     await port.compile(job)
     expect(vi.getTimerCount()).toBe(0)
+  } finally { vi.useRealTimers() }
+})
+
+test('a worker that cannot be constructed answers failed start and the next compile tries again', async () => {
+  let tries = 0
+  const port = createTypstCompiler('w.js', 'c.wasm', 'fonts/', '', () => { tries++; throw new Error('SecurityError') })
+  expect(await port.compile(job)).toEqual({ failed: 'start' })
+  expect(await port.compile(job)).toEqual({ failed: 'start' })
+  expect(tries).toBe(2)
+})
+
+test('the first compile gets the cold deadline, later ones the plain deadline', async () => {
+  vi.useFakeTimers()
+  try {
+    let answer: ((e: { data: unknown }) => void) | null = null, id = 0
+    const slow: WorkerLike = {
+      postMessage: m => { const x = m as { type: string; id?: number }; if (x.type === 'compile') id = x.id! },
+      addEventListener: (t, l) => { if (t === 'message') answer = l as typeof answer },
+      terminate: () => {},
+    }
+    const port = createTypstCompiler('w.js', 'c.wasm', 'fonts/', '', () => slow, 1000, 3000)
+    let first: unknown = 'pending'
+    void port.compile(job).then(r => { first = r })
+    await vi.advanceTimersByTimeAsync(2999)
+    expect(first).toBe('pending')
+    answer!({ data: { id, pdf: new Uint8Array([1]), diagnostics: [], ms: 1 } })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(first).toEqual({ pdf: new Uint8Array([1]), diagnostics: [], ms: 1 })
+    let second: unknown = 'pending'
+    void port.compile(job).then(r => { second = r })
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(second).toEqual({ failed: 'start' })
   } finally { vi.useRealTimers() }
 })

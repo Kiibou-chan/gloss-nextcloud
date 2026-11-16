@@ -1,14 +1,19 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { formatReport, parseArgs, reviewJson, summarise } from '../../scripts/measure-compile.mjs';
+import { formatReport, liftCutoff, parseArgs, reviewJson, summarise } from '../../scripts/measure-compile.mjs';
+import { longDraft } from '../../scripts/make-long-draft.mjs';
 
 describe('parseArgs', () => {
   it('defaults to five recompiles, 2,000 proposals, and no output file', () => {
-    expect(parseArgs([])).toEqual({ runs: 5, proposals: 2000, out: null });
+    expect(parseArgs([])).toEqual({ runs: 5, proposals: 2000, lines: 10000, out: null });
+  });
+
+  it('reads --lines', () => {
+    expect(parseArgs(['--lines', '2000']).lines).toBe(2000);
   });
 
   it('reads --runs, --proposals, and --out', () => {
-    expect(parseArgs(['--runs', '3', '--proposals', '50', '--out', 'x.txt'])).toEqual({ runs: 3, proposals: 50, out: 'x.txt' });
+    expect(parseArgs(['--runs', '3', '--proposals', '50', '--out', 'x.txt'])).toEqual({ runs: 3, proposals: 50, lines: 10000, out: 'x.txt' });
   });
 
   it('refuses an unknown flag and a count that is not a positive whole number', () => {
@@ -16,6 +21,28 @@ describe('parseArgs', () => {
     expect(() => parseArgs(['--runs', '0'])).toThrow('--runs needs a positive whole number');
     expect(() => parseArgs(['--proposals', 'many'])).toThrow('--proposals needs a positive whole number');
     expect(() => parseArgs(['--out'])).toThrow('--out needs a value');
+  });
+});
+
+describe('liftCutoff', () => {
+  const source = 'export const MAX_DRAFT_LINES = 2000\nexport const MAX_PROPOSALS = 400\nexport function tooLargeToCompile() {}\n';
+
+  it('raises both limits in the limits module source and leaves the rest', () => {
+    const lifted = liftCutoff(source);
+    expect(lifted).toContain('export const MAX_DRAFT_LINES = 1000000');
+    expect(lifted).toContain('export const MAX_PROPOSALS = 1000000');
+    expect(lifted).toContain('export function tooLargeToCompile() {}');
+  });
+
+  it('refuses a source whose limits it cannot find', () => {
+    expect(() => liftCutoff('export const X = 1')).toThrow('limits');
+  });
+});
+
+describe('longDraft', () => {
+  it('has the requested number of lines, 10,000 by default', () => {
+    expect(longDraft().split('\n').length - 1).toBe(10000);
+    expect(longDraft(2000).split('\n').length - 1).toBe(2000);
   });
 });
 

@@ -200,6 +200,29 @@ test('a compiler that cannot start gives its line and no further compiles', asyn
   expect(f.compiler.compile).toHaveBeenCalledTimes(1)
 })
 
+test('after a start failure, Original and then Changes or New text shows the line again without compiling', async () => {
+  const { f, s, unit } = await setup()
+  f.compiler.compile.mockResolvedValue({ failed: 'start' })
+  unit.request(true); await flush()
+  s.pdfLook = 'original'; unit.request(true); await flush()
+  expect(s.pdfNote).toBe('')
+  s.pdfLook = 'new'; unit.request(true); await flush()
+  expect(s.pdfNote).toBe('Showing your PDF; the browser could not start the compiler.')
+  expect(f.compiler.compile).toHaveBeenCalledTimes(1)
+})
+
+test('a file fetch that never answers gives the start line at the deadline and lets the next request compile', async () => {
+  const { f, s, unit, propose } = await setup('#image("fig.png")\nAlpha beta gamma delta.\n')
+  f.api.file.mockImplementationOnce(() => new Promise(() => {}))
+  propose(); unit.request(true); await flush()
+  expect(s.pdfNote).toBe('Showing your PDF while the draft compiles.')
+  await f.advance(60_000); await flush()
+  expect(s.pdfNote).toBe('Showing your PDF; the browser could not start the compiler.')
+  f.api.file.mockResolvedValue({ bytes: new Uint8Array([1]), text: null })
+  unit.request(true); await flush()
+  expect(f.compiler.compile).toHaveBeenCalledTimes(1)
+})
+
 test('disposal cancels a waiting compile', async () => {
   const { f, unit, propose } = await setup()
   propose(); unit.request(false); unit.dispose(); await f.advance(1000); await flush()

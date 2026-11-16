@@ -11,12 +11,15 @@ export interface WorkerLike {
 
 /** A compile with no answer by then ends the worker; the next compile starts a new one. */
 const COMPILE_DEADLINE_MS = 60_000
+/** The first compile also downloads the wasm and the fonts inside the worker, so it gets this long until one has been answered. */
+const COLD_DEADLINE_MS = 180_000
 
 const moduleWorker = (url: string): WorkerLike => new Worker(url, { type: 'module' })
 
 /** The worker, its wasm, and the fonts load on the first `compile`; each url carries `suffix` (the app version). */
-export function createTypstCompiler(workerUrl: string, wasmUrl: string, fontBase: string, suffix: string, makeWorker: (url: string) => WorkerLike = moduleWorker, deadlineMs = COMPILE_DEADLINE_MS): CompilerPort {
+export function createTypstCompiler(workerUrl: string, wasmUrl: string, fontBase: string, suffix: string, makeWorker: (url: string) => WorkerLike = moduleWorker, deadlineMs = COMPILE_DEADLINE_MS, coldDeadlineMs = COLD_DEADLINE_MS): CompilerPort {
   let worker: WorkerLike | null = null
+  let warm = false
   let next = 1
   const waiting = new Map<number, (result: CompileResult) => void>()
 
@@ -38,7 +41,7 @@ export function createTypstCompiler(workerUrl: string, wasmUrl: string, fontBase
 
   return {
     compile(job: CompileJob): Promise<CompileResult> {
-      worker ??= spawn()
+      try { worker ??= spawn() } catch { worker = null; return Promise.resolve({ failed: 'start' }) }
       const id = next++
       const own = worker
       return new Promise(resolve => {
@@ -47,8 +50,8 @@ export function createTypstCompiler(workerUrl: string, wasmUrl: string, fontBase
           own.terminate()
           waiting.delete(id)
           resolve({ failed: 'start' })
-        }, deadlineMs)
-        waiting.set(id, result => { clearTimeout(timer); resolve(result) })
+        }, warm ? deadlineMs : coldDeadlineMs)
+        waiting.set(id, result => { clearTimeout(timer); if (!('failed' in result)) warm = true; resolve(result) })
         own.postMessage({ type: 'compile', id, job })
       })
     },

@@ -10,6 +10,7 @@ import type { SessionActions, SessionState } from './session-state'
 
 const DEBOUNCE_MS = 600
 const MAX_COMPILES = 4
+const FETCH_DEADLINE_MS = 60_000
 const NO_SHAPE = (): Shape => ({ unwrap: new Set(), omit: new Set() })
 
 /** Compiles a Typst draft's generated sources in the browser and shows the PDF; one compile at a time, the newest request wins. */
@@ -31,7 +32,7 @@ export class CompiledPdf {
   request(now: boolean): void {
     if (this.s.disposed) return
     if (!this.wanted()) { this.stop(); return }
-    if (this.startFailed) return
+    if (this.startFailed) { this.note(FALLBACK.start); this.actions.render(); return }
     const signature = JSON.stringify([this.s.pdfLook, this.s.review!.items().flatMap(i => i.kind === 'proposal' ? [[i.id, i.from, i.quote.exact, i.proposal]] : [])])
     if (!now && signature === this.signature) return
     this.signature = signature; this.latest++
@@ -62,8 +63,9 @@ export class CompiledPdf {
     const stale = () => !this.wanted() || token !== this.latest
     if (tooLargeToCompile(this.s.draft, this.s.review!.items().filter(i => i.kind === 'proposal').length)) { await this.fallback('large'); return }
     if (!this.s.pdfNote) this.note(COMPILING)
-    const inputs = await this.inputs.gather(this.s.file, this.s.draft)
+    const inputs = await this.gatherWithin(this.s.file, this.s.draft)
     if (stale()) return
+    if (inputs === 'timeout') { await this.fallback('start'); return }
     if (typeof inputs === 'string') { await this.fallback(inputs); return }
     let shape = NO_SHAPE(), draftOnly = false
     for (let n = 1; n <= MAX_COMPILES; n++) {
@@ -80,6 +82,11 @@ export class CompiledPdf {
       else shape = next
     }
     await this.fallback('compile')
+  }
+  private gatherWithin(main: string, text: string): Promise<Awaited<ReturnType<CompileInputs['gather']>> | 'timeout'> {
+    let cancel = () => {}
+    const timeout = new Promise<'timeout'>(resolve => { cancel = this.s.ports.scheduler.after(FETCH_DEADLINE_MS, () => resolve('timeout')) })
+    return Promise.race([this.inputs.gather(main, text), timeout]).finally(cancel)
   }
   private async land(pdf: Uint8Array, g: Generated | null, stale: () => boolean): Promise<void> {
     this.s.omitted = new Set(g ? g.omitted : this.s.review!.items().flatMap(i => i.kind === 'proposal' ? [i.id] : []))

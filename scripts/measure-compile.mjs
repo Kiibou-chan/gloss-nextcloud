@@ -1,6 +1,6 @@
-// Times the in-browser Typst compile on the 10,000-line draft with 2,000 proposals, under a route-mocked page.
-// Usage: node scripts/measure-compile.mjs [--runs 5] [--proposals 2000] [--out report.txt]  (run under xvfb-run or headless)
-import { writeFile } from 'node:fs/promises';
+// Times the in-browser Typst compile on a long draft (10,000 lines by default) with 2,000 proposals, under a route-mocked page, with the page cutoffs lifted in a bundle built in memory.
+// Usage: node scripts/measure-compile.mjs [--runs 5] [--proposals 2000] [--lines 10000] [--out report.txt]  (run under xvfb-run or headless)
+import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { longDraft } from './make-long-draft.mjs';
 import { syntheticRoutes } from './shots/synthetic.mjs';
@@ -15,11 +15,12 @@ function count(flag, value) {
 }
 
 export function parseArgs(argv) {
-  const options = { runs: 5, proposals: 2000, out: null };
+  const options = { runs: 5, proposals: 2000, lines: 10_000, out: null };
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
     if (flag === '--runs') options.runs = count(flag, argv[++i]);
     else if (flag === '--proposals') options.proposals = count(flag, argv[++i]);
+    else if (flag === '--lines') options.lines = count(flag, argv[++i]);
     else if (flag === '--out') {
       if (argv[i + 1] === undefined) throw new Error('--out needs a value');
       options.out = argv[++i];
@@ -68,6 +69,27 @@ export function formatReport({ lines, proposals, changes, new: fresh }) {
   return out.join('\n');
 }
 
+/** The limits module's source with both cutoffs raised, so a measured draft is compiled however large it is. */
+export function liftCutoff(source) {
+  const lifted = source.replace(/(export const MAX_DRAFT_LINES = )\d+/, '$11000000').replace(/(export const MAX_PROPOSALS = )\d+/, '$11000000');
+  if (lifted === source) throw new Error('The limits module has no cutoffs to lift.');
+  return lifted;
+}
+
+/** The page bundle built in memory with the cutoffs lifted; the shipped bundle is untouched. */
+async function bundleWithoutCutoff() {
+  const { build } = await import('esbuild');
+  const lifting = {
+    name: 'lift-cutoff',
+    setup(b) {
+      b.onLoad({ filter: /domain[\\/]typst[\\/]limits\.ts$/ }, async ({ path }) => ({ contents: liftCutoff(await readFile(path, 'utf8')), loader: 'ts' }));
+    },
+  };
+  const version = /<version>([^<]+)<\/version>/.exec(await readFile('appinfo/info.xml', 'utf8'))?.[1];
+  const out = await build({ entryPoints: ['src/main.ts'], bundle: true, minify: true, format: 'iife', write: false, define: { __APP_VERSION__: JSON.stringify(version) }, plugins: [lifting] });
+  return out.outputFiles[0].text;
+}
+
 /** Wraps Worker so each compiler answer is stamped on `window.__answers` with the page clock. */
 function watchAnswers(context) {
   return context.addInitScript(() => {
@@ -86,7 +108,7 @@ function watchAnswers(context) {
 
 async function measure(options) {
   const { chromium } = await import('@playwright/test');
-  const text = longDraft();
+  const text = longDraft(options.lines);
   const review = reviewJson(text, options.proposals, 'long.typ');
   const reviews = new Map();
   reviews.get = () => review;
@@ -95,6 +117,8 @@ async function measure(options) {
     const context = await browser.newContext({ colorScheme: 'light', viewport: { width: 1600, height: 1000 } });
     await watchAnswers(context);
     await syntheticRoutes(context, 'typst-measure', reviews, 'Typst', { main: 'long.typ', text });
+    const bundle = await bundleWithoutCutoff();
+    await context.route('**/gloss-review.js', route => route.fulfill({ contentType: 'text/javascript', body: bundle }));
     const page = await context.newPage();
     page.setDefaultTimeout(60_000);
     await page.goto(LINK, { waitUntil: 'networkidle' });

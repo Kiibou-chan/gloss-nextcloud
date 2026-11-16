@@ -142,6 +142,7 @@ A draft that needs 0.15-only syntax does not compile there and shows your upload
 The 17 fonts of typst-assets 0.15.1 are committed under `fonts/` (9,683,068 bytes), so no font is fetched from elsewhere.
 The compiler, its wasm, and the fonts are fetched only when a PDF view first shows "Changes" or "New text" for a Typst draft, and their addresses carry the app version so that an update refetches them.
 Measured in the browser's wasm, a recompile after an edit takes 3.1 seconds at 200 proposals in a 10,000-line draft, and 5 to 7 seconds at 2,000 proposals (Changes 6.9 seconds, New text 5.1 seconds at the median); your own draft has 265 lines.
+At the cutoff itself, 2,000 lines and 400 proposals (`node scripts/measure-compile.mjs --runs 3 --proposals 400 --lines 2000`, which lifts the cutoffs in a bundle built in memory), the median worker compile is 344 ms for Changes and 255 ms for New text, and an edit shows in 498 ms and 404 ms with the 600 ms debounce included.
 Past 2,000 lines or 400 proposals the draft is therefore not compiled: the uploaded PDF shows with the proposals drawn on it and the line "Draft too large to compile live; showing your PDF.", the same path as any other fallback, with the Changes and New text switch still present.
 Both limits are constants in `src/domain/typst/limits.ts`.
 Release 0.2.0 is an archive of about 17.9 MB (17.1 MiB, 57 % of the App Store's 30 MiB limit); the wasm is 28,325,178 bytes of it uncompressed.
