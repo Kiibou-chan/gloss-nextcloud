@@ -9,10 +9,13 @@ export interface WorkerLike {
   terminate(): void
 }
 
+/** A compile with no answer by then ends the worker; the next compile starts a new one. */
+const COMPILE_DEADLINE_MS = 60_000
+
 const moduleWorker = (url: string): WorkerLike => new Worker(url, { type: 'module' })
 
 /** The worker, its wasm, and the fonts load on the first `compile`; each url carries `suffix` (the app version). */
-export function createTypstCompiler(workerUrl: string, wasmUrl: string, fontBase: string, suffix: string, makeWorker: (url: string) => WorkerLike = moduleWorker): CompilerPort {
+export function createTypstCompiler(workerUrl: string, wasmUrl: string, fontBase: string, suffix: string, makeWorker: (url: string) => WorkerLike = moduleWorker, deadlineMs = COMPILE_DEADLINE_MS): CompilerPort {
   let worker: WorkerLike | null = null
   let next = 1
   const waiting = new Map<number, (result: CompileResult) => void>()
@@ -26,7 +29,7 @@ export function createTypstCompiler(workerUrl: string, wasmUrl: string, fontBase
       waiting.delete(answer.id)
       done('failed' in answer ? { failed: 'start' } : { pdf: answer.pdf, diagnostics: answer.diagnostics, ms: answer.ms })
     })
-    const dead = () => { for (const done of waiting.values()) done({ failed: 'start' }); waiting.clear() }
+    const dead = () => { if (worker === w) worker = null; for (const done of [...waiting.values()]) done({ failed: 'start' }); waiting.clear() }
     w.addEventListener('error', dead)
     w.addEventListener('messageerror', dead)
     w.postMessage({ type: 'init', wasmUrl, fontUrls: FONT_FILES.map(file => `${fontBase}${file}${suffix}`) })
@@ -37,9 +40,16 @@ export function createTypstCompiler(workerUrl: string, wasmUrl: string, fontBase
     compile(job: CompileJob): Promise<CompileResult> {
       worker ??= spawn()
       const id = next++
+      const own = worker
       return new Promise(resolve => {
-        waiting.set(id, resolve)
-        worker?.postMessage({ type: 'compile', id, job })
+        const timer = setTimeout(() => {
+          if (worker === own) worker = null
+          own.terminate()
+          waiting.delete(id)
+          resolve({ failed: 'start' })
+        }, deadlineMs)
+        waiting.set(id, result => { clearTimeout(timer); resolve(result) })
+        own.postMessage({ type: 'compile', id, job })
       })
     },
   }

@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { createTypstCompiler, type WorkerLike } from '../../../src/adapters/typst/compiler'
 import { FONT_FILES } from '../../../src/adapters/typst/fonts'
 
@@ -62,4 +62,32 @@ test('a worker that errors answers failed start', async () => {
   }
   const port = createTypstCompiler('w.js', 'c.wasm', 'fonts/', '', () => dead)
   expect(await port.compile(job)).toEqual({ failed: 'start' })
+})
+
+test('a compile the worker never answers fails start at the deadline, ends the worker, and the next compile spawns a new one', async () => {
+  vi.useFakeTimers()
+  try {
+    let terminated = 0
+    const made: number[] = []
+    const silent = (): WorkerLike => ({ postMessage: () => {}, addEventListener: () => {}, terminate: () => { terminated++ } })
+    const port = createTypstCompiler('w.js', 'c.wasm', 'fonts/', '', () => { made.push(1); return silent() }, 1000)
+    const first = port.compile(job)
+    await vi.advanceTimersByTimeAsync(999)
+    expect(terminated).toBe(0)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(await first).toEqual({ failed: 'start' })
+    expect(terminated).toBe(1)
+    void port.compile(job)
+    expect(made).toHaveLength(2)
+  } finally { vi.useRealTimers() }
+})
+
+test('an answered compile leaves no deadline running', async () => {
+  vi.useFakeTimers()
+  try {
+    const w = fakeWorld()
+    const port = createTypstCompiler('w.js', 'c.wasm', 'fonts/', '', w.makeWorker, 1000)
+    await port.compile(job)
+    expect(vi.getTimerCount()).toBe(0)
+  } finally { vi.useRealTimers() }
 })
