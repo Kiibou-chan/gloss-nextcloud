@@ -110,3 +110,13 @@ R32 records no password prompt of the review page's own.
 A password-protected link must first be authenticated on its `/s/<token>` page in the same browser; otherwise Nextcloud answers 404 (P6).
 The review page keeps the spike's behaviour, and R23 treats that 404 as a link that no longer works rather than retrying indefinitely.
 This uses Nextcloud's existing share authentication; a separate review-page password prompt is left for a later release.
+
+## PDFP-1: reviewers see their proposals drawn on the PDF
+
+The author's answer on 2026-11-16 at 10:34 was B ("Okay sure").
+Her expectation was that reviewers could see directly in the PDF the changes they propose.
+The PDF stays the uploaded file, unchanged.
+Each proposal is drawn on it: deleted words are struck through in place, and inserted words appear in a small mark at that spot.
+This works for Typst and LaTeX alike, because it builds on the existing PDF-to-source match.
+It fits the Wednesday 2026-11-18 release, where compiling in the browser would not.
+Turned down for now: option A, compiling the edited source in the browser (Typst WebAssembly), which is left for a later release.
