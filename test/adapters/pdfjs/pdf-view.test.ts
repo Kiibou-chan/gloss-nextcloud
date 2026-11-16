@@ -46,6 +46,7 @@ function makePage(n: number) {
     // Marked-content records must not change the domain's text item indexes.
     getTextContent: vi.fn(async () => ({ items: [{ type: 'beginMarkedContent' }, { str: `Page ${n}` }, { str: ' synthetic words' }], styles: {} })),
     render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
+    commonObjs: { has: () => false, get: () => null },
     cleanup: vi.fn(),
   }
 }
@@ -105,7 +106,7 @@ describe('PDF view', () => {
     expect(pdf.getDocument).not.toHaveBeenCalled()
     const [first, second] = await Promise.all([view.show(), view.show()])
     expect(second).toBe(first)
-    expect(pdf.getDocument).toHaveBeenCalledExactlyOnceWith({ url: '/synthetic.pdf' })
+    expect(pdf.getDocument).toHaveBeenCalledExactlyOnceWith({ url: '/synthetic.pdf', fontExtraProperties: true })
     expect(pdf.options.workerSrc).toBe('/apps/gloss/js/pdf.worker.js')
     expect(boxes().map(b => [b.style.width, b.style.height])).toEqual([
       ['598px', `${800 * (598 / 600)}px`], ['598px', `${800 * (598 / 300)}px`], ['598px', `${800 * (598 / 600)}px`],
@@ -217,6 +218,19 @@ describe('PDF view', () => {
     expect(bar.querySelector('.gr-pdf-label')!.textContent).toBe('new words')
     view.scrollToMark('caretmark01')
     expect(scroll.mock.instances.at(-1)).toBe(bar)
+  })
+
+  it('draws New text in the PDF font read from the page', async () => {
+    (pages[0]!.getTextContent as ReturnType<typeof vi.fn>).mockResolvedValue({ items: [{ str: 'Page 1', fontName: 'g_d0_f1' }, { str: ' synthetic words', fontName: 'g_d0_f2' }], styles: { g_d0_f1: { fontFamily: 'serif' }, g_d0_f2: { fontFamily: 'sans-serif' } } })
+    Object.assign(pages[0]!, { commonObjs: { has: () => true, get: (id: string) => id === 'g_d0_f1' ? { name: 'ABCDEF+Serif-BoldItalic' } : { name: 'Sans', bold: false } } })
+    const view = create()
+    await view.show()
+    view.setLook('new')
+    view.setMarks([{ ...placement(1, 'struckmark1'), startItem: 0, startOffset: 0, endItem: 0, endOffset: 4, look: 'struck' }, { id: 'struckmark1', page: 1, item: 0, offset: 3, edge: 'after', look: 'insert', words: 'Omega' }])
+    observe(0)
+    await settle()
+    const word = boxes()[0]!.querySelector<HTMLElement>('.gr-pdf-new')!
+    expect([word.style.fontFamily, word.style.fontWeight, word.style.fontStyle]).toEqual(['serif', 'bold', 'italic'])
   })
 
   it.each([0, 1, 2])('reports selected text and the centre fraction of page %i', async index => {

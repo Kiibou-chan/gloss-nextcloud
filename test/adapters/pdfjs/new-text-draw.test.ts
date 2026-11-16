@@ -18,13 +18,14 @@ function paper(rect: { left: number; top: number; width: number; height: number 
   }
   return { width, height, data }
 }
-function makePage(extra: { measure?: (text: string, size: number, family: string) => number; noCanvas?: boolean } = {}) {
+type Font = { family: string; weight: 'normal' | 'bold'; slant: 'normal' | 'italic' }
+function makePage(extra: { measure?: (text: string, size: number, family: string) => number; noCanvas?: boolean; fontOf?: (item: number) => Font } = {}) {
   marks = document.createElement('div')
   const divs = TEXTS.map(text => { const div = document.createElement('span'); div.textContent = text; div.style.fontSize = '12px'; return div })
   const canvas = document.createElement('canvas')
   canvas.width = 400; canvas.height = 200; canvas.style.width = '200px'
   canvas.getContext = (() => ({ getImageData })) as unknown as HTMLCanvasElement['getContext']
-  return { number: 1, marks, layer: { textDivs: divs, textContentItemsStr: TEXTS }, canvas: extra.noCanvas ? undefined : canvas, measure: extra.measure ?? ((text: string) => text.length * 6) }
+  return { number: 1, marks, layer: { textDivs: divs, textContentItemsStr: TEXTS }, canvas: extra.noCanvas ? undefined : canvas, measure: extra.measure ?? ((text: string) => text.length * 6), fontOf: extra.fontOf }
 }
 const struck = (id: string, startItem: number, startOffset: number, endItem: number, endOffset: number): PdfMark =>
   ({ id, page: 1, startItem, startOffset, endItem, endOffset, look: 'struck' })
@@ -186,5 +187,32 @@ describe('comments and the canvas in New text', () => {
     getImageData.mockImplementation(() => { throw new Error('tainted') })
     drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, 0, 0, 5)], 'new')
     expect(cls('gr-pdf-cover')[0]!.style.backgroundColor).toBe('rgb(255, 255, 255)')
+  })
+})
+
+describe('the PDF font style in New text', () => {
+  const serifBoldItalic: Font = { family: 'serif', weight: 'bold', slant: 'italic' }
+  it('draws the new words in the item font family, weight, and slant at the item size', () => {
+    drawPageMarks(makePage({ fontOf: item => item === 0 ? serifBoldItalic : { family: 'sans-serif', weight: 'normal', slant: 'normal' } }), [struck('aaaaaaaaaa', 0, 0, 0, 5), caret('aaaaaaaaaa', 0, 4, 'after', 'Omega')], 'new')
+    const [word] = cls('gr-pdf-new')
+    expect([word!.style.fontFamily, word!.style.fontWeight, word!.style.fontStyle, word!.style.fontSize]).toEqual(['serif', 'bold', 'italic', '12px'])
+  })
+  it('draws a bold sans item bold and upright', () => {
+    drawPageMarks(makePage({ fontOf: () => ({ family: 'sans-serif', weight: 'bold', slant: 'normal' }) }), [struck('aaaaaaaaaa', 0, 0, 0, 5), caret('aaaaaaaaaa', 0, 4, 'after', 'Omega')], 'new')
+    const [word] = cls('gr-pdf-new')
+    expect([word!.style.fontFamily, word!.style.fontWeight, word!.style.fontStyle]).toEqual(['sans-serif', 'bold', 'normal'])
+  })
+  it('keeps the style family and normal weight and slant when no font is known', () => {
+    drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, 0, 0, 5), caret('aaaaaaaaaa', 0, 4, 'after', 'Omega')], 'new')
+    const [word] = cls('gr-pdf-new')
+    expect([word!.style.fontWeight, word!.style.fontStyle]).toEqual(['normal', 'normal'])
+    expect(word!.style.fontFamily).not.toBe('')
+  })
+  it('gives the callout the same weight and slant and measures with them', () => {
+    const measure = vi.fn((text: string) => text.length * 6)
+    drawPageMarks(makePage({ measure, fontOf: () => serifBoldItalic }), [caret('cccccccccc', 0, 4, 'after', 'flourish')], 'new')
+    const [callout] = cls('gr-pdf-callout')
+    expect([callout!.style.fontWeight, callout!.style.fontStyle, callout!.style.fontFamily]).toEqual(['bold', 'italic', 'serif'])
+    expect(measure).toHaveBeenCalledWith('flourish', 11, 'serif', 'italic bold')
   })
 })

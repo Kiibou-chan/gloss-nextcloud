@@ -11,19 +11,26 @@ export function cut(words: string): string {
 }
 const CALLOUT_HEIGHT = 17, CALLOUT_MAX = 242, CALLOUT_CHROME = 10, CALLOUT_SIZE = 11
 /** The struck rectangles of one item on a page in reading order, and the new words with their caret when this page holds it. */
-export type Entry = { id: string; n: number; struck: Struck[]; family: string; size: number | null; caret: { left: number; top: number; words: string } | null }
-export type NewTextPage = { canvas?: HTMLCanvasElement; measure?: (text: string, size: number, family: string) => number }
+export type Entry = { id: string; n: number; struck: Struck[]; family: string; weight: 'normal' | 'bold'; slant: 'normal' | 'italic'; size: number | null; caret: { left: number; top: number; words: string } | null }
+export type NewTextPage = { canvas?: HTMLCanvasElement; measure?: (text: string, size: number, family: string, style?: string) => number; fontOf?: (item: number) => { family: string; weight: 'normal' | 'bold'; slant: 'normal' | 'italic' } | null }
 
 let context: CanvasRenderingContext2D | null | undefined
-function measureText(text: string, size: number, family: string): number {
+function measureText(text: string, size: number, family: string, style = ''): number {
   context ??= document.createElement('canvas').getContext('2d')
   if (!context?.measureText) return text.length * size * 0.5
-  context.font = `${size}px ${family}`
+  context.font = `${style} ${size}px ${family}`.trim()
   return context.measureText(text).width
 }
 function imageOf(canvas: HTMLCanvasElement | undefined): ImageData | null {
   if (!canvas) return null
   try { return canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height) ?? null } catch { return null }
+}
+
+const shorthand = (entry: Entry) => `${entry.slant === 'italic' ? 'italic ' : ''}${entry.weight === 'bold' ? 'bold' : ''}`.trim()
+function styleOf(el: HTMLElement, entry: Entry) {
+  el.style.fontFamily = entry.family
+  el.style.fontWeight = entry.weight
+  el.style.fontStyle = entry.slant
 }
 
 /** Builds the covers (drawn under comment highlights) and the new words and callouts (drawn over them); one canvas read serves every cover. */
@@ -45,11 +52,12 @@ export function drawNewText(entries: readonly Entry[], page: NewTextPage, origin
   const measure = page.measure ?? measureText
   const callout = (entry: Entry, full: string, left: number, top: number) => {
     const text = cut(full)
-    const width = Math.min(CALLOUT_MAX, measure(text, CALLOUT_SIZE, 'sans-serif') + CALLOUT_CHROME)
+    const width = Math.min(CALLOUT_MAX, measure(text, CALLOUT_SIZE, entry.family, shorthand(entry)) + CALLOUT_CHROME)
     if (origin.width) left = Math.max(origin.left, Math.min(left, origin.left + origin.width - width))
     top = Math.max(top, origin.top + CALLOUT_HEIGHT)
     const el = node(entry, 'callout', { left, top, width: 0, height: 0 }, text)
     el.style.width = el.style.height = ''
+    styleOf(el, entry)
     words.push(el)
   }
   for (const entry of entries) {
@@ -65,12 +73,12 @@ export function drawNewText(entries: readonly Entry[], page: NewTextPage, origin
     const last = entry.struck.at(-1)
     if (!last) { callout(entry, text, entry.caret.left, entry.caret.top); continue }
     const sizes = entry.struck.map(r => entry.size ?? r.height)
-    const fit = fitWords(text, entry.struck.map((r, i) => ({ width: r.width, size: sizes[i]! })), (t, size) => measure(t, size, entry.family))
+    const fit = fitWords(text, entry.struck.map((r, i) => ({ width: r.width, size: sizes[i]! })), (t, size) => measure(t, size, entry.family, shorthand(entry)))
     fit.lines.forEach((line, i) => {
       if (!line) return
       const el = node(entry, 'new', entry.struck[i]!, line)
       el.style.fontSize = `${sizes[i]}px`
-      el.style.fontFamily = entry.family
+      styleOf(el, entry)
       words.push(el)
     })
     if (fit.overflow) callout(entry, fit.overflow, last.left + last.width, last.top)

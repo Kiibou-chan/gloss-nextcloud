@@ -3,6 +3,7 @@ import { getDocument, GlobalWorkerOptions, TextLayer } from 'pdfjs-dist'
 import type { PDFPageProxy, PageViewport, RenderTask } from 'pdfjs-dist'
 import type { PdfMark, PdfPort } from '../../app/ports'
 import { drawPageMarks } from './mark-draw'
+import { fontLookup } from './font-style'
 import { createUndrawnTracker } from './undrawn'
 type Page = {
   number: number
@@ -29,7 +30,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
   const visible = new Set<number>()
   let selected: Parameters<PdfPort['onSelect']>[0] | undefined
   const undrawn = createUndrawnTracker(() => pages)
-  function drawMarks(page: Page) { undrawn.set(page.number, drawPageMarks(page, byPage.get(page.number) ?? [], look)) }
+  function drawMarks(page: Page) { undrawn.set(page.number, drawPageMarks({ ...page, fontOf: fontLookup(page) }, byPage.get(page.number) ?? [], look)) }
   function release(page: Page) {
     if (!page.canvas) return
     // A cancelled render may settle after this page has started drawing again.
@@ -98,7 +99,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
   }
   async function load(): ReturnType<PdfPort['show']> {
     GlobalWorkerOptions.workerSrc = workerUrl
-    task = getDocument({ url })
+    task = getDocument({ url, fontExtraProperties: true })
     const doc = await task.promise
     if (disposed) return { pages: [] }
     const style = getComputedStyle(el)
@@ -165,8 +166,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
   function commentKey(event: KeyboardEvent) {
     if (isCommentShortcut(event)) { event.preventDefault(); reportSelection() }
   }
-  el.addEventListener('mouseup', reportSelection)
-  el.addEventListener('keydown', commentKey)
+  el.addEventListener('mouseup', reportSelection); el.addEventListener('keydown', commentKey)
   return {
     commentSelection: reportSelection,
     show() {
