@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { expect, test } from 'vitest'
 
-function cleanup(base: string, href = '/remote.php/dav/files/gloss-owner/Review%20reviews/ada.json') {
+function cleanup(base: string, href = '/remote.php/dav/files/gloss-owner/Review%20reviews/ada.json', action = 'empty-reviews') {
   const root = mkdtempSync(join(tmpdir(), 'gloss-clean-reviews-'))
   try {
     mkdirSync(join(root, 'scripts'))
@@ -21,7 +21,7 @@ XML
 printf '\\n207'
 fi
 `, { mode: 0o700 })
-    const result = spawnSync('bash', [join(root, 'scripts/dev-nc.sh'), 'empty-reviews'], { cwd: resolve('.'), env: { ...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}` }, encoding: 'utf8' })
+    const result = spawnSync('bash', [join(root, 'scripts/dev-nc.sh'), action], { cwd: resolve('.'), env: { ...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}` }, encoding: 'utf8' })
     return { ...result, requests: existsSync(join(root, 'curl.log')) ? readFileSync(join(root, 'curl.log'), 'utf8') : '' }
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
@@ -45,5 +45,12 @@ test.each(['http://127.0.0.1:8089', 'http://example.invalid:8090', 'http://127.0
 test('empty-reviews refuses a response escaping its fixed folder', () => {
   const result = cleanup('http://127.0.0.1:8090', '/remote.php/dav/files/gloss-owner/other.json')
   expect(result.status).not.toBe(0)
+  expect(result.requests).not.toContain('DELETE')
+})
+
+test('count-reviews reports only the direct files and never deletes', () => {
+  const result = cleanup('http://127.0.0.1:8090', undefined, 'count-reviews')
+  expect(result.status).toBe(0)
+  expect(result.stdout.trim()).toBe('1')
   expect(result.requests).not.toContain('DELETE')
 })

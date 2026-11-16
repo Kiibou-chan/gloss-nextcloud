@@ -1,5 +1,5 @@
 import { chromium, firefox, webkit } from '@playwright/test';
-import { mkdir, readFile, stat } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -44,12 +44,14 @@ async function main() {
   if (!url?.startsWith(`${state.base}/index.php/apps/gloss/r/`)) throw new Error('Fixture link missing; run scripts/dev-nc.sh up.');
   await mkdir(out, { recursive: true });
   const reviews = new Map();
+  const results = [];
   const browser = await browserType.launch({ headless: true });
   try {
     for (const colour of ['light', 'dark']) {
       if (!fixture) execFileSync(new URL('./dev-nc.sh', import.meta.url).pathname, ['empty-reviews'], { stdio: ['ignore', 'ignore', 'ignore'] });
       const options = { colorScheme: colour, viewport: { width: 1600, height: 1000 } };
       const context = await browser.newContext(options);
+      const shots = [];
       try {
         const page = await context.newPage();
         page.setDefaultTimeout(15_000);
@@ -58,28 +60,70 @@ async function main() {
           await target.bringToFront();
           // Let the browser paint after focus and layout changes before photographing a canvas.
           await target.evaluate(() => new Promise(resolvePaint => requestAnimationFrame(() => requestAnimationFrame(resolvePaint))));
+          const probe = await target.evaluate(() => {
+            const rect = element => { const r = element.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height, bottom: r.bottom }; };
+            return {
+              viewport: { width: innerWidth, height: innerHeight },
+              status: document.querySelector('.gr-status')?.textContent,
+              editorStyle: [...document.querySelectorAll('.cm-content')].map(element => ({ color: getComputedStyle(element).color, opacity: getComputedStyle(element).opacity, background: getComputedStyle(element).backgroundColor, editable: element.contentEditable })),
+              editorAncestors: [...document.querySelectorAll('.cm-content')].flatMap(element => { const ancestors = []; for (let node = element.parentElement; node && ancestors.length < 7; node = node.parentElement) ancestors.push({ tag: node.tagName, class: node.className, opacity: getComputedStyle(node).opacity, overflow: getComputedStyle(node).overflow, ...rect(node) }); return ancestors; }),
+              footer: [...document.querySelectorAll('footer')].map(rect),
+              cards: [...document.querySelectorAll('.gr-items > li')].map(rect),
+              panel: [...document.querySelectorAll('.gr-side')].map(rect),
+              pdf: [...document.querySelectorAll('#gr-pdf canvas')].map(canvas => {
+                const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+                let ink = 0;
+                for (let i = 0; i < pixels.length; i += 4) if (pixels[i + 3] && pixels[i] < 180 && pixels[i + 1] < 180 && pixels[i + 2] < 180) ink++;
+                return { ...rect(canvas), widthPixels: canvas.width, heightPixels: canvas.height, inkPixels: ink };
+              }),
+              pdfLayers: [...document.querySelectorAll('#gr-pdf canvas, #gr-pdf .textLayer, #gr-pdf .gr-page')].map(element => ({ class: element.className, tag: element.tagName, opacity: getComputedStyle(element).opacity, background: getComputedStyle(element).backgroundColor, filter: getComputedStyle(element).filter, visibility: getComputedStyle(element).visibility })),
+              marks: [...document.querySelectorAll('.gr-pdf-mark')].map(rect),
+            };
+          });
+          await writeFile(resolve(out, `${prefix}${suffix}.probe.json`), JSON.stringify(probe, null, 2));
           await target.screenshot({ path: resolve(out, `${prefix}${suffix}.png`), fullPage: true });
+          shots.push(resolve(out, `${prefix}${suffix}.png`));
           console.log(`Wrote ${prefix}${suffix}.png`);
         };
         const prepareSynthetic = fixture ? target => syntheticOverall(target, sceneName, reviews) : undefined;
         if (fixture) await prepareSynthetic(context);
-        await page.goto(url, { waitUntil: 'networkidle' });
-        try {
-          await scene.run({ page, context, browser, options, state, capture, out, prefix, prepareSynthetic });
-        } catch (error) {
-          if (scene.requires) console.error(`Scene needs feature ${scene.requires} and its specified behaviour.`);
-          throw error;
-        }
+        if (scene.navigate !== false) await page.goto(url, { waitUntil: 'networkidle' });
+        await scene.run({ page, context, browser, options, state, capture, out, prefix, prepareSynthetic });
         await capture();
+        if (['pdf', 'both'].includes(sceneName) && colour === 'dark') {
+          await page.waitForTimeout(1500);
+          await capture('-settled');
+        }
         if (fixture && sceneName === 'overall') {
           await page.getByRole('button', { name: 'Send review', exact: true }).click();
           await page.getByRole('status').getByText('Review sent. Thank you.', { exact: true }).waitFor();
           if (!await page.locator('.gr-overall-text').count() || await page.locator('#gr-overall').count()) throw new Error('Sent overall comment must be plain text.');
           await capture('-sent');
         }
+        results.push({ scene: sceneName, browser: browserName, colour, result: 'pass', shots });
+      } catch (error) {
+        const target = context.pages().at(-1);
+        const shot = resolve(out, `${sceneName}-${browserName}-${colour}-failure.png`);
+        if (target) await target.screenshot({ path: shot, fullPage: true });
+        const probe = target ? await target.evaluate(() => ({
+          status: document.querySelector('.gr-head [role="status"]')?.textContent,
+          editor: document.querySelector('.cm-content')?.textContent,
+          cards: document.querySelectorAll('.gr-items > li').length,
+          unplaced: document.querySelector('.gr-unplaced')?.textContent,
+          formVisible: !!document.querySelector('#gr-form') && !document.querySelector('#gr-form').hidden,
+          headings: [...document.querySelectorAll('h1, h2')].map(element => element.textContent),
+          focus: document.activeElement?.id,
+          pdfPages: document.querySelectorAll('#gr-pdf canvas').length,
+        })) : {};
+        const frames = (error.stack ?? '').split('\n').filter(line => /^\s+at .*scripts\//.test(line));
+        results.push({ scene: sceneName, browser: browserName, colour, result: 'fail', shots, shot, probe, frames });
+        console.log(`FAIL ${sceneName} ${browserName} ${colour}: ${JSON.stringify({ probe, frames })}`);
       } finally { await context.close(); }
     }
   } finally { await browser.close(); }
+  await writeFile(resolve(out, `${sceneName}-${browserName}-results.json`), JSON.stringify(results, null, 2));
+  for (const result of results) console.log(`${result.result.toUpperCase()} ${sceneName} ${browserName} ${result.colour}`);
+  if (results.some(result => result.result === 'fail')) process.exitCode = 1;
 }
 
 async function syntheticOverall(context, sceneName, reviews) {

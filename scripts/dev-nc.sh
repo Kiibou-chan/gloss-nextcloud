@@ -30,7 +30,7 @@ try {
   } else {
     if (!ownerOnly(statSync(path).mode)) throw Error();
     const state = JSON.parse(readFileSync(path, 'utf8'));
-    if (action === 'empty-reviews') {
+    if (action === 'empty-reviews' || action === 'count-reviews') {
       // Only the disposable fixture endpoint is eligible, even in socket-free runners.
       if (state.base !== 'http://127.0.0.1:8090' || state.owner !== 'gloss-owner') throw Error();
       const folder = '/remote.php/dav/files/gloss-owner/Review%20reviews/';
@@ -42,7 +42,7 @@ try {
       const listing = request('PROPFIND', folder, ['-H', 'Depth: 1', '--write-out', '\n%{http_code}',
         '--data', '<d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/></d:prop></d:propfind>']);
       // A fresh instance has no review folder until its first save.
-      if (listing.status === 22 && listing.stdout.trim() === '404') process.exit(0);
+      if (listing.status === 22 && listing.stdout.trim() === '404') { if (action === 'count-reviews') console.log(0); process.exit(0); }
       if (listing.status !== 0 || !listing.stdout.endsWith('\n207')) throw Error();
       // Python's standard XML parser handles DAV namespace prefixes and escaped names.
       const parsed = spawnSync('python3', ['-c', `
@@ -70,7 +70,8 @@ print(json.dumps([{'href': r.findtext('{DAV:}href'), 'collection': r.find('.//{D
         files.push(url.pathname);
       }
       // Validate the complete listing before issuing any deletion; leave folders intact.
-      for (const file of files) if (request('DELETE', file).status !== 0) throw Error();
+      if (action === 'count-reviews') console.log(files.length);
+      else for (const file of files) if (request('DELETE', file).status !== 0) throw Error();
     } else if (action === 'url') {
       if (!state.links[arg]) throw Error();
       console.log(state.links[arg]);
@@ -135,6 +136,7 @@ try {
 } catch { process.exitCode = 1; }
 JS
   then copy=true; fi
+  [[ ${GLOSS_DEV_NC_COPY:-0} != 1 ]] || copy=true
   state_action init "$port"
   mkdir -p build/nc/Long
   node scripts/make-long-draft.mjs build/nc/Long/long.typ
@@ -182,16 +184,47 @@ JS
   echo 'Disposable Nextcloud ready.'
 }
 down() {
-  if exists; then owned; docker rm -fv "$container" >/dev/null; fi
+  if exists; then
+    [[ ${1:-0} = 1 ]] || owned
+    docker rm -fv "$container" >/dev/null
+  fi
   rm -f -- "$state"
   echo 'Disposable Nextcloud removed.'
 }
+install_archive() {
+  [[ $# = 1 && -f "$1" ]] || { echo 'Provide one release tar.gz archive.' >&2; exit 2; }
+  exists || { echo 'Disposable Nextcloud is not running.' >&2; exit 1; }
+  owned
+  [[ $(docker inspect --format '{{index .Config.Labels "gloss.dev.copy"}}' "$container") = true ]] || { echo 'Archive installation requires GLOSS_DEV_NC_COPY=1 at creation.' >&2; exit 1; }
+  docker exec "$container" sh -c 'rm -rf /var/www/html/custom_apps/gloss; mkdir -p /var/www/html/custom_apps/gloss'
+  docker exec -i "$container" tar -xzf - -C /var/www/html/custom_apps/gloss --strip-components=1 --no-same-owner < "$1"
+  docker exec "$container" chown -R www-data:www-data /var/www/html/custom_apps/gloss
+  occ app:disable gloss
+  occ app:enable gloss
+}
+debug() {
+  [[ $# = 1 && ( "$1" = true || "$1" = false ) ]] || { echo 'Choose debug true or false.' >&2; exit 2; }
+  exists || { echo 'Disposable Nextcloud is not running.' >&2; exit 1; }
+  owned
+  occ config:system:set debug --value="$1" --type=boolean
+}
+archive_probe() {
+  exists || { echo 'Disposable Nextcloud is not running.' >&2; exit 1; }
+  owned
+  docker exec "$container" sha256sum /var/www/html/custom_apps/gloss/js/gloss-review.js /var/www/html/custom_apps/gloss/appinfo/info.xml
+  occ app:list
+  occ config:system:get debug
+}
 case "${1:-}" in
+  install-archive) shift; install_archive "$@";;
+  debug) shift; debug "$@";;
+  archive-probe) archive_probe;;
   up) up;;
   down) down;;
-  reset) down; up;;
+  reset) down "${GLOSS_DEV_NC_FORCE_RESET:-0}"; up;;
   sync) sync_app;;
   empty-reviews) state_action empty-reviews;;
+  count-reviews) state_action count-reviews;;
   url) sync_app; state_action url "${2:-Review}";;
-  *) echo 'Usage: scripts/dev-nc.sh up|down|reset|sync|empty-reviews|url <folder>' >&2; exit 2;;
+  *) echo 'Usage: scripts/dev-nc.sh up|down|reset|sync|empty-reviews|count-reviews|url <folder>|install-archive <tar.gz>|debug true|false|archive-probe' >&2; exit 2;;
 esac

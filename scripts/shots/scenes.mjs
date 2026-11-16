@@ -1,3 +1,4 @@
+import { liveScenes } from './live.mjs';
 import { expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -222,6 +223,7 @@ async function long({ page, out, prefix }) {
 }
 
 export const scenes = {
+  ...liveScenes({ ready, find, comment, content, name, status }),
   editor: { run: editor },
   pdf: { run: pdf },
   both: { run: async args => {
