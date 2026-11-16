@@ -63,3 +63,10 @@ test('text layer extraction refuses external image references in the core block'
   const { textLayerCss } = await import(helperUrl)
   expect(() => textLayerCss('.textLayer { background: url(unexpected.svg); }')).toThrow(/url/)
 })
+
+test('the Typst worker starts its wasm through WebAssembly.instantiate, which the app\'s policy leaves to the worker response', () => {
+  const worker = readFileSync(resolve('js/typst.worker.js'), 'utf8')
+  expect(worker).toMatch(/WebAssembly\.instantiate\w*\(/)
+  const controller = readFileSync(resolve('lib/Controller/ReviewController.php'), 'utf8')
+  expect(controller).not.toMatch(/allowEval/i)
+})

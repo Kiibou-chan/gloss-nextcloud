@@ -91,9 +91,17 @@ test('the file route refuses what the server refuses', async () => {
 test('typst-fallback opens the draft that imports a package', async () => {
   const base = 'http://gloss.invalid/index.php/apps/gloss/r/synthetic';
   const [draft] = await serve('typst-fallback', 'Typst', [[`${base}/draft`]]);
-  expect(draft.json.main).toBe('package.typ');
+  expect(draft.json.main).toBe('zz-package.typ');
   expect(draft.json.files[0].text).toContain('#import "@preview/');
   expect(syntheticScenes).toEqual(expect.arrayContaining(['typst-compile', 'typst-fallback']));
   expect(scenes['typst-compile'].folder).toBe('Typst');
   expect(scenes['typst-fallback'].folder).toBe('Typst');
+});
+
+test('the synthetic page carries the app\'s policy: scripts and workers from the page only, no eval, no wasm allowance', async () => {
+  const [page] = await serve('typst-compile', 'Typst', [['http://gloss.invalid/index.php/apps/gloss/r/synthetic']]);
+  const policy = page.headers['Content-Security-Policy'];
+  expect(policy).toContain("script-src 'self'");
+  expect(policy).toContain("worker-src 'self'");
+  expect(policy).not.toMatch(/unsafe-eval/);
 });

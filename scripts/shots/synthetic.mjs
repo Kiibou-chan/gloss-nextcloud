@@ -5,7 +5,7 @@ export const syntheticScenes = ['overall', 'review-link', 'pdf-proposals', 'both
 const gardenScenes = ['overall', 'review-link'];
 const root = new URL('../../', import.meta.url);
 const fixtureMain = { Review: 'paper.typ', Latex: 'paper.tex', Typst: 'paper.typ' };
-const sceneMain = { 'typst-fallback': 'package.typ' };
+const sceneMain = { 'typst-fallback': 'zz-package.typ' };
 
 /** What the server's SharedPath refuses: an empty, absolute, backslash, NUL, dot-led, empty-segment, long, or deep path. */
 export function refusedPath(path) {
@@ -81,7 +81,7 @@ export async function syntheticRoutes(context, sceneName, reviews, folder = 'Rev
       reviews.set(params.get('key'), review);
       return route.fulfill({ json: { revision: Number(params.get('baseRevision')) + 1 } });
     }
-    if (path.endsWith('/synthetic')) return route.fulfill({ contentType: 'text/html', body: html });
+    if (path.endsWith('/synthetic')) return route.fulfill({ contentType: 'text/html', headers: { 'Content-Security-Policy': "script-src 'self'; worker-src 'self'; object-src 'none'" }, body: html });
     return route.abort();
   });
 }

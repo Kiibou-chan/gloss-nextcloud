@@ -103,7 +103,7 @@ sync_app() {
   exists || { echo 'Start the disposable instance before syncing.' >&2; exit 1; }
   owned
   if [[ $(docker inspect --format '{{index .Config.Labels "gloss.dev.copy"}}' "$container") = true ]]; then
-    local paths=(appinfo lib templates css js)
+    local paths=(appinfo lib templates css js fonts)
     for path in l10n img; do [[ ! -d "$path" ]] || paths+=("$path"); done
     docker exec "$container" sh -c 'rm -rf /var/www/html/custom_apps/gloss; mkdir -p /var/www/html/custom_apps/gloss'
     tar -cf - --mode='u+rwX,go+rX' "${paths[@]}" | docker exec -i "$container" tar -xf - -C /var/www/html/custom_apps/gloss --no-same-owner

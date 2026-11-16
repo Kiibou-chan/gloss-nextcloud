@@ -53,7 +53,8 @@ async function replace(page, find, from, to, extra = 0) {
     await page.keyboard.press('ArrowLeft');
     for (let i = 0; i < extra; i++) await page.keyboard.press('Shift+ArrowRight');
   }
-  await page.keyboard.insertText(to);
+  if (to === '') await page.keyboard.press('Backspace');
+  else await page.keyboard.insertText(to);
 }
 
 async function typstCompile(args, helpers) {

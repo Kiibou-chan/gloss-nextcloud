@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -46,4 +46,11 @@ test('shares and copies every fixture folder, Latex and Typst among them', () =>
   expect(script).toContain("for (const folder of ['Review', 'Plain', 'Long', 'Latex', 'Typst']) {");
   expect(script).toMatch(/docker cp test\/fixtures\/nc\/Latex "\$container:\/var\/www\/html\/data\/gloss-owner\/files\/Latex"/);
   expect(script).toMatch(/docker cp test\/fixtures\/nc\/Typst "\$container:\/var\/www\/html\/data\/gloss-owner\/files\/Typst"/);
+});
+
+test('copies the fonts folder into the app in copy mode, and the Typst folder opens paper.typ first', () => {
+  const script = readFileSync(resolve('scripts/dev-nc.sh'), 'utf8');
+  expect(script).toMatch(/local paths=\(appinfo lib templates css js fonts\)/);
+  const names = readdirSync(resolve('test/fixtures/nc/Typst')).filter(name => name.endsWith('.typ')).sort();
+  expect(names[0]).toBe('paper.typ');
 });
