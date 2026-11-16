@@ -1,4 +1,4 @@
-import { liveScenes } from './live.mjs';
+import { liveScenes, sentFileRemoved } from './live.mjs';
 import { expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -279,6 +279,7 @@ export const scenes = {
     await expect(status(args.page)).toHaveText('Review sent. Thank you.');
     await expect(content(args.page)).toHaveAttribute('contenteditable', 'false');
     await expect(args.page.locator('.gr-items button')).toHaveCount(0);
+    await sentFileRemoved(args);
   } },
   long: { folder: 'Long', run: long },
 };

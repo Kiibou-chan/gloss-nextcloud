@@ -19,6 +19,21 @@ async function reviewFile(state) {
   expect(paths).toHaveLength(1);
   return paths[0];
 }
+export async function sentFileRemoved({ page, state, capture }) {
+  const link = await page.getByRole('textbox', { name: 'Your review link' }).inputValue();
+  await capture('-before-delete');
+  await ownerRequest(state, await reviewFile(state), { method: 'DELETE' });
+  await page.goto('about:blank');
+  await page.goto(link, { waitUntil: 'networkidle' });
+  await expect(page.getByRole('status')).toHaveText('Review sent. Thank you.');
+  await expect(page.locator('#gr-text .cm-content')).toHaveAttribute('contenteditable', 'false');
+  await expect(page.locator('.gr-items button')).toHaveCount(0);
+  await page.waitForTimeout(2000);
+  const listing = await (await ownerRequest(state, dav('Review%20reviews/'), { method: 'PROPFIND', headers: { Depth: '1' } })).text();
+  expect([...listing.matchAll(/<(?:\w+:)?href>([^<]+\.json)<\/(?:\w+:)?href>/g)]).toHaveLength(0);
+  console.log('Sent deletion probe: sent, read-only, and zero review files after reopening.');
+  await capture('-after-delete');
+}
 async function saved(page, timeout = 20_000) {
   await expect(page.getByRole('status')).toHaveText('Saved', { timeout });
 }
@@ -81,13 +96,16 @@ export function liveScenes({ ready, find, comment, content, name, status }) {
           await saved(page);
         });
         await capture('-csrf-refreshed');
-        // Reopen the plain link in this authenticated browser, with no review hash.
+        // Reopen the plain link after another password prompt, with no review hash.
         // N2 must preserve the same review across every path form the server serves.
         let reopened = 0;
         let lastServed = page.url();
         for (const front of ['/index.php', '']) {
           const plain = `${state.base}${front}/apps/gloss/r/${share.data.token}`;
           await page.goto('about:blank');
+          for (const cookie of await context.cookies()) {
+            if (!cookie.name.toLowerCase().startsWith('gloss')) await context.clearCookies({ name: cookie.name, domain: cookie.domain, path: cookie.path });
+          }
           const navigation = await page.goto(plain, { waitUntil: 'networkidle' });
           if (navigation.status() === 404) {
             console.log(`Plain-link reopen: ${front || 'pretty'} form is not served (404).`);
@@ -95,6 +113,7 @@ export function liveScenes({ ready, find, comment, content, name, status }) {
             continue;
           }
           expect(navigation.status()).toBe(200);
+          await passwordPrompt(page, password, plain);
           await expect(name(page)).toHaveValue('Ada Example');
           await expect(content(page)).toContainText('flourish');
           await expect(page.getByRole('textbox', { name: 'Overall comment' })).toHaveValue('Synthetic stale-token recovery.');
@@ -143,11 +162,13 @@ export function liveScenes({ ready, find, comment, content, name, status }) {
     } },
     'input-prompts': { run: async ({ page, capture }) => {
       await expect(content(page)).toBeVisible();
+      const originalText = await content(page).textContent();
       await content(page).click();
       await page.keyboard.press('x');
       await expect(status(page)).toHaveText('Enter your name first.');
       await expect(name(page)).toBeFocused();
       await expect(name(page)).toHaveValue('');
+      await expect(content(page)).toHaveText(originalText);
       const typography = () => content(page).evaluate(element => {
         const style = getComputedStyle(element);
         const lines = [...element.querySelectorAll('.cm-line')];
@@ -160,8 +181,9 @@ export function liveScenes({ ready, find, comment, content, name, status }) {
       await expect(name(page)).toBeFocused();
       await expect(name(page)).toHaveValue('');
       await ready(page);
-      expect(await typography()).toEqual(readOnly);
-      console.log(`Editor typography unchanged: ${JSON.stringify(readOnly)}.`);
+      const named = await typography();
+      console.log(`Editor typography before: ${JSON.stringify(readOnly)}; after: ${JSON.stringify(named)}.`);
+      expect(named).toEqual(readOnly);
       await capture('-named');
       await content(page).click();
       await page.keyboard.press('Control+a');
@@ -184,7 +206,8 @@ export function liveScenes({ ready, find, comment, content, name, status }) {
       const original = await (await ownerRequest(state, draftPath)).text();
       try {
         await ready(page);
-        await comment(page, 'stones');
+        await find(page, 'stones');
+        await page.keyboard.insertText('pebbles');
         await saved(page);
         const path = await reviewFile(state);
         const before = await (await ownerRequest(state, path)).text();
@@ -196,10 +219,13 @@ export function liveScenes({ ready, find, comment, content, name, status }) {
         await ownerRequest(state, draftPath, { method: 'PUT', body: original.replace('Delta stones rest beneath the willow.', 'A synthetic pond reflects the moon.') });
         await page.reload({ waitUntil: 'networkidle' });
         await expect(page.getByRole('region', { name: 'Could not place' })).toContainText('stones');
+        await expect(page.getByRole('region', { name: 'Could not place' })).toContainText('pebbles');
+        await saved(page);
         await capture('-missing');
         const write = page.waitForResponse(response => response.request().method() === 'POST' && /\/review$/.test(new URL(response.url()).pathname) && response.ok());
         await page.getByRole('textbox', { name: 'Overall comment' }).fill('Synthetic follow-up after the draft changed.');
         await write;
+        await saved(page);
         const after = await (await ownerRequest(state, path)).text();
         expect(JSON.stringify(JSON.parse(after).items.find(value => value.id === item.id))).toBe(itemText);
         // Extract the complete object with balanced JSON, respecting strings and escapes.
