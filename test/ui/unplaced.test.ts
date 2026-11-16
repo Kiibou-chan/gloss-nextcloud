@@ -18,6 +18,8 @@ it.each(['changed quote', 'different main file'])('C1 preserves raw unplaced ite
   const unmount = mountPanel(panel, model, s)
   await s.start()
   expect(model.head.value.status).toBe('Saved')
+  const section = panel.querySelector('section[aria-label="Could not place"]')
+  expect(section?.querySelector('h2')?.textContent).toBe('Could not place')
   expect(panel.querySelector('[aria-label="Could not place"]')?.textContent).toContain('1 of your earlier items could not be placed; they stay in your review file.'); expect(panel.textContent).toContain('beta'); expect(panel.textContent).toContain('<img src=x onerror=alert(1)>'); expect(panel.querySelector('img')).toBeNull()
   s.setOverall('A new overall comment'); await f.advance(5000); await settle()
   expect(f.api.save.mock.lastCall![1]).toContain(raw)

@@ -78,7 +78,8 @@ body[data-themes*="dark"] .gr-card-head ins { color: #7ee29b; }
 }
 .gr-text .cm-panels button:hover { background: var(--color-background-hover); }
 
-.gr-unplaced { padding: 1rem; border-top: 1px solid var(--color-border); }
+.gr-unplaced { padding: 1rem 0; border-top: 1px solid var(--color-border); }
+.gr-unplaced h2 { font-size: 1em; font-weight: 600; margin: 0 0 0.5rem; }
 .gr-unplaced blockquote, .gr-unplaced p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .gr-unplaced ol { padding-left: 1.25rem; }
 .gr-quote { max-height: 8em; overflow-y: auto; overflow-wrap: anywhere; }
