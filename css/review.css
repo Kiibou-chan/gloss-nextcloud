@@ -50,7 +50,7 @@ body[data-themes*="dark"] .gr-text { --gr-c-keyword: #c79bf0; --gr-c-string: #6c
 .gr-text .gr-ins { text-decoration: underline 2px; text-decoration-color: #2e9d4f; background: rgba(46, 157, 79, 0.14); }
 .gr-text del { color: #c23b3b; text-decoration: line-through; opacity: 0.8; user-select: none; }
 .gr-text .gr-note { background: rgba(255, 200, 0, 0.28); border-bottom: 2px solid rgba(220, 150, 0, 0.9); }
-.gr-off-pdf { margin: 0; color: var(--color-text-maxcontrast); font-size: 0.9em; }
+.gr-unmarked, .gr-off-pdf { margin: 0; color: var(--color-text-maxcontrast); font-size: 0.9em; }
 .gr-count { color: var(--color-text-maxcontrast); font-size: 0.9em; }
 .gr-card-head del { color: #c23b3b; } .gr-card-head ins { color: #2e9d4f; text-decoration: underline; }
 .gr-comment { margin: 0; }

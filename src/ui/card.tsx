@@ -15,6 +15,7 @@ export class Card extends Component<Props> {
         {proposal ? <ProposalWords original={view.shown} proposal={view.proposalShown} /> : <blockquote>{view.shown}</blockquote>}
       </div>
       {view.offPdf && <p class="gr-off-pdf">Not shown on the PDF.</p>}
+      {view.unmarked && <p class="gr-unmarked">Shown in the PDF without marks; Typst cannot mark text inside maths, code, or an argument.</p>}
       {view.comments.map((comment, index) => <p class="gr-comment" key={index}>{comment.text}{view.editable && <>{' '}<button type="button" class="gr-small" onClick={event => { event.stopPropagation(); session.deleteComment(view.id, index) }}>Delete</button></>}</p>)}
       {view.editable && <div class="gr-card-actions">
         <button type="button" onClick={event => { event.stopPropagation(); session.openForm({ id: view.id }) }}>{view.comments.length ? 'Add comment' : 'Comment'}</button>

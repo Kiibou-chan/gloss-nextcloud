@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { ReviewSession } from '../../src/app/session'
 import { readReview } from '../../src/domain/format/read'
 import { fakes } from './fakes'
+import { compiledDoc } from '../../src/app/compiled-doc'
+import { diffSource, newSource } from '../../src/domain/typst/generated'
+import { parseTypst } from '../../src/domain/source/typst-parse'
 
 async function ready(name = 'Ada') { const f = fakes(); const s = new ReviewSession(f.ports); await s.start(); await s.setName(name); return { f, s } }
 function rememberSaved(f: ReturnType<typeof fakes>, key = 'KnownReview12345') {
@@ -300,5 +303,16 @@ describe('S11b session regressions', () => {
     const s = new ReviewSession(f.ports); await s.start()
     expect(f.store.view()).toBe('editor'); expect(f.head().view).toBe('editor')
     await s.setView('pdf'); expect(f.store.view()).toBe('pdf'); expect(f.head().status).toBe('Enter your name to start.')
+  })
+  it('maps selections on compiled Changes and New text to the draft range', async () => {
+    const { f, s } = await ready(); f.editor.replace({ from: 6, to: 10, insert: 'zeta' })
+    const st = (s as unknown as { s: import('../../src/app/session-state').SessionState }).s
+    const none = { unwrap: new Set<string>(), omit: new Set<string>() }
+    const doc = (make: typeof diffSource) => compiledDoc(st.file, st.draft, parseTypst(st.draft), make(st.review!, st.draft, parseTypst(st.draft), none))
+    st.pdfDoc = doc(diffSource)
+    f.pdfSelect('gamma'); expect(f.head().form).toMatchObject({ target: { from: 11, to: 16 }, quote: 'gamma' })
+    f.pdfSelect('beta'); expect(f.head().form).toMatchObject({ target: { id: expect.any(String) } })
+    st.pdfDoc = doc(newSource)
+    f.pdfSelect('zeta'); expect(f.head().form).toMatchObject({ target: { id: expect.any(String) } })
   })
 })

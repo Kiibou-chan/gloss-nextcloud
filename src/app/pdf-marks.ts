@@ -1,3 +1,4 @@
+import type { PdfDoc } from './compiled-doc'
 import { pdfKey } from '../domain/pdf/match'
 import { placeItem } from '../domain/pdf/proposal-marks'
 import { proposalLabel } from './brief'
@@ -45,14 +46,14 @@ export class PdfMarks {
     if (reshaped) { this.pdfCache = new Map(); this.pdfScheduledSignature = null; this.deferPdf() }
     this.actions.compile(true)
   }
-  showBytes(bytes: Uint8Array): Promise<void> { return this.swap(() => this.s.ports.pdf.showBytes(bytes)) }
-  showUploaded(): Promise<void> { return this.swap(() => this.s.ports.pdf.show()) }
-  private async swap(load: () => Promise<{ pages: readonly (readonly string[])[] }>): Promise<void> {
+  showBytes(bytes: Uint8Array, doc: PdfDoc): Promise<void> { return this.swap(() => this.s.ports.pdf.showBytes(bytes), doc) }
+  showUploaded(): Promise<void> { return this.swap(() => this.s.ports.pdf.show(), null) }
+  private async swap(load: () => Promise<{ pages: readonly (readonly string[])[] }>, doc: PdfDoc | null): Promise<void> {
     await this.pdfLoading?.catch(() => {})
     const mine = ++this.swaps
     const { pages } = await load()
     if (this.s.disposed || mine !== this.swaps) return
-    this.pdfIndex = pdfKey(pages); this.pdfCache = new Map(); this.pdfScheduledSignature = null; this.swapped = true
+    this.s.pdfDoc = doc; this.pdfIndex = pdfKey(pages); this.pdfCache = new Map(); this.pdfScheduledSignature = null; this.swapped = true
     this.deferPdf()
   }
   deferPdf(): void {
@@ -75,7 +76,8 @@ export class PdfMarks {
           changed = true
           next.set(item.id, { signature, marks: this.place(item) })
         }
-        if (next.get(item.id)!.marks.length === 0 && !(this.s.pdfLook === 'original' && item.kind === 'proposal')) off.add(item.id)
+        const shownByPdf = item.kind === 'proposal' && (this.s.pdfLook === 'original' || !!this.s.pdfDoc?.shown.has(item.id))
+        if (next.get(item.id)!.marks.length === 0 && !shownByPdf) off.add(item.id)
       }
       const redraw = changed || this.swapped || next.size !== this.pdfCache.size
       this.swapped = false
@@ -92,7 +94,17 @@ export class PdfMarks {
     this.s.offPdf = off
     if (!same) this.actions.render()
   }
+  private placeCompiled(item: Proposal | Note, doc: PdfDoc): PdfMark[] {
+    const length = item.quote.exact.length
+    const range = item.kind === 'proposal'
+      ? doc.unmarked.has(item.id) ? doc.newRange(item.id) : null
+      : { from: doc.fromDraft(item.from), to: length ? Math.min(doc.source.text.length, doc.fromDraft(item.from + length - 1) + 1) : doc.fromDraft(item.from) }
+    if (!range || !this.pdfIndex) return []
+    const place = placeItem(doc.source, this.pdfIndex, { id: item.id, from: range.from, to: range.to, inserts: false }, range.from / Math.max(1, doc.source.text.length))
+    return place ? place.struck.map(p => ({ ...p, look: item.kind === 'proposal' ? 'margin' : 'note' })) : []
+  }
   private place(item: Proposal | Note): PdfMark[] {
+    if (this.s.pdfDoc) return this.placeCompiled(item, this.s.pdfDoc)
     const source = this.s.source
     if (!source || !this.pdfIndex) return []
     const label = item.kind === 'proposal' ? proposalLabel(item.quote.exact, item.proposal) : null

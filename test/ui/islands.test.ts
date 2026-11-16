@@ -12,7 +12,7 @@ import { mountHead, mountPanel } from '../../src/ui/mount'
 const renderOptions = options as typeof options & { __r?: (vnode: { type: unknown; props: { id?: string } }) => void }
 
 const head = (extra: Partial<HeadView> = {}): HeadView => ({ name: 'Ada', title: 'synthetic.typ', hasPdf: true, view: 'editor', pdfLook: 'changes', editable: true, canSend: true, status: '', form: null, ...extra })
-const card = (id: string, extra: Partial<CardView> = {}): CardView => ({ id, kind: 'proposal', from: 0, shown: 'old', proposalShown: 'new', comments: [], editable: true, offPdf: false, ...extra })
+const card = (id: string, extra: Partial<CardView> = {}): CardView => ({ id, kind: 'proposal', from: 0, shown: 'old', proposalShown: 'new', comments: [], editable: true, offPdf: false, unmarked: false, ...extra })
 const commands = () => ({ setName: vi.fn(), setView: vi.fn(), setPdfLook: vi.fn(), openForm: vi.fn(), cancelForm: vi.fn(), commentOn: vi.fn(), deleteComment: vi.fn(), undoProposal: vi.fn(), focusItem: vi.fn(), send: vi.fn(), setOverall: vi.fn(), showKeptChanges: vi.fn(), copyReviewLink: vi.fn() } satisfies Pick<ReviewSession, 'setName' | 'setView' | 'setPdfLook' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges' | 'copyReviewLink'>)
 let dispose: (() => void)[] = []
 afterEach(() => { act(() => dispose.forEach(fn => fn())); dispose = []; document.body.replaceChildren() })
@@ -183,6 +183,12 @@ it('skips a name change when the trimmed name is unchanged', () => {
 })
 
 describe('the off-PDF line', () => {
+  it('shows the unmarked line only on a flagged card', () => {
+    const el = slot()
+    act(() => { const model = createPanelModel(); model.setHead(head()); model.upsertCard(card('a')); model.upsertCard(card('b', { unmarked: true })); model.setOrder(['a', 'b']); dispose.push(mountPanel(el, model, commands())) })
+    expect(el.querySelector('[data-id="a"] .gr-unmarked')).toBeNull()
+    expect(el.querySelector('[data-id="b"] .gr-unmarked')?.textContent).toBe('Shown in the PDF without marks; Typst cannot mark text inside maths, code, or an argument.')
+  })
   it('shows "Not shown on the PDF." only on a flagged card', () => {
     const model = createPanelModel(), el = slot()
     act(() => { model.setHead(head()); model.upsertCard(card('a')); model.upsertCard(card('b', { offPdf: true })); model.setOrder(['a', 'b']); dispose.push(mountPanel(el, model, commands())) })

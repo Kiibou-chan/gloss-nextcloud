@@ -1,3 +1,4 @@
+import type { PdfDoc } from './compiled-doc'
 import type { Item } from '../domain/review/model'
 import { CommentDraft } from './comment-draft'
 import type { ReviewRecord } from '../domain/format/record'
@@ -37,6 +38,7 @@ export class SessionState {
   unplaced: Item[] = []
   offPdf = new Set<string>()
   omitted = new Set<string>()
+  pdfDoc: PdfDoc | null = null
   pdfNote = ''
   saved = false
   blocked = false

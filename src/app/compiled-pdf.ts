@@ -1,6 +1,7 @@
 import { languageOf } from '../domain/source/language'
 import { diffSource, newSource, type Generated, type Shape } from '../domain/typst/generated'
 import { nextShape } from '../domain/typst/rounds'
+import { compiledDoc } from './compiled-doc'
 import { COMPILING, FALLBACK, type Fallback } from './compile-messages'
 import { CompileInputs } from './compile-inputs'
 import type { PdfMarks } from './pdf-marks'
@@ -79,7 +80,7 @@ export class CompiledPdf {
   }
   private async land(pdf: Uint8Array, g: Generated | null, stale: () => boolean): Promise<void> {
     this.s.omitted = new Set(g ? g.omitted : this.s.review!.items().flatMap(i => i.kind === 'proposal' ? [i.id] : []))
-    await this.pdf.showBytes(pdf)
+    await this.pdf.showBytes(pdf, compiledDoc(this.s.file, this.s.draft, this.s.ops, g))
     this.compiled = true
     if (stale()) return
     this.s.pdfNote = ''

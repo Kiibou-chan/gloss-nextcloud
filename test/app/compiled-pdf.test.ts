@@ -1,4 +1,5 @@
 import { expect, test, vi } from 'vitest'
+import { compiledDoc } from '../../src/app/compiled-doc'
 import { CompiledPdf } from '../../src/app/compiled-pdf'
 import { PdfMarks } from '../../src/app/pdf-marks'
 import { SessionState } from '../../src/app/session-state'
@@ -210,7 +211,7 @@ test('PdfMarks.showBytes shows the bytes and places every mark again on the new 
   s.review!.comment({ from: 0, to: 5 }, 'note', f.ids.item(), f.clock.now())
   marks.deferPdf(); await f.advance(400)
   expect(f.pdf.setMarks).toHaveBeenCalledTimes(1)
-  await marks.showBytes(new Uint8Array([7]))
+  await marks.showBytes(new Uint8Array([7]), compiledDoc(s.file, DRAFT, s.ops, null))
   expect(f.pdf.showBytes).toHaveBeenCalledWith(new Uint8Array([7]))
   await f.advance(400)
   expect(f.pdf.setMarks).toHaveBeenCalledTimes(2)

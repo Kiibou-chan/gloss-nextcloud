@@ -62,7 +62,8 @@ export class ReviewSession {
     this.listen(ports.pdf.onSelect(selection => {
       if (!this.presenter.editable()) { this.requestName(); return }
       if (!this.s.source || !this.s.review || (ports.panel.hasCommentDraft() && !this.s.form?.detached)) return
-      const range = toSource(this.s.source, selection.text, selection.fraction)
+      const doc = this.s.pdfDoc, found = toSource(doc ? doc.source : this.s.source, selection.text, selection.fraction)
+      const range = found && (doc ? doc.toDraft(found.from, found.to) : found)
       if (!range) this.s.status = 'That selection could not be placed in the draft. Select a little more, or use the editor.'
       else {
         this.items.openForm(this.s.review.targetFor(range.from, range.to))

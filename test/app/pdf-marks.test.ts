@@ -3,7 +3,9 @@ import { PdfMarks } from '../../src/app/pdf-marks'
 import { SessionState } from '../../src/app/session-state'
 import { DraftReview } from '../../src/domain/review/draft-review'
 import { sourceKey } from '../../src/domain/pdf/match'
-import { plainOps } from '../../src/domain/source/typst-parse'
+import { plainOps, parseTypst } from '../../src/domain/source/typst-parse'
+import { compiledDoc } from '../../src/app/compiled-doc'
+import { diffSource } from '../../src/domain/typst/generated'
 import type { PdfPort } from '../../src/app/ports'
 import { fakes } from './fakes'
 
@@ -141,4 +143,57 @@ test('a fresh session on Original places only comment highlights', async () => {
   s.pdfLook = 'original'
   await unit.setView('pdf'); await f.advance(400)
   expect(marks(f).map(x => x.look)).toEqual(['note'])
+})
+
+const TYPST = 'Alpha beta gamma delta.\n'
+async function compiledSetup(shape = { unwrap: new Set<string>(), omit: new Set<string>() }) {
+  const f = fakes(), s = new SessionState(f.ports), render = vi.fn(), unit = new PdfMarks(s, { compile: vi.fn(), head: vi.fn(), render })
+  s.draft = TYPST; s.file = 'paper.typ'; s.ops = parseTypst(TYPST); s.source = sourceKey(s.file, TYPST, s.ops)
+  s.review = new DraftReview(s.file, TYPST)
+  s.review.edit([{ from: 6, to: 10, insert: 'zeta' }], () => 'p1', f.clock.now())
+  s.review.comment({ from: 11, to: 16 }, 'note', f.ids.item(), f.clock.now())
+  await unit.setView('pdf'); await f.advance(400)
+  const doc = () => compiledDoc(s.file, TYPST, s.ops, diffSource(s.review!, TYPST, s.ops, shape))
+  const kinds = () => (f.pdf.setMarks.mock.lastCall![0]).map(m => `${m.id}:${m.look}`)
+  return { f, s, unit, doc, kinds }
+}
+
+test('on a compiled look a comment is placed through the generated text, and the proposal is left to the PDF', async () => {
+  const { f, s, unit, doc, kinds } = await compiledSetup()
+  f.pdf.showBytes.mockResolvedValue({ pages: [['Alpha beta zeta gamma delta.']] })
+  await unit.showBytes(new Uint8Array([1]), doc()); await f.advance(400)
+  expect(kinds()).toEqual([`${s.review!.items()[1]!.id}:note`])
+  expect(s.offPdf.size).toBe(0)
+})
+
+test('a proposal Typst cannot mark gets a margin mark on its new words', async () => {
+  const { f, s, unit, doc, kinds } = await compiledSetup({ unwrap: new Set(['p1']), omit: new Set() })
+  f.pdf.showBytes.mockResolvedValue({ pages: [['Alpha zeta gamma delta.']] })
+  await unit.showBytes(new Uint8Array([1]), doc()); await f.advance(400)
+  expect(kinds()).toContain('p1:margin')
+  expect(s.offPdf.has('p1')).toBe(false)
+})
+
+test('a proposal the compile left out is off the PDF', async () => {
+  const { f, s, unit, doc } = await compiledSetup({ unwrap: new Set(), omit: new Set(['p1']) })
+  f.pdf.showBytes.mockResolvedValue({ pages: [['Alpha beta gamma delta.']] })
+  await unit.showBytes(new Uint8Array([1]), doc()); await f.advance(400)
+  expect(s.offPdf.has('p1')).toBe(true)
+})
+
+test('a comment is placed again on the recompiled document, and after Original and back', async () => {
+  const { f, s, unit, doc, kinds } = await compiledSetup()
+  const id = s.review!.items()[1]!.id
+  f.pdf.showBytes.mockResolvedValue({ pages: [['Alpha beta zeta gamma delta.']] })
+  await unit.showBytes(new Uint8Array([1]), doc()); await f.advance(400)
+  s.review!.edit([{ from: 0, to: 5, insert: 'Omega' }], () => 'p2', f.clock.now())
+  f.pdf.showBytes.mockResolvedValue({ pages: [['Omega Alpha beta zeta gamma delta.']] })
+  const calls = f.pdf.setMarks.mock.calls.length
+  await unit.showBytes(new Uint8Array([2]), doc()); await f.advance(400)
+  expect(f.pdf.setMarks.mock.calls.length).toBeGreaterThan(calls)
+  expect(kinds()).toContain(`${id}:note`)
+  await unit.showUploaded(); await f.advance(400)
+  await unit.showBytes(new Uint8Array([3]), doc()); await f.advance(400)
+  expect(kinds()).toContain(`${id}:note`)
+  expect(s.pdfDoc).not.toBeNull()
 })

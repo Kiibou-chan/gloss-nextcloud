@@ -48,3 +48,16 @@ test('the head carries the quiet line, and a card the compiler left out is off t
   expect(f.panel.setHead).toHaveBeenLastCalledWith(expect.objectContaining({ pdfNote: 'Showing your PDF while the draft compiles.' }))
   expect(f.panel.upsertCard).toHaveBeenLastCalledWith(expect.objectContaining({ offPdf: true }))
 })
+
+test('a card whose new words are in the PDF without marks says so, unless it is off the PDF', () => {
+  const f = fakes(), s = new SessionState(f.ports)
+  const unit = new Presenter(s, { publishLink: vi.fn(), overallText: () => '', deferPdf: vi.fn() })
+  s.draft = 'alpha beta'; s.file = 'draft.typ'; s.review = new DraftReview(s.file, s.draft)
+  s.review.comment({ from: 0, to: 5 }, 'one', f.ids.item(), f.clock.now())
+  const id = s.review.items()[0]!.id
+  s.view = 'pdf'; s.pdfDoc = { unmarked: new Set([id]) } as unknown as NonNullable<typeof s.pdfDoc>
+  unit.render()
+  expect(f.panel.upsertCard).toHaveBeenLastCalledWith(expect.objectContaining({ unmarked: true, offPdf: false }))
+  s.offPdf = new Set([id]); unit.render()
+  expect(f.panel.upsertCard).toHaveBeenLastCalledWith(expect.objectContaining({ unmarked: false, offPdf: true }))
+})
