@@ -2,6 +2,8 @@ import type { PdfMark } from '../../app/ports'
 import type { PdfLook } from '../../app/view'
 import { cut, drawNewText, type Entry, type NewTextPage } from './new-text-draw'
 
+const MARGIN_WIDTH = 3, MARGIN_GAP = 6
+
 export type MarkPage = NewTextPage & {
   number: number
   marks: HTMLElement
@@ -48,6 +50,12 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[], look: P
     return node
   }
   const sized = { ...page, layer }
+  const bars = new Map<string, { id: string; top: number; bottom: number }>()
+  const margin = (id: string, rect: { top: number; height: number }) => {
+    const bar = bars.get(id) ?? { id, top: rect.top, bottom: rect.top + rect.height }
+    bar.top = Math.min(bar.top, rect.top); bar.bottom = Math.max(bar.bottom, rect.top + rect.height)
+    bars.set(id, bar)
+  }
   for (const mark of own) {
     if (mark.look === 'insert') {
       const text = layer.textContentItemsStr[mark.item] ?? ''
@@ -85,10 +93,17 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[], look: P
         if (look === 'new' && mark.look === 'struck') {
           const padLeft = index > 0 || spaceBefore, padRight = index < rects.length - 1 || spaceAfter
           entry(mark, item).struck.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height, padLeft, padRight })
-        } else place(mark, mark.look, rect)
+        } else if (mark.look === 'margin') margin(mark.id, rect)
+        else place(mark, mark.look, rect)
       }
     }
     if (!drew) missing.add(mark.id)
+  }
+  if (bars.size) {
+    const column = Math.min(...layer.textDivs.map(div => div.getBoundingClientRect().left).filter(Number.isFinite))
+    for (const bar of bars.values()) {
+      place({ id: bar.id } as PdfMark, 'margin', { left: column - MARGIN_GAP, top: bar.top, width: MARGIN_WIDTH, height: bar.bottom - bar.top })
+    }
   }
   if (look === 'new') {
     const { covers, words } = drawNewText([...entries.values()], page, origin)

@@ -1,24 +1,12 @@
 import { isCommentShortcut } from '../browser/comment-shortcut'
-import { getDocument, GlobalWorkerOptions, TextLayer } from 'pdfjs-dist'
-import type { PDFPageProxy, PageViewport, RenderTask } from 'pdfjs-dist'
+import { GlobalWorkerOptions, TextLayer } from 'pdfjs-dist'
+import type { getDocument } from 'pdfjs-dist'
 import type { PdfMark, PdfPort } from '../../app/ports'
+import { openDoc, observePages, type DocSource, type Page } from './pdf-doc'
 import { drawPageMarks } from './mark-draw'
 import { fontLookup } from './font-style'
 import { createUndrawnTracker } from './undrawn'
-type Page = {
-  number: number
-  pdf: PDFPageProxy
-  viewport: PageViewport
-  content: Awaited<ReturnType<PDFPageProxy['getTextContent']>>
-  box: HTMLElement
-  marks: HTMLElement
-  layer?: TextLayer
-  drawing?: Promise<void>
-  canvas?: HTMLCanvasElement
-  text?: HTMLElement
-  render?: RenderTask
-  generation: number
-}
+const PAGE_GAP = 12
 /** The host is the PDF scroll container; matching uses cached text, never the DOM. */
 export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string; workerUrl: string }): PdfPort {
   let disposed = false, task: ReturnType<typeof getDocument> | undefined
@@ -26,7 +14,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
   let pages: Page[] = []
   let byId = new Map<string, PdfMark>(), byPage = new Map<number, PdfMark[]>()
   let look: Parameters<PdfPort['setLook']>[0] = 'changes'
-  let observer: IntersectionObserver | undefined, viewportObserver: IntersectionObserver | undefined
+  let stopObserving: (() => void) | undefined, epoch = 0
   const visible = new Set<number>()
   let selected: Parameters<PdfPort['onSelect']>[0] | undefined
   const undrawn = createUndrawnTracker(() => pages)
@@ -97,54 +85,41 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
     })()
     return page.drawing
   }
-  async function load(): ReturnType<PdfPort['show']> {
+  function visiblePages(next: readonly Page[], top: number) {
+    const bottom = top + (el.clientHeight || window.innerHeight)
+    let y = parseFloat(getComputedStyle(el).paddingTop) || 0
+    return next.filter(page => {
+      const start = y
+      y += page.viewport.height + PAGE_GAP
+      return y - PAGE_GAP > top && start < bottom
+    })
+  }
+  async function load(source: DocSource, keep: boolean): ReturnType<PdfPort['show']> {
     GlobalWorkerOptions.workerSrc = workerUrl
-    task = getDocument({ url, fontExtraProperties: true })
-    const doc = await task.promise
-    if (disposed) return { pages: [] }
-    const style = getComputedStyle(el)
-    const padding = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0)
-    const width = el.clientWidth ? Math.max(1, el.clientWidth - padding - 2) : 900
-    const next: Page[] = []
-    for (let number = 1; number <= doc.numPages; number++) {
-      const pdf = await doc.getPage(number)
-      if (disposed) return { pages: [] }
-      const base = pdf.getViewport({ scale: 1 })
-      const viewport = pdf.getViewport({ scale: width / base.width })
-      const box = document.createElement('div')
-      box.className = 'gr-page'
-      box.dataset.page = String(number)
-      box.style.width = `${viewport.width}px`
-      box.style.height = `${viewport.height}px`
-      const marks = document.createElement('div')
-      marks.className = 'gr-pdf-marks'
-      box.append(marks)
-      const content = await pdf.getTextContent()
-      if (disposed) return { pages: [] }
-      next.push({ number, pdf, viewport, content, box, marks, generation: 0 })
+    const mine = ++epoch
+    const opened = await openDoc(el, source, () => disposed || epoch !== mine)
+    if (!opened) return { pages: [] }
+    const top = el.scrollTop
+    const drawn = keep ? visiblePages(opened.pages, top) : []
+    await Promise.all(drawn.map(page => draw(page).catch(error => console.error('Could not draw PDF page', error))))
+    if (disposed || epoch !== mine) {
+      for (const page of opened.pages) release(page)
+      void opened.task.destroy().catch(error => console.error('Could not destroy PDF document', error))
+      return { pages: [] }
     }
-    pages = next
+    const old = pages
+    stopObserving?.(); visible.clear()
+    destroyTask()
+    task = opened.task
+    pages = opened.pages
     el.replaceChildren(...pages.map(page => page.box))
-    observer = new IntersectionObserver(entries => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue
-        const page = pages.find(p => p.box === entry.target)
-        if (page) void draw(page).catch(error => console.error('Could not draw PDF page', error))
-      }
-    }, { root: el, rootMargin: `${el.clientHeight || window.innerHeight}px 0px` })
-    viewportObserver = new IntersectionObserver(entries => {
-      for (const entry of entries) {
-        const page = pages.find(p => p.box === entry.target)
-        if (!page) continue
-        if (entry.isIntersecting) visible.add(page.number)
-        else visible.delete(page.number)
-      }
+    el.scrollTop = Math.min(top, Math.max(0, el.scrollHeight - el.clientHeight))
+    for (const page of old) { release(page); undrawn.forget(page.number) }
+    for (const page of drawn) if (page.canvas) drawMarks(page)
+    stopObserving = observePages(el, pages, page => void draw(page).catch(error => console.error('Could not draw PDF page', error)), changes => {
+      for (const [page, on] of changes) { if (on) visible.add(page.number); else visible.delete(page.number) }
       releaseDistant()
-    }, { root: el, rootMargin: '0px' })
-    for (const page of pages) {
-      observer.observe(page.box)
-      viewportObserver.observe(page.box)
-    }
+    })
     return { pages: pages.map(page => page.content.items.flatMap(item => 'str' in item ? [item.str] : [])) }
   }
   function destroyTask() {
@@ -171,16 +146,17 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
     commentSelection: reportSelection,
     show() {
       if (disposed) return Promise.resolve({ pages: [] })
-      loading ??= load().catch(error => {
-        observer?.disconnect()
-        viewportObserver?.disconnect()
-        visible.clear()
+      loading ??= load({ url }, false).catch(error => {
         loading = undefined
-        destroyTask()
         if (disposed) return { pages: [] }
         throw error
       })
       return loading
+    },
+    showBytes(bytes) {
+      if (disposed) return Promise.resolve({ pages: [] })
+      loading = undefined
+      return load({ data: bytes }, true)
     },
     setMarks(next) {
       byId = new Map()
@@ -205,7 +181,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
       if (disposed) return
       disposed = true
       destroyTask()
-      observer?.disconnect(); viewportObserver?.disconnect()
+      stopObserving?.()
       el.removeEventListener('mouseup', reportSelection); el.removeEventListener('keydown', commentKey)
       selected = undefined
       for (const page of pages) release(page)

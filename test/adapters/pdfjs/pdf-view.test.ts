@@ -392,6 +392,87 @@ describe('PDF disposal', () => {
   })
 })
 
+describe('showBytes', () => {
+  const bytes = () => new Uint8Array([37, 80, 68, 70])
+  const docOf = (count: number) => ({ numPages: count, getPage: vi.fn(async (n: number) => makePage(n)) })
+  const taskOf = (count: number) => ({ promise: Promise.resolve(docOf(count)), destroy: vi.fn(async () => {}) })
+  function scrolling(height: number) {
+    let top = 0
+    Object.defineProperty(host, 'scrollHeight', { configurable: true, get: () => height })
+    Object.defineProperty(host, 'scrollTop', { configurable: true, get: () => top, set: (v: number) => { top = v } })
+    return { set: (v: number) => { top = v } }
+  }
+
+  it('loads the bytes, replaces the pages, and resolves the new text items', async () => {
+    const view = create(); await view.show()
+    const old = boxes()
+    pdf.getDocument.mockReturnValueOnce(taskOf(2))
+    const shown = await view.showBytes!(bytes())
+    expect(pdf.getDocument).toHaveBeenLastCalledWith({ data: bytes(), fontExtraProperties: true })
+    expect(shown.pages).toEqual([['Page 1', ' synthetic words'], ['Page 2', ' synthetic words']])
+    expect(boxes()).toHaveLength(2)
+    expect(boxes().some(b => old.includes(b))).toBe(false)
+  })
+
+  it('keeps scrollTop, clamped when the new document is shorter', async () => {
+    const view = create(); await view.show()
+    const s = scrolling(2000)
+    s.set(900)
+    pdf.getDocument.mockReturnValueOnce(taskOf(3))
+    await view.showBytes!(bytes())
+    expect(host.scrollTop).toBe(900)
+    Object.defineProperty(host, 'scrollHeight', { configurable: true, get: () => 1000 })
+    s.set(900)
+    pdf.getDocument.mockReturnValueOnce(taskOf(1))
+    await view.showBytes!(bytes())
+    expect(host.scrollTop).toBe(300)
+  })
+
+  it('loads the uploaded PDF again on show() after showBytes', async () => {
+    const view = create(); await view.show()
+    pdf.getDocument.mockReturnValueOnce(taskOf(1))
+    await view.showBytes!(bytes())
+    const shown = await view.show()
+    expect(pdf.getDocument).toHaveBeenLastCalledWith({ url: '/synthetic.pdf', fontExtraProperties: true })
+    expect(shown.pages).toHaveLength(3)
+  })
+
+  it('destroys the previous loading task and disconnects its observers', async () => {
+    const first = { promise: Promise.resolve({ numPages: 1, getPage: async () => makePage(1) }), destroy: vi.fn(async () => {}) }
+    pdf.getDocument.mockReturnValueOnce(first)
+    const view = create(); await view.show()
+    const before = Observer.instances.length
+    pdf.getDocument.mockReturnValueOnce(taskOf(1))
+    await view.showBytes!(bytes())
+    expect(first.destroy).toHaveBeenCalledTimes(1)
+    expect(Observer.instances.slice(0, before).flatMap(o => [...o.targets])).toEqual([])
+    expect(Observer.instances.slice(before).flatMap(o => [...o.targets])).toHaveLength(2)
+  })
+
+  it('draws the visible pages before the container children are swapped', async () => {
+    const view = create(); await view.show()
+    const second = taskOf(2)
+    pdf.getDocument.mockReturnValueOnce(second)
+    const swapped = vi.spyOn(host, 'replaceChildren')
+    let drawnAtSwap = -1
+    swapped.mockImplementation(function (this: HTMLElement, ...nodes: (Node | string)[]) {
+      drawnAtSwap = nodes.filter(n => n instanceof HTMLElement && n.querySelector('canvas')).length
+      return Element.prototype.replaceChildren.apply(this, nodes)
+    })
+    await view.showBytes!(bytes())
+    expect(drawnAtSwap).toBeGreaterThan(0)
+    expect(boxes()[0]!.querySelector('canvas')).not.toBeNull()
+  })
+
+  it('keeps the old document when the new bytes fail to load', async () => {
+    const view = create(); await view.show()
+    const old = boxes()
+    pdf.getDocument.mockReturnValueOnce({ promise: Promise.reject(new Error('bad')), destroy: vi.fn(async () => {}) })
+    await expect(view.showBytes!(bytes())).rejects.toThrow('bad')
+    expect(boxes()).toEqual(old)
+  })
+})
+
 it('fits the page and its border inside the padded PDF pane', async () => {
   host.style.padding = '12px'
   const view = create(); await view.show()

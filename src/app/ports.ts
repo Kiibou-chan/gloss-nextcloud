@@ -17,11 +17,12 @@ export interface EditorPort {
   onEdit(listener: (changes: readonly Change[]) => void): void | (() => void)
   onSelect(listener: (range: { from: number; to: number }) => void): void | (() => void)
 }
-export type PdfMark = (PdfPlacement & { look: 'note' | 'struck' }) | (PdfCaret & { look: 'insert'; words: string })
+export type PdfMark = (PdfPlacement & { look: 'note' | 'struck' | 'margin' }) | (PdfCaret & { look: 'insert'; words: string })
 export interface PdfPort {
   commentSelection?(): boolean
   dispose?(): void
   show(): Promise<{ pages: readonly (readonly string[])[] }>
+  showBytes(bytes: Uint8Array): Promise<{ pages: readonly (readonly string[])[] }>
   setMarks(marks: readonly PdfMark[]): void
   setLook(look: PdfLook): void
   onUndrawn?(listener: (ids: readonly string[]) => void): void | (() => void)

@@ -177,3 +177,23 @@ describe('undrawn tracker forget', () => {
     expect(calls).toEqual([['aaaaaaaaaa'], []])
   })
 })
+
+describe('margin bars', () => {
+  it('draws one bar per page spanning its rectangles, left of the text column', () => {
+    const page = makePage()
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const index = page.layer.textDivs.indexOf(this)
+      return { left: index < 0 ? 11 : 90 + index * 10, top: 21 } as DOMRect
+    })
+    drawPageMarks(page, [{ id: 'mmmmmmmmmm', page: 1, startItem: 0, startOffset: 6, endItem: 1, endOffset: 5, look: 'margin' }], 'changes')
+    expect(kids().map(k => [k.className, k.dataset.id, k.style.left, k.style.top, k.style.width, k.style.height])).toEqual([
+      ['gr-pdf-mark gr-pdf-margin', 'mmmmmmmmmm', '73px', '29px', '3px', '32px'],
+    ])
+  })
+
+  it('reports a margin mark that drew nothing', () => {
+    const missing = drawPageMarks(makePage(), [{ id: 'mmmmmmmmmm', page: 1, startItem: 0, startOffset: 20, endItem: 0, endOffset: 25, look: 'margin' }], 'changes')
+    expect([...missing]).toEqual(['mmmmmmmmmm'])
+    expect(kids()).toEqual([])
+  })
+})
