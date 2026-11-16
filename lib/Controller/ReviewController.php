@@ -76,6 +76,7 @@ class ReviewController extends AuthPublicShareController {
 		return new TemplateResponse('gloss', 'authenticate', [
 			'action' => $this->urls->linkToRoute('gloss.review.authenticate', ['token' => $this->getToken()]),
 			'wrongpw' => $wrongPassword,
+			'fragmentScope' => hash('sha256', $this->getToken()),
 		], 'guest');
 	}
 
@@ -109,7 +110,8 @@ class ReviewController extends AuthPublicShareController {
 			'token' => $this->getToken(),
 			'passwordProtected' => $this->isPasswordProtected(),
 			'base' => $this->urls->linkToRoute('gloss.review.page', ['token' => $this->getToken()]),
-			'webroot' => $this->urls->getWebroot(),
+			'csrfTokenUrl' => $this->urls->linkToRoute('core.CSRFToken.index'),
+			'fragmentScope' => hash('sha256', $this->getToken()),
 			'draftName' => $draft?->getName() ?? '',
 			'hasPdf' => $this->draftLocator->pdf($this->folder()) !== null,
 			'worker' => $this->urls->linkTo('gloss', 'js/pdf.worker.js'),

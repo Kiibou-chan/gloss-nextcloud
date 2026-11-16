@@ -57,9 +57,9 @@ describe('SaveQueue', () => {
     const fetcher = vi.fn().mockResolvedValueOnce(new Response('', { status: 412 })).mockResolvedValueOnce(Response.json({ token: 'synthetic-fresh' })).mockResolvedValueOnce(twice ? new Response('', { status: 412 }) : Response.json({ revision: 1 }))
     vi.stubGlobal('fetch', fetcher)
     try {
-      const f = fakes(); const statuses: string[] = []; const api = createReviewApi('/index.php/apps/gloss/r/synthetic', 'synthetic-old')
+      const f = fakes(); const statuses: string[] = []; const api = createReviewApi('/index.php/apps/gloss/r/synthetic', 'synthetic-old', '/index.php/csrftoken')
       const q = new SaveQueue({ save: (body, base) => api.save('Abcdef1234567890', body, base), body: () => '{}', scheduler: f.scheduler, onStatus: s => statuses.push(s) })
-      q.changed(); await q.flush(); expect(fetcher.mock.calls[1]![0]).toBe('/csrftoken'); expect(fetcher.mock.calls[1]![1].method).toBe('GET')
+      q.changed(); await q.flush(); expect(fetcher.mock.calls[1]![0]).toBe('/index.php/csrftoken'); expect(fetcher.mock.calls[1]![1].method).toBe('GET')
       expect(fetcher.mock.calls[2]![1].headers).toEqual({ requesttoken: 'synthetic-fresh' }); await f.advance(60000); expect(fetcher).toHaveBeenCalledTimes(3)
       expect(statuses.at(-1)).toBe(twice ? 'Your session ended. Reload the page to continue; your changes are kept in this browser.' : 'Saved')
     } finally { vi.unstubAllGlobals() }

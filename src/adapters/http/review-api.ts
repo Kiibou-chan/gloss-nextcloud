@@ -15,7 +15,7 @@ async function refusal(response: Response): Promise<Failure> {
   }
 }
 
-export function createReviewApi(base: string, requestToken: string, webroot = base.split('/apps/gloss/')[0]!.replace(/\/index\.php$/, ''), passwordProtected = false): ReviewApi {
+export function createReviewApi(base: string, requestToken: string, csrfTokenUrl = '', passwordProtected = false): ReviewApi {
   let token = requestToken
   const root = base.replace(/\/$/, '')
   async function request(path: string, init: Omit<RequestInit, 'signal'> & { signal?: CancelSignal } = {}): Promise<{ data: unknown; raw: string } | Failure> {
@@ -36,7 +36,7 @@ export function createReviewApi(base: string, requestToken: string, webroot = ba
         refreshing = true
         let fresh: unknown
         try {
-          const refreshed = await fetch(webroot.replace(/\/$/, '') + '/csrftoken', { method: 'GET', signal: controller.signal })
+          const refreshed = await fetch(csrfTokenUrl, { method: 'GET', signal: controller.signal })
           if (!refreshed.ok) return { ...sessionEnded }
           fresh = await refreshed.json()
         } catch { return { ...sessionEnded } }

@@ -29,8 +29,7 @@ async function passwordPrompt(page, password, link) {
   await box.press('Enter');
   await expect(box).toBeHidden({ timeout: 20_000 });
   await expect(page.locator('#gr-text .cm-content')).toBeVisible();
-  await page.goto(link, { waitUntil: 'networkidle' });
-  await expect(page.locator('#gr-text .cm-content')).toBeVisible();
+  if (new URL(link).hash) expect(new URL(page.url()).hash).toBe(new URL(link).hash);
 }
 
 export function liveScenes({ ready, find, comment, content, name, status }) {
@@ -67,6 +66,34 @@ export function liveScenes({ ready, find, comment, content, name, status }) {
         await saved(page);
         const reviewLink = await page.getByRole('textbox', { name: 'Your review link' }).inputValue();
         await capture('-saved');
+        const otherDevice = await context.browser().newContext({ colorScheme: await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), viewport: { width: 1600, height: 1000 } });
+        try {
+          const reviewer = await otherDevice.newPage();
+          await reviewer.goto(reviewLink, { waitUntil: 'networkidle' });
+          await passwordPrompt(reviewer, password, reviewLink);
+          await expect(name(reviewer)).toHaveValue('Ada Example');
+          await expect(content(reviewer)).toContainText('flourish');
+          await expect(reviewer.getByRole('textbox', { name: 'Your review link' })).toHaveValue(reviewLink);
+          await capture('-other-device', reviewer);
+        } finally { await otherDevice.close(); await page.bringToFront(); }
+        let staleOnce = true;
+        let refreshed = false;
+        const staleRoute = async route => {
+          if (staleOnce) {
+            staleOnce = false;
+            await route.continue({ headers: { ...route.request().headers(), requesttoken: 'synthetic-stale-token' } });
+          } else await route.continue();
+        };
+        page.on('response', response => {
+          if (new URL(response.url()).pathname.endsWith('/index.php/csrftoken') && response.status() === 200) refreshed = true;
+        });
+        await page.route('**/review', staleRoute);
+        await page.getByRole('textbox', { name: 'Overall comment' }).fill('Synthetic stale-token recovery.');
+        await saved(page);
+        expect(staleOnce).toBe(false);
+        expect(refreshed).toBe(true);
+        await page.unroute('**/review', staleRoute);
+        await capture('-csrf-refreshed');
         const cookies = await context.cookies();
         // Gloss uses browser storage for backups, and sets no authentication cookies.
         for (const cookie of cookies.filter(cookie => !cookie.name.toLowerCase().startsWith('gloss'))) {

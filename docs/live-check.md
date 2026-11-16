@@ -10,7 +10,7 @@ Run `scripts/dev-nc.sh archive-probe` to print the installed bundle and manifest
 Compare the checksums with `tar -xOf <tar.gz> gloss/js/gloss-review.js | sha256sum` and the equivalent command for `gloss/appinfo/info.xml`.
 
 Run screenshot commands with `GLOSS_SHOTS_SKIP_SYNC=1` so the archive installation is preserved.
-Use `HEAVY_MODE=none /home/kiibou/.cache/gloss-work/tools/heavy-job.sh start <output-folder> <job> -- <command>`, then the helper's `wait <output-folder> <job>` command.
+Use `HEAVY_MODE=none $GLOSS_WORK/../../tools/heavy-job.sh start <output-folder> <job> -- <command>`, then the helper's `wait <output-folder> <job>` command.
 Run scenes sequentially because each theme empties the shared review folder.
 The runner writes a result JSON file and captures a screenshot and a safe DOM probe for each failed theme, continues with the other theme, and exits unsuccessfully if either fails.
 

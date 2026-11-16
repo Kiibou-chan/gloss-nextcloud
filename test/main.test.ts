@@ -22,7 +22,7 @@ import { mountReview } from '../src/main'
 import { createEditor } from '../src/adapters/codemirror/editor'
 import { createPdfView } from '../src/adapters/pdfjs/pdf-view'
 
-afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); state.order = [] })
+afterEach(() => { sessionStorage.clear(); history.replaceState(null, '', '/'); document.body.replaceChildren(); vi.restoreAllMocks(); state.order = [] })
 function root(hasPdf = true) {
   // Render exactly the PHP template's slots, replacing only its escaped scalar parameters.
   const template = readFileSync('templates/review.php', 'utf8').replace(/<\?php[\s\S]*?\?>/g, '')
@@ -97,16 +97,16 @@ it('reports the page-load error through the diagnostic path', async () => {
   expect(el.querySelector('.gr-head')?.textContent).toBe('Could not load the draft.')
 })
 
-it('I3 passes the generated route and Nextcloud web root to the API and PDF view', async () => {
+it('I3 passes the generated review and CSRF routes to the API and PDF view', async () => {
   const { createReviewApi } = await import('../src/adapters/http/review-api')
   state.f = fakes(); const el = root()
-  Object.assign(el.dataset, { base: '/nextcloud/index.php/apps/gloss/r/TOKEN', webroot: '/nextcloud' })
+  Object.assign(el.dataset, { base: '/nextcloud/index.php/apps/gloss/r/TOKEN', csrfTokenUrl: '/nextcloud/index.php/csrftoken' })
   const dispose = await mountReview(el)
-  expect(createReviewApi).toHaveBeenLastCalledWith(el.dataset.base, expect.any(String), '/nextcloud', false)
+  expect(createReviewApi).toHaveBeenLastCalledWith(el.dataset.base, expect.any(String), '/nextcloud/index.php/csrftoken', false)
   expect(createPdfView).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ url: el.dataset.base + '/pdf' }))
   const template = readFileSync('templates/review.php', 'utf8')
   expect(template).toContain('data-base="<?php p($_[\'base\']); ?>"')
-  expect(template).toContain('data-webroot="<?php p($_[\'webroot\']); ?>"')
+  expect(template).toContain('data-csrf-token-url="<?php p($_[\'csrfTokenUrl\']); ?>"')
   dispose()
 })
 
@@ -128,4 +128,17 @@ it('reserves the footer height and its fixed bottom inset', async () => {
   const dispose = await mountReview(el)
   try { expect(el.style.getPropertyValue('--gr-footer-height')).toBe('61px') }
   finally { dispose(); vi.unstubAllGlobals() }
+})
+
+it('restores the password fragment before opening the review instead of a remembered key', async () => {
+  state.f = fakes(); const el = root()
+  el.dataset.fragmentScope = 'synthetic-digest'
+  state.f.store.remember('RememberedKey1234')
+  sessionStorage.setItem('gloss-auth-fragment:synthetic-digest', '#SavedReviewKey12')
+  const dispose = await mountReview(el)
+  try {
+    expect(state.f.api.open).toHaveBeenCalledWith('SavedReviewKey12')
+    expect(location.hash).toBe('#SavedReviewKey12')
+    expect(sessionStorage.getItem('gloss-auth-fragment:synthetic-digest')).toBeNull()
+  } finally { dispose() }
 })

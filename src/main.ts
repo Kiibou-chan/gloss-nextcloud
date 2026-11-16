@@ -1,3 +1,4 @@
+import { restoreAuthFragment } from './adapters/browser/auth-fragment'
 import { createCommentDraftStore } from './adapters/storage/comment-draft-store'
 import { ReviewSession } from './app/session'
 import { createEditor } from './adapters/codemirror/editor'
@@ -13,16 +14,17 @@ import { createPanelModel } from './ui/panel-model'
 import { mountHead, mountPanel } from './ui/mount'
 
 export async function mountReview(root: HTMLElement): Promise<() => void> {
+  restoreAuthFragment(root.dataset.fragmentScope ?? '')
   const slot = (selector: string) => {
     const el = root.querySelector<HTMLElement>(selector)
     if (!el) throw new Error(`Missing review slot: ${selector}`)
     return el
   }
   const header = slot('.gr-head'), side = slot('.gr-side'), text = slot('#gr-text'), pdfSlot = slot('#gr-pdf')
-  const requestToken = (globalThis as typeof globalThis & { OC?: { requestToken?: string; webroot?: string } }).OC?.requestToken
+  const requestToken = (globalThis as typeof globalThis & { OC?: { requestToken?: string } }).OC?.requestToken
     ?? document.head.dataset.requesttoken ?? ''
   const base = (root.dataset.base ?? location.pathname).replace(/\/$/, '')
-  const api = createReviewApi(base, requestToken, root.dataset.webroot ?? (globalThis as typeof globalThis & { OC?: { webroot?: string } }).OC?.webroot, root.dataset.passwordProtected === '1')
+  const api = createReviewApi(base, requestToken, root.dataset.csrfTokenUrl, root.dataset.passwordProtected === '1')
   const footer = document.querySelector('footer')
   const measureFooter = () => {
     root.style.setProperty('--gr-footer-height', `${footer ? Math.max(0, innerHeight - footer.getBoundingClientRect().top) : 0}px`)

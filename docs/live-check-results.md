@@ -2,7 +2,7 @@
 
 The release archive is installed on the disposable Nextcloud 33 instance at port 8090, with debug disabled.
 This fix round starts from review-app `c78a7a7` and corrects the four defects recorded below.
-Current shots and job logs are in `/home/kiibou/.cache/gloss-work/rvw/work/shots/final2/`.
+Current shots and job logs are in `$GLOSS_WORK/shots/final2/`.
 Paths below are relative to that folder, and `{light,dark}` means both separately inspected images.
 Unaffected historical checks explicitly use `../final/` paths and retain their original results.
 
@@ -86,12 +86,12 @@ See `chromium/{not-set-up,sent}-{light,dark}-contrast.json` and the correspondin
 
 ## Commands and reproducibility
 
-Heavy commands use `HEAVY_MODE=none /home/kiibou/.cache/gloss-work/tools/heavy-job.sh start /home/kiibou/.cache/gloss-work/rvw/work/shots/final2 <job> -- <command>`, followed by the helper's `wait` command.
+Heavy commands use `HEAVY_MODE=none $GLOSS_WORK/../../tools/heavy-job.sh start $GLOSS_WORK/shots/final2 <job> -- <command>`, followed by the helper's `wait` command.
 Verification uses `npm run check -- -- --maxWorkers=2` after deleting the generated bundle, and `scripts/php.sh test`.
-The archive is built with `scripts/package.sh /home/kiibou/.cache/gloss-work/rvw/work/archive/` from a clean detached checkout of the branch head.
-`scripts/package.sh` is unchanged.
+The archive is built with `scripts/package.sh $GLOSS_WORK/archive/` from a clean detached checkout of the branch head.
+`scripts/package.sh` changed to reject dirty runtime paths and package committed allowlisted files with deterministic archive metadata.
 The instance is reset with `GLOSS_DEV_NC_FORCE_RESET=1 GLOSS_DEV_NC_COPY=1 scripts/dev-nc.sh reset`.
-The archive is installed with `scripts/dev-nc.sh install-archive /home/kiibou/.cache/gloss-work/rvw/work/archive/gloss-0.1.0.tar.gz`, followed by `scripts/dev-nc.sh debug false` and `scripts/dev-nc.sh archive-probe`.
+The archive is installed with `scripts/dev-nc.sh install-archive $GLOSS_WORK/archive/gloss-0.1.0.tar.gz`, followed by `scripts/dev-nc.sh debug false` and `scripts/dev-nc.sh archive-probe`.
 Archive bundle and manifest bytes are checked with `tar -xOf <archive> gloss/js/gloss-review.js | sha256sum` and the corresponding manifest command.
 
 Scene commands use `GLOSS_SHOTS_SKIP_SYNC=1 node scripts/shots.mjs <scene> --out <folder>`, adding `--browser firefox` for Firefox.

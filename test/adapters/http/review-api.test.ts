@@ -14,7 +14,7 @@ afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 function setup() {
   const fetcher = vi.fn<typeof fetch>()
   vi.stubGlobal('fetch', fetcher)
-  return { fetcher, api: createReviewApi(base, 'initial-token') }
+  return { fetcher, api: createReviewApi(base, 'initial-token', '/cloud/index.php/csrftoken') }
 }
 
 describe('review HTTP adapter', () => {
@@ -74,7 +74,7 @@ describe('review HTTP adapter', () => {
       fetcher.mockResolvedValueOnce(reply({}, 412)).mockResolvedValueOnce(reply({ token: 'fresh-token' })).mockResolvedValueOnce(reply(method === 'draft' ? draft : { saved: true }))
       await call(api)
       expect(fetcher).toHaveBeenCalledTimes(3)
-      expect(fetcher.mock.calls[1]?.[0]).toBe('/csrftoken')
+      expect(fetcher.mock.calls[1]?.[0]).toBe('/cloud/index.php/csrftoken')
       expect(fetcher.mock.calls[1]?.[1]?.method ?? 'GET').toBe('GET')
       const first = fetcher.mock.calls[0]!
       const retried = fetcher.mock.calls[2]!
@@ -133,7 +133,7 @@ describe('save request lifetime', () => {
       session.setOverall('A synthetic overall comment'); await f.advance(5000)
       await vi.advanceTimersByTimeAsync(0)
       expect(fetcher).toHaveBeenCalledTimes(2)
-      expect(fetcher.mock.calls[1]![0]).toBe('/csrftoken')
+      expect(fetcher.mock.calls[1]![0]).toBe('/cloud/index.php/csrftoken')
       await vi.advanceTimersByTimeAsync(30_000)
       expect(f.head().status).toBe(ended)
       expect(fetcher.mock.calls[1]![1]?.signal?.aborted).toBe(true)

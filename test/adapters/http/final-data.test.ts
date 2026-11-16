@@ -2,12 +2,12 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { createReviewApi } from '../../../src/adapters/http/review-api'
 const base = '/nextcloud/index.php/apps/gloss/r/TOKEN'
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
-it('I3 derives draft, open, save, and refresh URLs from a subpath web root', async () => {
+it('I3 uses the supplied subpath CSRF route alongside the review routes', async () => {
   const fetcher = vi.fn().mockResolvedValue(Response.json({})); vi.stubGlobal('fetch', fetcher)
-  const api = createReviewApi(base, 'synthetic'); await api.draft(); await api.open('key')
+  const api = createReviewApi(base, 'synthetic', '/nextcloud/index.php/csrftoken'); await api.draft(); await api.open('key')
   fetcher.mockResolvedValueOnce(Response.json({}, { status: 412 })).mockResolvedValueOnce(Response.json({ token: 'new' }))
   await api.save('key', '{}', 0)
-  expect(fetcher.mock.calls.map(c => c[0])).toEqual([base + '/draft', base + '/review/open', base + '/review', '/nextcloud/csrftoken', base + '/review'])
+  expect(fetcher.mock.calls.map(c => c[0])).toEqual([base + '/draft', base + '/review/open', base + '/review', '/nextcloud/index.php/csrftoken', base + '/review'])
 })
 it.each(['404', 'network', 'invalid'])('I3 maps a failed refresh (%s) to the session-ended sentence', async mode => {
   const fetcher = vi.fn().mockResolvedValueOnce(Response.json({}, { status: 412 })); vi.stubGlobal('fetch', fetcher)

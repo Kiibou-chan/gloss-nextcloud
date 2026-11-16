@@ -46,6 +46,31 @@ final class ReviewControllerTest extends TestCase {
 		$form = $controller->showAuthenticate();
 		self::assertSame('authenticate', $form->getTemplateName());
 		self::assertFalse($form->getParams()['wrongpw']);
+		self::assertSame(hash('sha256', 'synthetic-link'), $form->getParams()['fragmentScope']);
+	}
+
+	public function testReviewPassesGeneratedCsrfRouteAndFragmentScope(): void {
+		require_once dirname(__DIR__, 2) . '/stubs/Server.php';
+		$language = $this->createMock(\OCP\L10N\IFactory::class);
+		$language->method('findLanguage')->willReturn('en');
+		\OC::$server = $this->createMock(\OCP\IServerContainer::class);
+		\OC::$server->method('get')->willReturnMap([
+			[\OCP\L10N\IFactory::class, $language],
+			[\OCP\IInitialStateService::class, $this->createMock(\OCP\IInitialStateService::class)],
+		]);
+		$folder = $this->createMock(Folder::class);
+		$folder->method('getDirectoryListing')->willReturn([]);
+		$share = $this->createMock(IShare::class);
+		$share->method('getNode')->willReturn($folder);
+		$manager = $this->createMock(IManager::class);
+		$manager->method('getShareByToken')->willReturn($share);
+		$urls = $this->createMock(IURLGenerator::class);
+		$urls->method('linkToRoute')->willReturnCallback(static fn (string $route): string => $route === 'core.CSRFToken.index' ? '/cloud/index.php/csrftoken' : '/cloud/index.php/apps/gloss/r/synthetic-link');
+		$controller = new ReviewController('gloss', $this->createMock(IRequest::class), $this->createMock(ISession::class), $manager, $urls, new DraftLocator(), $this->createMock(ReviewStore::class), $this->createMock(SentNotifier::class));
+		$controller->setToken('synthetic-link');
+		$params = $controller->page()->getParams();
+		self::assertSame('/cloud/index.php/csrftoken', $params['csrfTokenUrl']);
+		self::assertSame(hash('sha256', 'synthetic-link'), $params['fragmentScope']);
 	}
 
 	public function testPasswordVerificationAndRedirect(): void {
