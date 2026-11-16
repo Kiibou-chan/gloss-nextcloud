@@ -141,7 +141,7 @@ class ReviewController extends AuthPublicShareController {
 
 	#[PublicPage]
 	#[NoCSRFRequired]
-	public function file(string $path): Response {
+	public function file(string $path = ''): Response {
 		$file = $this->sharedFiles->read($this->requireShare(), $this->folder(), $path);
 		if ($file === null) {
 			return new DataResponse(['error' => 'The draft reads a file this link cannot serve.'], Http::STATUS_NOT_FOUND);

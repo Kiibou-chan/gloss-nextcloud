@@ -191,6 +191,7 @@ final class ReviewControllerTest extends TestCase {
 		self::assertInstanceOf(\OCP\AppFramework\Http\StreamResponse::class, $ok);
 		$headers = new \ReflectionProperty(\OCP\AppFramework\Http\Response::class, 'headers');
 		self::assertSame('application/octet-stream', $headers->getValue($ok)['Content-Type']);
+		self::assertSame(404, $controller->file()->getStatus());
 		foreach (['gone.bib', '../x', '.gloss-review'] as $path) {
 			$refused = $controller->file($path);
 			self::assertSame(404, $refused->getStatus());
