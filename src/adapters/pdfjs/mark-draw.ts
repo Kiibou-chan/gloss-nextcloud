@@ -1,6 +1,8 @@
 import type { PdfMark } from '../../app/ports'
+import type { PdfLook } from '../../app/view'
+import { drawNewText, type Entry, type NewTextPage } from './new-text-draw'
 
-export type MarkPage = {
+export type MarkPage = NewTextPage & {
   number: number
   marks: HTMLElement
   layer?: { textDivs: HTMLElement[]; textContentItemsStr: string[] }
@@ -23,7 +25,7 @@ function cut(words: string): string {
 }
 
 /** Draws the marks of one page, replacing what its marks layer held; positions come from the layer's own rectangle. */
-export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[]): void {
+export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[], look: PdfLook): void {
   page.marks.replaceChildren()
   const layer = page.layer
   if (!layer) return
@@ -32,6 +34,12 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[]): void {
   const origin = page.marks.getBoundingClientRect()
   const order = new Map<string, number>()
   own.forEach((mark, index) => { if (!order.has(mark.id)) order.set(mark.id, index) })
+  const entries = new Map<string, Entry>()
+  const entry = (mark: PdfMark, item: number): Entry => {
+    let found = entries.get(mark.id)
+    if (!found) entries.set(mark.id, found = { id: mark.id, n: order.get(mark.id) ?? 0, struck: [], family: getComputedStyle(layer.textDivs[item] ?? page.marks).fontFamily || 'sans-serif', caret: null })
+    return found
+  }
   const place = (mark: PdfMark, look: string, rect: { left: number; top: number; width: number; height: number }) => {
     const node = document.createElement('div')
     node.className = `gr-pdf-mark gr-pdf-${look}`
@@ -47,6 +55,7 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[]): void {
       const range = textRange(sized, mark.item, mark.offset, mark.offset + 1)
       const rect = range ? [...range.getClientRects()].find(r => r.width && r.height) : undefined
       if (!rect) continue
+      if (look === 'new') { entry(mark, mark.item).caret = { left: mark.edge === 'after' ? rect.left + rect.width : rect.left, top: rect.top, words: mark.words }; continue }
       const bar = place(mark, 'caret', { left: mark.edge === 'after' ? rect.left + rect.width : rect.left, top: rect.top, width: 2, height: rect.height })
       const label = document.createElement('span')
       label.className = 'gr-pdf-label'
@@ -59,8 +68,13 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[]): void {
       const range = textRange(sized, item, item === mark.startItem ? mark.startOffset : 0, item === mark.endItem ? mark.endOffset : length)
       if (!range) continue
       for (const rect of range.getClientRects()) {
-        if (rect.width && rect.height) place(mark, mark.look, rect)
+        if (!rect.width || !rect.height) continue
+        if (look === 'new' && mark.look === 'struck') entry(mark, item).struck.push({ left: rect.left, top: rect.top, width: rect.width, height: rect.height })
+        else place(mark, mark.look, rect)
       }
     }
-  }
+  }  if (look !== 'new') return
+  const { covers, words } = drawNewText([...entries.values()], page, origin)
+  page.marks.prepend(...covers)
+  page.marks.append(...words)
 }

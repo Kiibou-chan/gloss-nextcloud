@@ -1,5 +1,6 @@
 // The latex-proposals scene: proposals on a LaTeX draft, joined by data-id to the marks on its PDF.
 import { expect } from '@playwright/test';
+import { checkLookKept, checkNewText } from './new-text.mjs';
 
 const offPdf = 'Not shown on the PDF.';
 
@@ -99,6 +100,12 @@ export function latexScene({ ready, find, status }) {
       await expect(page.locator('#gr-text .cm-content')).toBeVisible();
       await checkLatexMarks(page);
       await capture('-both');
+      await page.getByRole('button', { name: 'PDF', exact: true }).click();
+      await checkNewText(page);
+      await capture('-new');
+      await page.getByRole('button', { name: 'Both', exact: true }).click();
+      await capture('-new-both');
+      await checkLookKept(page, async target => { await expect(target.locator('#gr-pdf canvas').first()).toBeVisible(); await expect.poll(() => target.locator('.gr-pdf-cover').count()).toBeGreaterThan(0); });
     }
   };
   return { folder: 'Latex', run: run('PDF') };

@@ -165,13 +165,23 @@ describe('PDF view', () => {
     expect(host.querySelector('.gr-pdf-mark')).toBeNull()
   })
 
-  it('setLook redraws the drawn pages and draws nothing differently yet', async () => {
+  it('setLook redraws the drawn pages: a struck mark becomes a cover in New text and back', async () => {
     const view = create(); await view.show(); observe(0); await settle()
-    view.setMarks([placement()])
-    const before = boxes()[0]!.querySelector('.gr-pdf-mark')!
+    view.setMarks([{ ...placement(), look: 'struck' }])
+    expect(boxes()[0]!.querySelector('.gr-pdf-struck')).not.toBeNull()
     view.setLook('new')
-    const after = boxes()[0]!.querySelector('.gr-pdf-mark')!
-    expect(after).not.toBe(before); expect(after.getAttribute('data-id')).toBe('abcdefghij')
+    expect(boxes()[0]!.querySelector('.gr-pdf-struck')).toBeNull()
+    expect(boxes()[0]!.querySelector('.gr-pdf-cover')!.getAttribute('data-id')).toBe('abcdefghij')
+    view.setLook('changes')
+    expect(boxes()[0]!.querySelector('.gr-pdf-cover')).toBeNull()
+    expect(boxes()[0]!.querySelector('.gr-pdf-struck')).not.toBeNull()
+  })
+
+  it('draws a page that renders after setLook in the look set', async () => {
+    const view = create(); await view.show()
+    view.setMarks([{ ...placement(), look: 'struck' }]); view.setLook('new')
+    observe(0); await settle()
+    expect(boxes()[0]!.querySelector('.gr-pdf-cover')).not.toBeNull()
   })
 
   it('scrolls to a pending mark before the target page has drawn', async () => {

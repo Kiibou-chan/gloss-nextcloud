@@ -1,4 +1,5 @@
 import { latexScene } from './latex.mjs';
+import { checkLookKept, checkNewText } from './new-text.mjs';
 import { liveScenes, sentFileRemoved } from './live.mjs';
 import { expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
@@ -237,7 +238,7 @@ async function checkProposalMarks(page) {
 }
 
 async function proposals(args, view) {
-  const { page } = args;
+  const { page, capture } = args;
   await editor(args);
   await find(page, 'Observations');
   await page.keyboard.insertText('Notes');
@@ -251,6 +252,11 @@ async function proposals(args, view) {
   await page.getByRole('button', { name: view, exact: true }).click();
   await expect(page.locator('#gr-pdf canvas').first()).toBeVisible();
   await checkProposalMarks(page);
+  await checkNewText(page);
+  await capture('-new');
+  await checkLookKept(page, async target => { await expect(target.locator('#gr-pdf canvas').first()).toBeVisible(); await expect.poll(() => target.locator('.gr-pdf-cover').count()).toBeGreaterThan(0); });
+  await page.getByRole('button', { name: 'Changes', exact: true }).click();
+  await expect.poll(() => page.locator('.gr-pdf-struck').count()).toBeGreaterThan(0);
 }
 
 async function long({ page, out, prefix }) {
