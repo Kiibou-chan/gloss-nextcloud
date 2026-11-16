@@ -15,7 +15,7 @@ async function refusal(response: Response): Promise<Failure> {
   }
 }
 
-export function createReviewApi(base: string, requestToken: string, webroot = base.split('/apps/gloss/')[0]!.replace(/\/index\.php$/, '')): ReviewApi {
+export function createReviewApi(base: string, requestToken: string, webroot = base.split('/apps/gloss/')[0]!.replace(/\/index\.php$/, ''), passwordProtected = false): ReviewApi {
   let token = requestToken
   const root = base.replace(/\/$/, '')
   async function request(path: string, init: Omit<RequestInit, 'signal'> & { signal?: CancelSignal } = {}): Promise<{ data: unknown; raw: string } | Failure> {
@@ -46,6 +46,7 @@ export function createReviewApi(base: string, requestToken: string, webroot = ba
         token = fresh.token
         refreshing = false
         response = await send()
+        if (passwordProtected && response.status === 404) return { ...sessionEnded }
       }
       if (!response.ok) return await refusal(response)
       const raw = await response.text()

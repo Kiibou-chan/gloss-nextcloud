@@ -215,7 +215,18 @@ archive_probe() {
   occ app:list
   occ config:system:get debug
 }
+read_source() {
+  [[ $# = 1 && "$1" != *'/../'* && "$1" != */.. ]] || { echo 'Invalid source path.' >&2; exit 2; }
+  case "$1" in
+    /var/www/html/lib/public/*|/var/www/html/lib/private/*|/var/www/html/core/*|/var/www/html/apps/files_sharing/*) ;;
+    *) echo 'Source path outside permitted roots.' >&2; exit 2;;
+  esac
+  exists || { echo 'Disposable Nextcloud is not running.' >&2; exit 1; }
+  owned
+  docker exec "$container" cat "$1"
+}
 case "${1:-}" in
+  read-source) shift; read_source "$@";;
   install-archive) shift; install_archive "$@";;
   debug) shift; debug "$@";;
   archive-probe) archive_probe;;

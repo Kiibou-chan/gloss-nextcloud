@@ -35,6 +35,67 @@ final class ReviewControllerTest extends TestCase {
 		return $controller;
 	}
 
+	public function testPasswordlessLinksStayAuthenticatedWithoutSession(): void {
+		$controller = $this->controller($this->createMock(Folder::class));
+		self::assertTrue($controller->isAuthenticated());
+	}
+
+	public function testInteractiveControllerAndPasswordForm(): void {
+		$controller = $this->controller($this->createMock(Folder::class));
+		self::assertInstanceOf(\OCP\AppFramework\AuthPublicShareController::class, $controller);
+		$form = $controller->showAuthenticate();
+		self::assertSame('authenticate', $form->getTemplateName());
+		self::assertFalse($form->getParams()['wrongpw']);
+	}
+
+	public function testPasswordVerificationAndRedirect(): void {
+		$share = $this->createMock(IShare::class);
+		$share->method('getPassword')->willReturn('synthetic-hash');
+		$share->method('getNode')->willReturn($this->createMock(Folder::class));
+		$manager = $this->createMock(IManager::class);
+		$manager->method('getShareByToken')->willReturn($share);
+		$manager->expects(self::exactly(2))->method('checkPassword')->with($share, self::anything())->willReturn(false, true);
+		$session = $this->createMock(ISession::class);
+		$session->expects(self::once())->method('regenerateId')->with(true, true);
+		$session->expects(self::once())->method('set')->with('public_link_authenticated_frontend', '{"synthetic-link":"synthetic-hash"}');
+		$urls = $this->createMock(IURLGenerator::class);
+		$urls->expects(self::exactly(2))->method('linkToRoute')->willReturnCallback(static function (string $route, array $params): string {
+			self::assertContains($route, ['gloss.review.authenticate', 'gloss.Review.showShare']);
+			self::assertSame(['token' => 'synthetic-link'], $params);
+			return '/apps/gloss/r/synthetic-link/view';
+		});
+		$controller = new ReviewController('gloss', $this->createMock(IRequest::class), $session, $manager, $urls, new DraftLocator(), $this->createMock(ReviewStore::class), $this->createMock(SentNotifier::class));
+		$controller->setToken('synthetic-link');
+		self::assertTrue($controller->authenticate('wrong-synthetic')->getParams()['wrongpw']);
+		$response = $controller->authenticate('correct-synthetic');
+		self::assertInstanceOf(\OCP\AppFramework\Http\RedirectResponse::class, $response);
+	}
+
+	public function testApiLapseDoesNotRedirectOrStoreRequestBody(): void {
+		foreach (['page', 'showShare', 'showAuthenticate', 'authenticate', 'draft', 'pdf', 'open', 'save'] as $action) {
+			foreach ([false, true] as $authenticated) {
+				$request = $this->createMock(IRequest::class);
+				$request->method('getParam')->with('_route')->willReturn('gloss.review.' . $action);
+				$session = $this->createMock(ISession::class);
+				$session->method('get')->willReturn($authenticated ? '{"synthetic-link":"synthetic-hash"}' : null);
+				$session->expects(self::never())->method('set');
+				$share = $this->createMock(IShare::class);
+				$share->method('getPassword')->willReturn('synthetic-hash');
+				$manager = $this->createMock(IManager::class);
+				$manager->method('getShareByToken')->willReturn($share);
+				$controller = new ReviewController('gloss', $request, $session, $manager, $this->createMock(IURLGenerator::class), new DraftLocator(), $this->createMock(ReviewStore::class), $this->createMock(SentNotifier::class));
+				$controller->setToken('synthetic-link');
+				try {
+					self::assertSame($authenticated, $controller->isAuthenticated());
+					self::assertTrue($authenticated || !in_array($action, ['draft', 'pdf', 'open', 'save'], true));
+				} catch (\OCP\Files\NotFoundException) {
+					self::assertFalse($authenticated);
+					self::assertContains($action, ['draft', 'pdf', 'open', 'save']);
+				}
+			}
+		}
+	}
+
 	public function testOnlyNewSendNotifiesAndLandedRetryDoesNot(): void {
 		$share = $this->createMock(IShare::class);
 		$store = $this->createMock(ReviewStore::class);
@@ -161,10 +222,13 @@ final class ReviewControllerTest extends TestCase {
 		}
 	}
 
-	public function testOnlyR20RoutesRemain(): void {
+	public function testReviewAndAuthenticationRoutes(): void {
 		$routes = (require dirname(__DIR__, 3) . '/appinfo/routes.php')['routes'];
 		self::assertSame([
 			['name' => 'review#page', 'url' => '/r/{token}', 'verb' => 'GET'],
+			['name' => 'review#showShare', 'url' => '/r/{token}/view', 'verb' => 'GET'],
+			['name' => 'review#showAuthenticate', 'url' => '/r/{token}/authenticate', 'verb' => 'GET'],
+			['name' => 'review#authenticate', 'url' => '/r/{token}/authenticate', 'verb' => 'POST'],
 			['name' => 'review#draft', 'url' => '/r/{token}/draft', 'verb' => 'GET'],
 			['name' => 'review#pdf', 'url' => '/r/{token}/pdf', 'verb' => 'GET'],
 			['name' => 'review#open', 'url' => '/r/{token}/review/open', 'verb' => 'POST'],

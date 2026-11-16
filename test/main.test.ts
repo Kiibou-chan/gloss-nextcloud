@@ -102,10 +102,20 @@ it('I3 passes the generated route and Nextcloud web root to the API and PDF view
   state.f = fakes(); const el = root()
   Object.assign(el.dataset, { base: '/nextcloud/index.php/apps/gloss/r/TOKEN', webroot: '/nextcloud' })
   const dispose = await mountReview(el)
-  expect(createReviewApi).toHaveBeenLastCalledWith(el.dataset.base, expect.any(String), '/nextcloud')
+  expect(createReviewApi).toHaveBeenLastCalledWith(el.dataset.base, expect.any(String), '/nextcloud', false)
   expect(createPdfView).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ url: el.dataset.base + '/pdf' }))
   const template = readFileSync('templates/review.php', 'utf8')
   expect(template).toContain('data-base="<?php p($_[\'base\']); ?>"')
   expect(template).toContain('data-webroot="<?php p($_[\'webroot\']); ?>"')
+  dispose()
+})
+
+it.each(['', '1'])('reads the password protection template flag %s', async flag => {
+  const { createReviewApi } = await import('../src/adapters/http/review-api')
+  state.f = fakes(); const el = root()
+  el.dataset.passwordProtected = flag
+  const dispose = await mountReview(el)
+  expect(createReviewApi).toHaveBeenLastCalledWith(expect.any(String), expect.any(String), '', flag === '1')
+  expect(readFileSync('templates/review.php', 'utf8')).toContain('data-password-protected=')
   dispose()
 })

@@ -1,7 +1,7 @@
 <?php
 /** @var array $_ */
 ?>
-<div id="gloss-review" data-base="<?php p($_['base']); ?>" data-webroot="<?php p($_['webroot']); ?>" data-reviewable="<?php p($_['reviewable'] ? '1' : ''); ?>" data-token="<?php p($_['token']); ?>" data-has-pdf="<?php p($_['hasPdf'] ? '1' : ''); ?>" data-worker="<?php p($_['worker']); ?>" data-view="editor">
+<div id="gloss-review" data-password-protected="<?php p($_['passwordProtected'] ? '1' : ''); ?>" data-base="<?php p($_['base']); ?>" data-webroot="<?php p($_['webroot']); ?>" data-reviewable="<?php p($_['reviewable'] ? '1' : ''); ?>" data-token="<?php p($_['token']); ?>" data-has-pdf="<?php p($_['hasPdf'] ? '1' : ''); ?>" data-worker="<?php p($_['worker']); ?>" data-view="editor">
 	<header class="gr-head"></header>
 	<main class="gr-body">
 		<article id="gr-text" class="gr-text" aria-label="Draft, editable"></article>

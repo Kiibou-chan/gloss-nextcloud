@@ -28,6 +28,7 @@ async function passwordPrompt(page, password, link) {
   await box.fill(password);
   await box.press('Enter');
   await expect(box).toBeHidden({ timeout: 20_000 });
+  await expect(page.locator('#gr-text .cm-content')).toBeVisible();
   await page.goto(link, { waitUntil: 'networkidle' });
   await expect(page.locator('#gr-text .cm-content')).toBeVisible();
 }
@@ -52,13 +53,12 @@ export function liveScenes({ ready, find, comment, content, name, status }) {
         expect(current.token).toBe(share.data.token);
         console.log(`Password share metadata probe: requested permissions=1, reported=${Number(current.permissions)}, password configured=${Boolean(current.password)}.`);
         expect(Number(current.permissions) & 15).toBe(1);
-        const stockLink = `${state.base}/index.php/s/${share.data.token}`;
         const navigation = await page.goto(link, { waitUntil: 'networkidle' });
         console.log(`Password direct Gloss probe: HTTP ${navigation.status()}, password inputs ${await page.locator('input[type="password"]').count()}.`);
-        await capture('-direct');
-        const stock = await page.goto(stockLink, { waitUntil: 'networkidle' });
         await expect(page.locator('input[type="password"]')).toBeVisible();
-        console.log(`Password stock route probe: HTTP ${stock.status()}, password prompt visible.`);
+        await capture('-direct');
+        await expect(page.locator('input[type="password"]')).toBeVisible();
+        expect(new URL(page.url()).pathname).toContain('/apps/gloss/r/');
         await capture('-password');
         await passwordPrompt(page, password, link);
         await ready(page);
@@ -85,7 +85,8 @@ export function liveScenes({ ready, find, comment, content, name, status }) {
         console.log(`Password lapse probe: ${requests} save requests, replies ${replies.join(', ')}, stable for 6.5 s.`);
         await capture('-ended');
         page.on('dialog', dialog => dialog.accept());
-        await page.goto(stockLink, { waitUntil: 'networkidle' });
+        await page.goto('about:blank');
+        await page.goto(reviewLink, { waitUntil: 'networkidle' });
         await passwordPrompt(page, password, reviewLink);
         await expect(name(page)).toHaveValue('Ada Example');
         await expect(content(page)).toContainText('flourish');

@@ -19,7 +19,7 @@ fi
 `, { mode: 0o700 })
     writeFileSync(join(root, 'archive.tar.gz'), 'synthetic archive stream')
     const result = spawnSync('bash', [join(root, 'scripts/dev-nc.sh'), ...args], { cwd: root, env: { PATH: `${join(root, 'bin')}:${process.env.PATH}` }, encoding: 'utf8' })
-    return { status: result.status, log: readFileSync(join(root, 'docker.log'), 'utf8'), input: args[0] === 'install-archive' && result.status === 0 ? readFileSync(join(root, 'input.tar.gz'), 'utf8') : '' }
+    return { status: result.status, log: (() => { try { return readFileSync(join(root, 'docker.log'), 'utf8') } catch { return '' } })(), input: args[0] === 'install-archive' && result.status === 0 ? readFileSync(join(root, 'input.tar.gz'), 'utf8') : '' }
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
@@ -53,4 +53,24 @@ test('unplaced evidence extracts the requested raw object after an overall item'
   const text = `{ "items": [{"id":"overall","text":"synthetic"}, ${raw}] }`
   expect(rawItem(text, 'quote')).toBe(raw)
   expect(() => rawItem(text, 'missing')).toThrow('Review item missing.')
+})
+
+ test('source reading accepts only vendored source roots', () => {
+  const allowed = probe(['read-source', '/var/www/html/lib/public/AppFramework/AuthPublicShareController.php'])
+  expect(allowed.status).toBe(0)
+  expect(allowed.log).toContain('exec gloss-dev-nc cat /var/www/html/lib/public/AppFramework/AuthPublicShareController.php')
+  for (const path of ['/var/www/html/config/config.php', '/var/www/html/data/file', '/var/www/html/lib/public/../../config/config.php']) {
+    const refused = probe(['read-source', path])
+    expect(refused.status).not.toBe(0)
+    expect(refused.log).not.toContain('exec ')
+  }
+})
+
+test('review layout reserves footer space and scrolls the capped panel', () => {
+  const css = readFileSync('css/review.css', 'utf8')
+  expect(css).toContain('--gr-footer-height:')
+  expect(css).toContain('padding-bottom: calc(12px + var(--gr-footer-height))')
+  expect(css).toContain('max-height: calc(100dvh - var(--gr-panel-top, 60px) - var(--gr-footer-height))')
+  expect(css).toMatch(/\.gr-side\s*\{[^}]*overflow-y: auto/)
+  expect(css).toMatch(/\.gr-text \.cm-content\[contenteditable="false"\]\s*\{[^}]*opacity: 1/)
 })

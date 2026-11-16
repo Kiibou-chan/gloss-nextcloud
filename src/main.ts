@@ -22,7 +22,18 @@ export async function mountReview(root: HTMLElement): Promise<() => void> {
   const requestToken = (globalThis as typeof globalThis & { OC?: { requestToken?: string; webroot?: string } }).OC?.requestToken
     ?? document.head.dataset.requesttoken ?? ''
   const base = (root.dataset.base ?? location.pathname).replace(/\/$/, '')
-  const api = createReviewApi(base, requestToken, root.dataset.webroot ?? (globalThis as typeof globalThis & { OC?: { webroot?: string } }).OC?.webroot)
+  const api = createReviewApi(base, requestToken, root.dataset.webroot ?? (globalThis as typeof globalThis & { OC?: { webroot?: string } }).OC?.webroot, root.dataset.passwordProtected === '1')
+  const footer = document.querySelector('footer')
+  const measureFooter = () => {
+    root.style.setProperty('--gr-footer-height', `${footer?.getBoundingClientRect().height ?? 0}px`)
+    root.style.setProperty('--gr-panel-top', `${Math.max(60, side.getBoundingClientRect().top)}px`)
+  }
+  const footerObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measureFooter)
+  if (footer) footerObserver?.observe(footer)
+  footerObserver?.observe(header)
+  window.addEventListener('resize', measureFooter)
+  window.addEventListener('scroll', measureFooter, true)
+  measureFooter()
   const draft = await api.draft(), main = draft.files.find(file => file.file === draft.main)
   if (!main) throw new Error('The draft could not be found.')
   const language = languageOf(main.file)
@@ -50,6 +61,9 @@ export async function mountReview(root: HTMLElement): Promise<() => void> {
     window.removeEventListener('pagehide', onPageHide)
     window.removeEventListener('beforeunload', onBeforeUnload)
     window.removeEventListener('online', onOnline)
+    footerObserver?.disconnect()
+    window.removeEventListener('resize', measureFooter)
+    window.removeEventListener('scroll', measureFooter, true)
     session.dispose(); unsubscribe(); unmountPanel(); unmountHead()
     editor.dispose?.(); pdf.dispose?.()
   }

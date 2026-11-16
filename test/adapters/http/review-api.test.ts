@@ -173,3 +173,22 @@ it('renders an unreviewable page without a name field or Send', async () => {
     expect(f.editor.setEditable).toHaveBeenLastCalledWith(false)
   } finally { session.dispose(); unmountHead(); unmountPanel() }
 })
+
+for (const protectedLink of [false, true]) {
+  it(`classifies a refreshed 404 for a password-protected=${protectedLink} link and stops`, async () => {
+    vi.useFakeTimers()
+    const { fetcher } = setup()
+    const api = createReviewApi(base, 'initial-token', '', protectedLink)
+    const f = fakes()
+    fetcher.mockResolvedValueOnce(reply({}, 412)).mockResolvedValueOnce(reply({ token: 'fresh-token' })).mockResolvedValueOnce(reply({}, 404))
+    const session = new ReviewSession({ ...f.ports, api: { ...f.api, save: api.save } })
+    try {
+      await session.start(); await session.setName('Ada')
+      session.setOverall('Synthetic lapse comment'); await f.advance(5000)
+      for (let i = 0; i < 30; i++) await Promise.resolve()
+      expect(f.head().status).toBe(protectedLink ? ended : 'This review link no longer works. Your changes are kept in this browser.')
+      await f.advance(60_000)
+      expect(fetcher).toHaveBeenCalledTimes(3)
+    } finally { session.dispose() }
+  })
+}

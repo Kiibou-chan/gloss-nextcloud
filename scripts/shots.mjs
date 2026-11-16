@@ -89,6 +89,49 @@ async function main() {
         if (fixture) await prepareSynthetic(context);
         if (scene.navigate !== false) await page.goto(url, { waitUntil: 'networkidle' });
         await scene.run({ page, context, browser, options, state, capture, out, prefix, prepareSynthetic });
+        if (['not-set-up', 'sent'].includes(sceneName)) {
+          const contrast = await page.evaluate(() => {
+            const content = document.querySelector('.cm-content');
+            const rgb = value => value.match(/[\d.]+/g).slice(0, 3).map(Number);
+            const composite = (front, back, alpha) => front.map((value, i) => value * alpha + back[i] * (1 - alpha));
+            let background = [255, 255, 255];
+            const ancestors = [];
+            for (let node = content; node; node = node.parentElement) ancestors.unshift(node);
+            let opacity = 1;
+            for (const node of ancestors) {
+              const style = getComputedStyle(node);
+              opacity *= Number(style.opacity);
+              const colour = style.backgroundColor;
+              const alpha = colour.startsWith('rgba') ? Number(colour.match(/[\d.]+/g)[3]) : 1;
+              background = composite(rgb(colour), background, alpha);
+            }
+            const foreground = composite(rgb(getComputedStyle(content).color), background, opacity);
+            const luminance = rgb => rgb.map(value => { const v = value / 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }).reduce((sum, v, i) => sum + v * [.2126, .7152, .0722][i], 0);
+            const a = luminance(foreground), b = luminance(background);
+            return { foreground, background, opacity, ratio: (Math.max(a, b) + .05) / (Math.min(a, b) + .05) };
+          });
+          await writeFile(resolve(out, `${prefix}-contrast.json`), JSON.stringify(contrast, null, 2));
+          if (contrast.opacity < .8 || contrast.ratio < 4.5) throw new Error(`Read-only contrast failed: ${contrast.ratio.toFixed(2)}:1, opacity ${contrast.opacity}.`);
+          console.log(`Read-only draft contrast ${contrast.ratio.toFixed(2)}:1, opacity ${contrast.opacity}.`);
+        }
+        if (['editor', 'both'].includes(sceneName)) {
+          for (const width of [1600, 640]) {
+            await page.setViewportSize({ width, height: 1000 });
+            await page.locator('.gr-items > li').last().scrollIntoViewIfNeeded();
+            await page.waitForTimeout(150);
+            const geometry = await page.evaluate(() => {
+              const panel = document.querySelector('.gr-side'), footer = document.querySelector('footer');
+              const rect = element => { const r = element.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, height: r.height }; };
+              const last = panel.querySelector('.gr-items > li:last-child');
+              return { panel: rect(panel), last: rect(last), footer: rect(footer), overflow: getComputedStyle(panel).overflowY, columns: getComputedStyle(document.querySelector('.gr-body')).gridTemplateColumns };
+            });
+            await writeFile(resolve(out, `${prefix}-layout-${width}.json`), JSON.stringify(geometry, null, 2));
+            if (geometry.panel.bottom > geometry.footer.top + 1 || geometry.last.bottom > geometry.footer.top + 1 || geometry.overflow !== 'auto') throw new Error(`Footer overlap at ${width}px.`);
+            if (width === 640 && geometry.columns.split(' ').length !== 1) throw new Error('Narrow layout is not stacked.');
+            await capture(`-layout-${width}`);
+          }
+          await page.setViewportSize(options.viewport);
+        }
         await capture();
         if (['pdf', 'both'].includes(sceneName) && colour === 'dark') {
           await page.waitForTimeout(1500);

@@ -17,7 +17,8 @@ use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http\Response;
 use OCP\AppFramework\Http\StreamResponse;
 use OCP\AppFramework\Http\Template\PublicTemplateResponse;
-use OCP\AppFramework\PublicShareController;
+use OCP\AppFramework\AuthPublicShareController;
+use OCP\AppFramework\Http\TemplateResponse;
 use OCP\Files\Folder;
 use OCP\Files\NotFoundException;
 use OCP\IRequest;
@@ -32,7 +33,7 @@ use OCP\Util;
  * A review page for a public link to a folder: the folder's draft is shown as text, and each reviewer's comments and
  * proposals are kept beside the folder, one JSON file per reviewer.
  */
-class ReviewController extends PublicShareController {
+class ReviewController extends AuthPublicShareController {
 	private ?IShare $share = null;
 
 	public function __construct(
@@ -45,7 +46,43 @@ class ReviewController extends PublicShareController {
 		private ReviewStore $reviewStore,
 		private SentNotifier $sentNotifier,
 	) {
-		parent::__construct($appName, $request, $session);
+		parent::__construct($appName, $request, $session, $urls);
+	}
+
+	public function isAuthenticated(): bool {
+		$authenticated = parent::isAuthenticated();
+		$action = substr(strrchr((string)$this->request->getParam('_route'), '.') ?: '', 1);
+		if (!$authenticated && in_array($action, ['draft', 'pdf', 'open', 'save'], true)) {
+			throw new NotFoundException();
+		}
+		return $authenticated;
+	}
+
+	protected function verifyPassword(string $password): bool {
+		return $this->shareManager->checkPassword($this->requireShare(), $password);
+	}
+
+	#[PublicPage]
+	#[NoCSRFRequired]
+	public function showAuthenticate(): TemplateResponse {
+		return $this->authenticationForm(false);
+	}
+
+	protected function showAuthFailed(): TemplateResponse {
+		return $this->authenticationForm(true);
+	}
+
+	private function authenticationForm(bool $wrongPassword): TemplateResponse {
+		return new TemplateResponse('gloss', 'authenticate', [
+			'action' => $this->urls->linkToRoute('gloss.review.authenticate', ['token' => $this->getToken()]),
+			'wrongpw' => $wrongPassword,
+		], 'guest');
+	}
+
+	#[PublicPage]
+	#[NoCSRFRequired]
+	public function showShare(): TemplateResponse {
+		return $this->page();
 	}
 
 	protected function getPasswordHash(): ?string {
@@ -70,6 +107,7 @@ class ReviewController extends PublicShareController {
 		$draft = $this->draftLocator->locate($this->folder())?->main;
 		$response = new PublicTemplateResponse('gloss', 'review', [
 			'token' => $this->getToken(),
+			'passwordProtected' => $this->isPasswordProtected(),
 			'base' => $this->urls->linkToRoute('gloss.review.page', ['token' => $this->getToken()]),
 			'webroot' => $this->urls->getWebroot(),
 			'draftName' => $draft?->getName() ?? '',

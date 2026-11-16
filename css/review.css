@@ -1,4 +1,4 @@
-#gloss-review { flex: 1 1 auto; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 12px max(16px, 2vw); max-width: 1200px; margin: 0 auto;
+#gloss-review { --gr-footer-height: 61px; flex: 1 1 auto; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 12px max(16px, 2vw); padding-bottom: calc(12px + var(--gr-footer-height)); max-width: 1200px; margin: 0 auto;
 	background: var(--color-main-background); border-radius: var(--border-radius-large); }
 .gr-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .gr-title { font-weight: bold; font-size: 1.2em; flex: 1 1 auto; }
@@ -17,7 +17,7 @@ body[data-themes*="dark"] .gr-text { --gr-c-keyword: #c79bf0; --gr-c-string: #6c
 .gr-text .cm-content { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; caret-color: var(--color-main-text); }
 .gr-text .cm-gutters { background: var(--color-background-hover); color: var(--color-text-maxcontrast); border-right: 1px solid var(--color-border); }
 .gr-text .cm-selectionBackground, .gr-text .cm-focused .cm-selectionBackground { background: var(--color-primary-element-light) !important; }
-.gr-side { position: sticky; top: 60px; display: flex; flex-direction: column; gap: 12px; }
+.gr-side { position: sticky; top: 60px; max-height: calc(100dvh - var(--gr-panel-top, 60px) - var(--gr-footer-height)); overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
 .gr-hint { color: var(--color-text-maxcontrast); }
 .gr-form { display: flex; flex-direction: column; gap: 8px; }
 .gr-form label { display: flex; flex-direction: column; gap: 4px; }
@@ -87,3 +87,6 @@ body[data-themes*="dark"] .gr-card-head ins { color: #7ee29b; }
 .gr-review-link input, .gr-conflict textarea { width: 100%; box-sizing: border-box; }
 .gr-review-link button { align-self: start; }
 .gr-overall-text p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 0; }
+
+/* Read-only text stays selectable and legible against the inactive background. */
+.gr-text .cm-content[contenteditable="false"] { opacity: 1; color: var(--color-main-text); }
