@@ -95,3 +95,22 @@ test('an escaped astral character stays in one op', () => {
   expect(ops.some(op => op.op === 'text' && op.to - op.from === 2)).toBe(true);
   expect(key('a\\😀b')).toContain('b');
 });
+test('brackets in maths and after unknown commands are text and never hide prose', () => {
+  expect(key('We have $x\\in[0,1)$ and then words remain $y\\in(0,1]$ end.')).toContain('andthenwordsremain');
+  expect(key('$\\alpha[x]$ tail')).toBe('xtail');
+  expect(key('a\\ldots[1] text')).toBe('a1text');
+});
+test('optional arguments of commands that take one stay hidden', () => {
+  expect(key('\\caption[short]{Long} \\footnote[2]{n} \\includegraphics[width=3cm]{f} \\usepackage[utf8]{inputenc}')).toBe('longn');
+});
+test('a trailing sentinel word survives seeded random drafts with maths and brackets', () => {
+  const alphabet = ['\\in', '\\alpha', '\\ldots', '\\cite', '\\section', '\\item', '\\\\', '[', ']', '(', ')', '{', '}', '$', '0,1', 'a', ' '];
+  let s = 777;
+  const next = (n: number) => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s % n; };
+  for (let n = 0; n < 3000; n++) {
+    let src = '';
+    for (let i = next(20); i > 0; i--) src += alphabet[next(alphabet.length)];
+    src += '\n\nsentinelword';
+    expect(key(src), JSON.stringify(src)).toContain('sentinelword');
+  }
+});

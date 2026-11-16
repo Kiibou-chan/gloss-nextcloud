@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Mock } from 'vitest'
 import { drawPageMarks } from '../../../src/adapters/pdfjs/mark-draw'
 import type { PdfMark } from '../../../src/app/ports'
+import { createUndrawnTracker } from '../../../src/adapters/pdfjs/undrawn'
 
 const TEXTS = ['Alpha beta', 'gamma delta']
 let marks: HTMLElement
@@ -144,5 +145,17 @@ describe('per page', () => {
     marks.append(document.createElement('div'))
     drawPageMarks({ number: 1, marks: page.marks }, [struck('aaaaaaaaaa', 0, 0, 0, 2)])
     expect(kids()).toHaveLength(0)
+  })
+})
+
+describe('undrawn tracker forget', () => {
+  it('reports again when a page with undrawn marks is released', () => {
+    const calls: (readonly string[])[] = []
+    const pages: { marks: HTMLElement }[] = []
+    const tracker = createUndrawnTracker(() => pages)
+    tracker.listen(ids => calls.push(ids))
+    tracker.set(1, new Set(['aaaaaaaaaa']))
+    tracker.forget(1)
+    expect(calls).toEqual([['aaaaaaaaaa'], []])
   })
 })

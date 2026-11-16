@@ -3,11 +3,11 @@ import type { Op } from './typst-parse';
 // Ported from gloss's LaTeX letter scan, src/features/preview/logic/preview-words.ts at e9cb47e5f
 // (KEY_COMMAND, argumentEnd, keyArguments, and the escape and % rules), as text ops over the source.
 // Its LETTER_COMMANDS table is not ported. Added here: the preamble before \begin{document} is dropped,
-// the arguments of the layout commands below are dropped, and so are the optional arguments of every command but \item.
+// the arguments of the layout commands below are dropped, and 
 
 const KEY_COMMAND = /^(?:begin|end|label|ref|eqref|pageref|cref|Cref|crefrange|Crefrange|cpageref|Cpageref|autoref|Autoref|nameref|Nameref|vref|Vref|cite[a-z]*|parencites?|textcites?|autocites?|footcites?|fullcite|nocite|Cite|Citep|Citet|Citealp|Citeauthor|href)$/;
 const LAYOUT_COMMAND = /^(?:usepackage|documentclass|includegraphics|input|include|bibliography|bibliographystyle|vspace|hspace|newcommand|renewcommand|setlength|addtolength)$/;
-const DELIMITER_COMMAND = /^(?:left|right|middle|[bB]ig{1,2}[lrm]?)$/;
+const OPTIONAL_COMMAND = /^(?:part|chapter|section|subsection|subsubsection|paragraph|subparagraph|caption|footnote|footnotetext|begin|usepackage|documentclass|includegraphics|cite[a-z]*|[a-z]*cites?|fullcite|Cite[a-z]*)$/;
 
 function paragraphEnd(text: string, from: number, to: number): number {
   const blank = /\n[ \t]*\n/g;
@@ -41,7 +41,7 @@ function hide(text: string, at: number, to: number, hidden: Map<number, number>)
 function hiddenArguments(text: string, name: string, start: number, to: number, hidden: Map<number, number>): void {
   let i = start + (text[start] === '*' ? 1 : 0);
   const layout = LAYOUT_COMMAND.test(name);
-  if (name !== 'item' && !DELIMITER_COMMAND.test(name)) {
+  if (OPTIONAL_COMMAND.test(name)) {
     while (text[i] === '[') { const end = hide(text, i, to, hidden); if (end === i) break; i = end; }
   }
   if (!KEY_COMMAND.test(name) && !layout) return;
@@ -49,7 +49,7 @@ function hiddenArguments(text: string, name: string, start: number, to: number, 
   const space = () => { while (i < to && /\s/.test(text[i]!)) i++; };
   for (let n = 0; n < count; n++) {
     space();
-    while (text[i] === '[') { const end = hide(text, i, to, hidden); if (end === i) break; i = end; space(); }
+    while (OPTIONAL_COMMAND.test(name) && text[i] === '[') { const end = hide(text, i, to, hidden); if (end === i) break; i = end; space(); }
     if (text[i] !== '{') break;
     const end = hide(text, i, to, hidden);
     if (end === i) break;

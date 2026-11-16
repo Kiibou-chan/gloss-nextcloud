@@ -13,7 +13,7 @@ export function createUndrawnTracker(drawnPages: () => readonly { marks: HTMLEle
   }
   return {
     set(page: number, ids: ReadonlySet<string>) { if (ids.size) missing.set(page, new Set(ids)); else missing.delete(page); report() },
-    forget(page: number) { missing.delete(page) },
+    forget(page: number) { if (missing.delete(page)) report() },
     listen(next: Listener) { listener = next; return () => { if (listener === next) listener = undefined } },
   }
 }
