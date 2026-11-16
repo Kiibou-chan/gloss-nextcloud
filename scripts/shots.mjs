@@ -87,7 +87,8 @@ async function main() {
           shots.push(resolve(out, `${prefix}${suffix}.png`));
           console.log(`Wrote ${prefix}${suffix}.png`);
         };
-        const prepareSynthetic = fixture ? target => syntheticRoutes(target, sceneName, reviews, folder) : undefined;
+        const draft = scene.draft ? await scene.draft() : null;
+        const prepareSynthetic = fixture ? target => syntheticRoutes(target, sceneName, reviews, folder, draft) : undefined;
         if (fixture) await prepareSynthetic(context);
         if (scene.navigate !== false) await page.goto(url, { waitUntil: 'networkidle' });
         await scene.run({ page, context, browser, options, state, capture, out, prefix, prepareSynthetic });

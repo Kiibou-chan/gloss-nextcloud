@@ -303,7 +303,7 @@ export const scenes = {
   'pdf-proposals': { run: args => proposals(args, 'PDF') },
   both: { run: args => proposals(args, 'Both') },
   'latex-proposals': latexScene({ ready, find, status }),
-  ...typstScenes({ ready, find, comment, status, pdfSelection }),
+  ...typstScenes({ ready, find, comment, status, content, pdfSelection }),
   search: { run: async ({ page, capture }) => {
     await ready(page);
     await content(page).click();

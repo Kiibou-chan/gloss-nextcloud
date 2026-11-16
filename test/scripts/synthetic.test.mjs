@@ -105,3 +105,17 @@ test('the synthetic page carries the app\'s policy: scripts and workers from the
   expect(policy).toContain("worker-src 'self'");
   expect(policy).not.toMatch(/unsafe-eval/);
 });
+
+test('the Typst limit scenes carry drafts that cannot compile live, and are synthetic scenes', async () => {
+  for (const name of ['typst-error', 'typst-lines', 'typst-proposals', 'typst-no-fonts']) {
+    expect(syntheticScenes).toContain(name);
+    expect(scenes[name].folder).toBe('Typst');
+  }
+  const { limits } = await import('../../src/domain/typst/limits.ts').then(m => ({ limits: m }));
+  const lines = await scenes['typst-lines'].draft();
+  expect(limits.tooLargeToCompile(lines.text, 0)).toBe(true);
+  const words = await scenes['typst-proposals'].draft();
+  expect(words.text.split('\n')[0].split(' ')).toHaveLength(401);
+  expect(limits.tooLargeToCompile(words.text, 0)).toBe(false);
+  expect((await scenes['typst-error'].draft()).text).toContain('#let broken = (1,');
+});

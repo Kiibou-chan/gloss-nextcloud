@@ -1,5 +1,6 @@
 // The typst-compile and typst-fallback scenes: the draft compiled in the browser under three looks, and the overlay on the uploaded PDF when it cannot compile.
 import { expect } from '@playwright/test';
+import { typstLimitScenes } from './typst-limits.mjs';
 
 const COMPILING = 'Showing your PDF while the draft compiles.';
 const PACKAGE = 'Showing your PDF; the draft uses a package the browser cannot load.';
@@ -123,5 +124,6 @@ export function typstScenes(helpers) {
   return {
     'typst-compile': { folder: 'Typst', run: args => typstCompile(args, helpers) },
     'typst-fallback': { folder: 'Typst', run: args => typstFallback(args, helpers) },
+    ...typstLimitScenes(helpers),
   };
 }

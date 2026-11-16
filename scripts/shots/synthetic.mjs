@@ -1,7 +1,7 @@
 // The route-mocked synthetic mode: the real bundle and adapters against a page and API simulated in the browser context.
 import { readFile, readdir } from 'node:fs/promises';
 
-export const syntheticScenes = ['overall', 'review-link', 'pdf-proposals', 'both', 'latex-proposals', 'typst-compile', 'typst-fallback'];
+export const syntheticScenes = ['overall', 'review-link', 'pdf-proposals', 'both', 'latex-proposals', 'typst-compile', 'typst-fallback', 'typst-error', 'typst-lines', 'typst-proposals', 'typst-no-fonts'];
 const gardenScenes = ['overall', 'review-link'];
 const root = new URL('../../', import.meta.url);
 const fixtureMain = { Review: 'paper.typ', Latex: 'paper.tex', Typst: 'paper.typ' };
