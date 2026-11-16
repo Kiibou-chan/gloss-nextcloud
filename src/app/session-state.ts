@@ -33,6 +33,7 @@ export class SessionState {
   disposed = false
   listeners: (() => void)[] = []
   unplaced: Item[] = []
+  offPdf = new Set<string>()
   saved = false
   blocked = false
   pendingName = ''

@@ -12,7 +12,7 @@ import { mountHead, mountPanel } from '../../src/ui/mount'
 const renderOptions = options as typeof options & { __r?: (vnode: { type: unknown; props: { id?: string } }) => void }
 
 const head = (extra: Partial<HeadView> = {}): HeadView => ({ name: 'Ada', title: 'synthetic.typ', hasPdf: true, view: 'editor', editable: true, canSend: true, status: '', form: null, ...extra })
-const card = (id: string, extra: Partial<CardView> = {}): CardView => ({ id, kind: 'proposal', from: 0, shown: 'old', proposalShown: 'new', comments: [], editable: true, ...extra })
+const card = (id: string, extra: Partial<CardView> = {}): CardView => ({ id, kind: 'proposal', from: 0, shown: 'old', proposalShown: 'new', comments: [], editable: true, offPdf: false, ...extra })
 const commands = () => ({ setName: vi.fn(), setView: vi.fn(), openForm: vi.fn(), cancelForm: vi.fn(), commentOn: vi.fn(), deleteComment: vi.fn(), undoProposal: vi.fn(), focusItem: vi.fn(), send: vi.fn(), setOverall: vi.fn(), showKeptChanges: vi.fn(), copyReviewLink: vi.fn() } satisfies Pick<ReviewSession, 'setName' | 'setView' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges' | 'copyReviewLink'>)
 let dispose: (() => void)[] = []
 afterEach(() => { act(() => dispose.forEach(fn => fn())); dispose = []; document.body.replaceChildren() })
@@ -159,4 +159,13 @@ it('skips a name change when the trimmed name is unchanged', () => {
   const name = el.querySelector<HTMLInputElement>('#gr-name')!
   act(() => { name.value = '  Ada  '; name.dispatchEvent(new Event('change', { bubbles: true })) })
   expect(session.setName).not.toHaveBeenCalled()
+})
+
+describe('the off-PDF line', () => {
+  it('shows "Not shown on the PDF." only on a flagged card', () => {
+    const model = createPanelModel(), el = slot()
+    act(() => { model.setHead(head()); model.upsertCard(card('a')); model.upsertCard(card('b', { offPdf: true })); model.setOrder(['a', 'b']); dispose.push(mountPanel(el, model, commands())) })
+    expect(el.querySelector('[data-id="a"] .gr-off-pdf')).toBeNull()
+    expect(el.querySelector('[data-id="b"] .gr-off-pdf')?.textContent).toBe('Not shown on the PDF.')
+  })
 })

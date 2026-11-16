@@ -13,11 +13,11 @@ export class PdfMarks {
   private pdfScheduledSignature: string | null = null
   private pdfIndex: ReturnType<typeof pdfKey> | null = null
   private pdfCache = new Map<string, { signature: string; marks: PdfMark[] }>()
-  constructor(private readonly s: SessionState, private readonly actions: Pick<SessionActions, 'head'>) {}
+  constructor(private readonly s: SessionState, private readonly actions: Pick<SessionActions, 'head' | 'render'>) {}
   async setView(view: ViewMode): Promise<void> {
     if (this.s.disposed) return
     if (this.s.ports.hasPdf === false) view = 'editor'
-    this.s.view = view; this.s.ports.store.setView(view); this.actions.head()
+    this.s.view = view; this.s.ports.store.setView(view); this.actions.head(); this.actions.render()
     if (view === 'editor') { this.cancelPdf?.(); this.pdfScheduledSignature = null; return }
     if (!this.pdfLoading) {
       this.s.status = 'Loading the PDF…'; this.actions.head()
@@ -41,6 +41,7 @@ export class PdfMarks {
       if (this.s.disposed || this.s.view === 'editor' || !this.pdfIndex || !this.s.review) return
       const next = new Map<string, { signature: string; marks: PdfMark[] }>()
       let changed = false
+      const off = new Set<string>()
       for (const item of this.s.review.items()) {
         if (item.kind === 'overall') continue
         const signature = JSON.stringify([item.from, item.quote, item.kind === 'proposal' ? item.proposal : ''])
@@ -50,9 +51,13 @@ export class PdfMarks {
           changed = true
           next.set(item.id, { signature, marks: this.place(item) })
         }
+        if (next.get(item.id)!.marks.length === 0) off.add(item.id)
       }
       if (changed || next.size !== this.pdfCache.size) this.s.ports.pdf.setMarks([...next.values()].flatMap(c => c.marks))
       this.pdfCache = next
+      const same = off.size === this.s.offPdf.size && [...off].every(id => this.s.offPdf.has(id))
+      this.s.offPdf = off
+      if (!same) this.actions.render()
     })
   }
   private place(item: Proposal | Note): PdfMark[] {
