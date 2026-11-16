@@ -19,8 +19,8 @@ async function fixtureFiles(sceneName, folder) {
 function pageHtml(sceneName, css, pdfCss, withPdf) {
   return `<!doctype html><html lang="en"><meta charset="utf-8"><title>Synthetic review fixture</title>
     <style>
-      :root { color-scheme: light dark; --color-main-background: #fff; --color-main-text: #222; --color-text-maxcontrast: #555; --color-border: #bbb; --color-background-hover: #eee; --color-primary-element: #006da3; --color-primary-element-light: #d9edf8; --border-radius: 6px; --border-radius-large: 10px; }
-      @media (prefers-color-scheme: dark) { :root { --color-main-background: #181818; --color-main-text: #eee; --color-text-maxcontrast: #bbb; --color-border: #666; --color-background-hover: #292929; --color-primary-element: #80cfff; --color-primary-element-light: #244459; } }
+      :root { color-scheme: light dark; --color-main-background: #fff; --color-main-text: #222; --color-text-maxcontrast: #555; --color-border: #bbb; --color-background-hover: #eee; --color-primary-element: #006da3; --color-primary-element-text: #fff; --color-primary-element-light: #d9edf8; --border-radius: 6px; --border-radius-large: 10px; }
+      @media (prefers-color-scheme: dark) { :root { --color-main-background: #181818; --color-main-text: #eee; --color-text-maxcontrast: #bbb; --color-border: #666; --color-background-hover: #292929; --color-primary-element: #80cfff; --color-primary-element-text: #00293d; --color-primary-element-light: #244459; } }
       body { margin: 32px; font: 16px/1.5 system-ui; background: var(--color-main-background); color: var(--color-main-text); }
       input, textarea, button { box-sizing: border-box; font: inherit; padding: 8px; color: inherit; background: var(--color-main-background); border: 1px solid var(--color-border); border-radius: 6px; }
       label { display: flex; flex-direction: column; } button:enabled { cursor: pointer; } button:disabled { opacity: .5; }

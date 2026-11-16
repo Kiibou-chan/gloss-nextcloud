@@ -120,3 +120,10 @@ Each proposal is drawn on it: deleted words are struck through in place, and ins
 This works for Typst and LaTeX alike, because it builds on the existing PDF-to-source match.
 It fits the Wednesday 2026-11-18 release, where compiling in the browser would not.
 Turned down for now: option A, compiling the edited source in the browser (Typst WebAssembly), which is left for a later release.
+
+## PDFLBL-1: an insertion shows its caret only, and its words on hover
+
+The author chose B: on the PDF, an inserted spot shows a thin caret, and its words show only while the caret is hovered or focused, or after a tap.
+The caret takes keyboard focus and is named by its words for screen readers.
+It sits above the PDF's text layer, so the pointer reaches it, and the layer holding the marks still passes every other click through.
+The pressed look and view buttons use Nextcloud's primary colours with a bold label and an inset outline, so the pressed one reads plainly in light and dark.

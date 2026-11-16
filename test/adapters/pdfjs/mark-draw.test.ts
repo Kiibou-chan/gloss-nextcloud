@@ -97,6 +97,24 @@ describe('carets', () => {
     expect(bar.querySelector('.gr-pdf-label')!.textContent).toBe('new')
   })
 
+  it('makes the caret focusable and names it by its words', () => {
+    drawPageMarks(makePage(), [caret('cccccccccc', 0, 4, 'after', 'new words')], 'changes')
+    const bar = kids()[0]!
+    expect(bar.tabIndex).toBe(0)
+    expect(bar.getAttribute('aria-label')).toBe('new words')
+  })
+
+  it('toggles gr-open on the clicked caret only', () => {
+    drawPageMarks(makePage(), [caret('cccccccccc', 0, 4, 'after', 'a'), caret('dddddddddd', 1, 4, 'after', 'b')], 'changes')
+    const [one, two] = kids()
+    one!.click()
+    expect([one!.classList.contains('gr-open'), two!.classList.contains('gr-open')]).toEqual([true, false])
+    two!.click()
+    expect([one!.classList.contains('gr-open'), two!.classList.contains('gr-open')]).toEqual([false, true])
+    two!.click()
+    expect(two!.classList.contains('gr-open')).toBe(false)
+  })
+
   it('draws a before caret at the left edge of the character after the point', () => {
     drawPageMarks(makePage(), [caret('cccccccccc', 1, 6, 'before', 'x')], 'changes')
     // The character at offset 6 spans x 160 to 170, so its left edge is 160.

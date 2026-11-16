@@ -34,7 +34,8 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[], look: P
   const entry = (mark: PdfMark, item: number): Entry => {
     let found = entries.get(mark.id)
     const style = getComputedStyle(layer.textDivs[item] ?? page.marks)
-    if (!found) entries.set(mark.id, found = { id: mark.id, n: order.get(mark.id) ?? 0, struck: [], family: style.fontFamily || 'sans-serif', size: Number.parseFloat(style.fontSize) > 0 ? Number.parseFloat(style.fontSize) : null, caret: null })
+    const font = page.fontOf?.(item)
+    if (!found) entries.set(mark.id, found = { id: mark.id, n: order.get(mark.id) ?? 0, struck: [], family: font?.family ?? (style.fontFamily || 'sans-serif'), weight: font?.weight ?? 'normal', slant: font?.slant ?? 'normal', size: Number.parseFloat(style.fontSize) > 0 ? Number.parseFloat(style.fontSize) : null, caret: null })
     return found
   }
   const place = (mark: PdfMark, look: string, rect: { left: number; top: number; width: number; height: number }) => {
@@ -60,6 +61,13 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[], look: P
       label.className = 'gr-pdf-label'
       label.textContent = cut(mark.words)
       bar.append(label)
+      bar.tabIndex = 0
+      bar.setAttribute('aria-label', mark.words)
+      bar.addEventListener('click', () => {
+        const open = !bar.classList.contains('gr-open')
+        for (const other of page.marks.querySelectorAll('.gr-pdf-caret.gr-open')) other.classList.remove('gr-open')
+        bar.classList.toggle('gr-open', open)
+      })
       continue
     }
     let drew = false

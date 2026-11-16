@@ -211,6 +211,20 @@ async function proposalCards(page) {
   }));
 }
 
+/** Moves the mouse onto a caret's coordinates, never focusing it, and requires its label to show there and to hide again elsewhere. */
+async function checkCaretHover(page) {
+  const caret = page.locator('.gr-pdf-caret').first();
+  await caret.scrollIntoViewIfNeeded();
+  const label = caret.locator('.gr-pdf-label');
+  await page.mouse.move(2, 2);
+  if (await label.isVisible()) throw new Error('A caret label shows without hover.');
+  const box = await caret.boundingBox();
+  if (!box) throw new Error('The caret has no box.');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(label).toBeVisible();
+  await page.mouse.move(2, 2);
+}
+
 /** Joins each proposal card's data-id to its marks on the PDF page, and the off-PDF card to none. */
 async function checkProposalMarks(page) {
   await expect.poll(() => page.locator('.gr-pdf-struck').count()).toBeGreaterThan(0);
@@ -235,6 +249,7 @@ async function checkProposalMarks(page) {
   const theta = cards.find(c => c.deleted === 'Theta');
   if (!theta || theta.line !== 'Not shown on the PDF.' || theta.marks) throw new Error(`The Theta card has no line or has marks: ${JSON.stringify(theta)}.`);
   await expect(page.locator('.gr-pdf-note').first()).toBeVisible();
+  await checkCaretHover(page);
   await page.locator('.gr-items > li').filter({ hasText: 'Not shown on the PDF.' }).scrollIntoViewIfNeeded();
 }
 
