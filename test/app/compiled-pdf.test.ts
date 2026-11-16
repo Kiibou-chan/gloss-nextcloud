@@ -200,6 +200,16 @@ test('a compiler that cannot start gives its line and no further compiles', asyn
   expect(f.compiler.compile).toHaveBeenCalledTimes(1)
 })
 
+test('a start failure does not render again once its line is up, as the session renders into a new request', async () => {
+  const { f, s, unit, render } = await setup()
+  let depth = 0
+  render.mockImplementation(() => { if (++depth > 20) throw new Error('render recursion'); unit.request(false) })
+  f.compiler.compile.mockResolvedValue({ failed: 'start' })
+  unit.request(true); await flush(); await f.advance(1000); await flush()
+  expect(s.pdfNote).toBe('Showing your PDF; the browser could not start the compiler.')
+  expect(depth).toBeLessThan(5)
+})
+
 test('after a start failure, Original and then Changes or New text shows the line again without compiling', async () => {
   const { f, s, unit } = await setup()
   f.compiler.compile.mockResolvedValue({ failed: 'start' })

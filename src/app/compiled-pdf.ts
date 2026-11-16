@@ -32,7 +32,7 @@ export class CompiledPdf {
   request(now: boolean): void {
     if (this.s.disposed) return
     if (!this.wanted()) { this.stop(); return }
-    if (this.startFailed) { this.note(FALLBACK.start); this.actions.render(); return }
+    if (this.startFailed) { if (this.s.pdfNote !== FALLBACK.start) { this.note(FALLBACK.start); this.actions.render() } return }
     const signature = JSON.stringify([this.s.pdfLook, this.s.review!.items().flatMap(i => i.kind === 'proposal' ? [[i.id, i.from, i.quote.exact, i.proposal]] : [])])
     if (!now && signature === this.signature) return
     this.signature = signature; this.latest++
