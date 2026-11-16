@@ -60,6 +60,13 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[], look: P
       label.className = 'gr-pdf-label'
       label.textContent = cut(mark.words)
       bar.append(label)
+      bar.tabIndex = 0
+      bar.setAttribute('aria-label', mark.words)
+      bar.addEventListener('click', () => {
+        const open = !bar.classList.contains('gr-open')
+        for (const other of page.marks.querySelectorAll('.gr-pdf-caret.gr-open')) other.classList.remove('gr-open')
+        bar.classList.toggle('gr-open', open)
+      })
       continue
     }
     let drew = false
