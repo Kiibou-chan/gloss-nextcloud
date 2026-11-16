@@ -147,11 +147,21 @@ describe('review islands', () => {
     act(() => { model.setHead(head({ view: 'pdf' })); dispose.push(mountHead(el, model, session)) })
     const group = el.querySelector('.gr-pdf-look')!
     expect(group.getAttribute('role')).toBe('group'); expect(group.getAttribute('aria-label')).toBe('PDF shows'); expect(group.hasAttribute('hidden')).toBe(false)
+    expect([...group.querySelectorAll('button')].map(b => b.textContent)).toEqual(['Original', 'Changes', 'New text'])
+    expect(el.querySelector('#gr-pdf-look-original')?.getAttribute('aria-pressed')).toBe('false')
+    click(el.querySelector('#gr-pdf-look-original')); expect(session.setPdfLook).toHaveBeenLastCalledWith('original')
     expect(el.querySelector('#gr-pdf-look-changes')?.getAttribute('aria-pressed')).toBe('true'); expect(el.querySelector('#gr-pdf-look-new')?.getAttribute('aria-pressed')).toBe('false')
     click(el.querySelector('#gr-pdf-look-new')); expect(session.setPdfLook).toHaveBeenLastCalledWith('new')
     act(() => model.setHead(head({ view: 'both', pdfLook: 'new' }))); expect(group.hasAttribute('hidden')).toBe(false); expect(el.querySelector('#gr-pdf-look-new')?.getAttribute('aria-pressed')).toBe('true')
     act(() => model.setHead(head({ view: 'editor' }))); expect(group.hasAttribute('hidden')).toBe(true)
     act(() => model.setHead(head({ view: 'pdf', hasPdf: false }))); expect(group.hasAttribute('hidden')).toBe(true)
+  })
+  it('shows the quiet PDF line beside the look switch and nothing when it is empty', () => {
+    const model = createPanelModel(), el = slot()
+    act(() => { model.setHead(head({ view: 'pdf', pdfNote: 'Showing your PDF while the draft compiles.' })); dispose.push(mountHead(el, model, commands())) })
+    expect(el.querySelector('.gr-pdf-note-line')?.textContent).toBe('Showing your PDF while the draft compiles.')
+    act(() => model.setHead(head({ view: 'pdf', pdfNote: '' }))); expect(el.querySelector('.gr-pdf-note-line')).toBeNull()
+    act(() => model.setHead(head({ view: 'pdf' }))); expect(el.querySelector('.gr-pdf-note-line')).toBeNull()
   })
   it('supports direct head vnodes and disposes subscriptions in both mounts', () => {
     const model = createPanelModel(), session = commands(), el = slot(), panel = slot()

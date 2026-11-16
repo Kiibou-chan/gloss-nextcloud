@@ -11,7 +11,8 @@ export function Head({ model, session }: { model: PanelModel; session: PanelComm
       {(['editor', 'pdf', 'both'] as const).map(mode => <button type="button" id={`gr-view-${mode}`} key={mode} aria-pressed={view.view === mode} onClick={() => void session.setView(mode)}>{mode === 'pdf' ? 'PDF' : mode === 'editor' ? 'Editor' : 'Both'}</button>)}
     </div>
     <div class="gr-views gr-pdf-look" role="group" aria-label="PDF shows" hidden={!view.hasPdf || view.view === 'editor'}>
-      {(['changes', 'new'] as const).map(look => <button type="button" id={`gr-pdf-look-${look}`} key={look} aria-pressed={view.pdfLook === look} onClick={() => void session.setPdfLook(look)}>{look === 'new' ? 'New text' : 'Changes'}</button>)}
+      {(['original', 'changes', 'new'] as const).map(look => <button type="button" id={`gr-pdf-look-${look}`} key={look} aria-pressed={view.pdfLook === look} onClick={() => void session.setPdfLook(look)}>{look === 'new' ? 'New text' : look === 'original' ? 'Original' : 'Changes'}</button>)}
+      {!!view.pdfNote && <span class="gr-pdf-note-line">{view.pdfNote}</span>}
     </div>
     {view.reviewable !== false && <label class="gr-who">Your name <input id="gr-name" type="text" disabled={view.sent} autoComplete="name" value={draftName.value} onInput={event => { draft.value = { saved: model.head.value.name, name: event.currentTarget.value } }} onChange={event => {
       const name = event.currentTarget.value.trim()

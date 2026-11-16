@@ -50,7 +50,7 @@ export function createBrowserStore(shareToken: string): BackupStore {
     setView: view => { put('gloss-review-view:' + shareToken, view) },
     pdfLook() {
       const value = preference('gloss-review-pdf-look:')
-      return value === 'changes' || value === 'new' ? value : null
+      return value === 'original' || value === 'changes' || value === 'new' ? value : null
     },
     setPdfLook: look => { put('gloss-review-pdf-look:' + shareToken, look) },
   }

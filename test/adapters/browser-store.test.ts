@@ -70,7 +70,9 @@ it('keeps the PDF look per token and reads a garbage value as null', () => {
   store.setPdfLook('new')
   expect(localStorage.getItem('gloss-review-pdf-look:synthetic')).toBe('new'); expect(store.pdfLook()).toBe('new')
   expect(createBrowserStore('other').pdfLook()).toBeNull()
+  store.setPdfLook('original'); expect(store.pdfLook()).toBe('original'); expect(createBrowserStore('synthetic').pdfLook()).toBe('original')
   localStorage.setItem('gloss-review-pdf-look:synthetic', 'garbage'); expect(store.pdfLook()).toBeNull()
+  localStorage.setItem('gloss-review-pdf-look:synthetic', 'blue'); expect(store.pdfLook()).toBeNull()
 })
 it('returns false on a refused write and tolerates unavailable storage', () => {
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('full') })

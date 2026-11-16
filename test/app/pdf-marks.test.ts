@@ -122,3 +122,23 @@ test('ids the PDF view reports as undrawn join offPdf and leave it when drawn ag
   report([])
   expect(s.offPdf.size).toBe(0)
 })
+
+test('Original places only comment highlights, and a live switch Changes, Original, Changes counts each kind', async () => {
+  const { f, s, unit } = proposed({ from: 6, to: 10, insert: 'zeta' })
+  s.review!.comment({ from: 0, to: 5 }, 'note', f.ids.item(), f.clock.now())
+  const kinds = () => { const m = marks(f); return { struck: m.filter(x => x.look === 'struck').length, insert: m.filter(x => x.look === 'insert').length, note: m.filter(x => x.look === 'note').length } }
+  await unit.setView('pdf'); await f.advance(400)
+  expect(kinds()).toEqual({ struck: 1, insert: 1, note: 1 })
+  unit.setPdfLook('original'); await f.advance(400)
+  expect(kinds()).toEqual({ struck: 0, insert: 0, note: 1 })
+  unit.setPdfLook('changes'); await f.advance(400)
+  expect(kinds()).toEqual({ struck: 1, insert: 1, note: 1 })
+})
+
+test('a fresh session on Original places only comment highlights', async () => {
+  const { f, s, unit } = proposed({ from: 6, to: 10, insert: 'zeta' })
+  s.review!.comment({ from: 0, to: 5 }, 'note', f.ids.item(), f.clock.now())
+  s.pdfLook = 'original'
+  await unit.setView('pdf'); await f.advance(400)
+  expect(marks(f).map(x => x.look)).toEqual(['note'])
+})

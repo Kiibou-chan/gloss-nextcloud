@@ -38,7 +38,9 @@ export class PdfMarks {
   restoreLook(): void { this.s.pdfLook = this.s.ports.store.pdfLook() ?? 'changes'; this.s.ports.pdf.setLook(this.s.pdfLook) }
   setPdfLook(look: PdfLook): void {
     if (this.s.disposed) return
+    const reshaped = (this.s.pdfLook === 'original') !== (look === 'original')
     this.s.pdfLook = look; this.s.ports.store.setPdfLook(look); this.s.ports.pdf.setLook(look); this.actions.head()
+    if (reshaped) { this.pdfCache = new Map(); this.pdfScheduledSignature = null; this.deferPdf() }
   }
   deferPdf(): void {
     if (this.s.disposed || this.s.view === 'editor' || !this.pdfIndex || !this.s.review) return
@@ -60,7 +62,7 @@ export class PdfMarks {
           changed = true
           next.set(item.id, { signature, marks: this.place(item) })
         }
-        if (next.get(item.id)!.marks.length === 0) off.add(item.id)
+        if (next.get(item.id)!.marks.length === 0 && !(this.s.pdfLook === 'original' && item.kind === 'proposal')) off.add(item.id)
       }
       const redraw = changed || next.size !== this.pdfCache.size
       this.pdfCache = next
@@ -83,6 +85,7 @@ export class PdfMarks {
     const fraction = item.from / Math.max(1, this.s.draft.length)
     const place = placeItem(source, this.pdfIndex, { id: item.id, from: item.from, to: item.from + item.quote.exact.length, inserts: label !== null }, fraction)
     if (!place) return []
+    if (this.s.pdfLook === 'original' && item.kind === 'proposal') return []
     const look = item.kind === 'proposal' ? 'struck' : 'note'
     const marks: PdfMark[] = place.struck.map(p => ({ ...p, look }))
     if (place.caret && label !== null) marks.push({ ...place.caret, look: 'insert', words: label })
