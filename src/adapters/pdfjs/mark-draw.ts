@@ -22,13 +22,14 @@ function cut(words: string): string {
   return words.length > LABEL_LIMIT ? `${words.slice(0, LABEL_LIMIT - 1)}…` : words
 }
 
-/** Draws the marks of one page, replacing what its marks layer held; positions come from the layer's own rectangle. */
-export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[]): void {
+/** Draws the marks of one page, replacing what its marks layer held; positions come from the layer's own rectangle. Returns the ids of marks that drew nothing. */
+export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[]): Set<string> {
+  const missing = new Set<string>()
   page.marks.replaceChildren()
   const layer = page.layer
-  if (!layer) return
+  if (!layer) return missing
   const own = marks.filter(mark => mark.page === page.number)
-  if (!own.length) return
+  if (!own.length) return missing
   const origin = page.marks.getBoundingClientRect()
   const order = new Map<string, number>()
   own.forEach((mark, index) => { if (!order.has(mark.id)) order.set(mark.id, index) })
@@ -44,9 +45,11 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[]): void {
   const sized = { ...page, layer }
   for (const mark of own) {
     if (mark.look === 'insert') {
-      const range = textRange(sized, mark.item, mark.offset, mark.offset + 1)
+      const text = layer.textContentItemsStr[mark.item] ?? ''
+      const width = mark.offset < text.length ? String.fromCodePoint(text.codePointAt(mark.offset)!).length : 1
+      const range = textRange(sized, mark.item, mark.offset, mark.offset + width)
       const rect = range ? [...range.getClientRects()].find(r => r.width && r.height) : undefined
-      if (!rect) continue
+      if (!rect) { missing.add(mark.id); continue }
       const bar = place(mark, 'caret', { left: mark.edge === 'after' ? rect.left + rect.width : rect.left, top: rect.top, width: 2, height: rect.height })
       const label = document.createElement('span')
       label.className = 'gr-pdf-label'
@@ -54,13 +57,16 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[]): void {
       bar.append(label)
       continue
     }
+    let drew = false
     for (let item = mark.startItem; item <= mark.endItem; item++) {
       const length = layer.textContentItemsStr[item]?.length ?? 0
       const range = textRange(sized, item, item === mark.startItem ? mark.startOffset : 0, item === mark.endItem ? mark.endOffset : length)
       if (!range) continue
       for (const rect of range.getClientRects()) {
-        if (rect.width && rect.height) place(mark, mark.look, rect)
+        if (rect.width && rect.height) { place(mark, mark.look, rect); drew = true }
       }
     }
+    if (!drew) missing.add(mark.id)
   }
+  return missing
 }

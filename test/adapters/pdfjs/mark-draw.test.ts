@@ -41,6 +41,23 @@ beforeEach(() => {
 })
 afterEach(() => vi.restoreAllMocks())
 
+describe('undrawn ids', () => {
+  it('returns the ids of marks that drew nothing', () => {
+    const missing = drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, 0, 0, 5), struck('cccccccccc', 9, 0, 9, 2), caret('dddddddddd', 0, 99, 'after', 'x')])
+    expect([...missing]).toEqual(['cccccccccc', 'dddddddddd'])
+  })
+})
+
+describe('astral caret', () => {
+  it('measures the whole code point, not half of it', () => {
+    const page = makePage()
+    page.layer.textContentItemsStr = ['a😀b', 'x']
+    page.layer.textDivs[0]!.textContent = 'a😀b'
+    drawPageMarks(page, [caret('cccccccccc', 0, 1, 'after', 'n')])
+    expect(ranges.map(r => [r.startOffset, r.endOffset])).toContainEqual([1, 3])
+  })
+})
+
 describe('struck words', () => {
   it('draws one struck line per rectangle across two items, measured from the marks layer', () => {
     drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, 6, 1, 5)])

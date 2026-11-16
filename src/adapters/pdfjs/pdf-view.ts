@@ -29,8 +29,20 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
   let viewportObserver: IntersectionObserver | undefined
   const visible = new Set<number>()
   let selected: Parameters<PdfPort['onSelect']>[0] | undefined
+  const missing = new Map<number, Set<string>>()
+  let undrawnListener: ((ids: readonly string[]) => void) | undefined
+  function reportUndrawn() {
+    const drawn = new Set<string>()
+    for (const page of pages) for (const child of page.marks.children) drawn.add((child as HTMLElement).dataset.id!)
+    const ids = new Set<string>()
+    for (const set of missing.values()) for (const id of set) if (!drawn.has(id)) ids.add(id)
+    undrawnListener?.([...ids])
+  }
   function drawMarks(page: Page) {
-    drawPageMarks(page, byPage.get(page.number) ?? [])
+    const none = drawPageMarks(page, byPage.get(page.number) ?? [])
+    if (none.size) missing.set(page.number, none)
+    else missing.delete(page.number)
+    reportUndrawn()
   }
   function release(page: Page) {
     if (!page.canvas) return
@@ -42,6 +54,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
     page.canvas.remove()
     page.text?.remove()
     page.marks.replaceChildren()
+    missing.delete(page.number)
     page.canvas = undefined
     page.text = undefined
     page.layer = undefined
@@ -211,6 +224,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
       selected = undefined
       for (const page of pages) release(page)
     },
+    onUndrawn(listener) { undrawnListener = listener; return () => { if (undrawnListener === listener) undrawnListener = undefined } },
     onSelect(listener) { selected = listener; return () => { if (selected === listener) selected = undefined } },
   }
 }
