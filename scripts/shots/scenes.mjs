@@ -5,8 +5,6 @@ import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 
-// Off until the LaTeX markup cases are checked (task C1b removes it).
-const markupCases = false;
 const reviewer = 'Ada Example';
 const content = page => page.locator('#gr-text .cm-content');
 const count = page => page.locator('.gr-count');
@@ -295,7 +293,7 @@ export const scenes = {
   pdf: { run: pdf },
   'pdf-proposals': { run: args => proposals(args, 'PDF') },
   both: { run: args => proposals(args, 'Both') },
-  'latex-proposals': latexScene({ ready, find, status, markup: markupCases }),
+  'latex-proposals': latexScene({ ready, find, status }),
   search: { run: async ({ page, capture }) => {
     await ready(page);
     await content(page).click();

@@ -3,13 +3,13 @@ import { expect } from '@playwright/test';
 
 const offPdf = 'Not shown on the PDF.';
 
-/** The cases; `markup` ones cross LaTeX markup and run once the flag of the scene is off. */
+/** The cases, those that cross or sit beside LaTeX markup among them. */
 export const cases = [
   { name: 'deletion inside \\emph{}', find: 'quiet', insert: '', deleted: 'quiet', struck: ['quiet'], caret: null },
   { name: 'replacement inside \\textbf{}', find: 'above', insert: 'over', deleted: 'above', struck: ['above'], caret: 'over' },
-  { name: 'replacement across \\textbf{} and the following words', find: 'meadow} and', insert: 'pasture or', deleted: 'meadow} and', struck: ['meadow', 'and'], caret: 'pasture or', markup: true },
+  { name: 'replacement across \\textbf{} and the following words', find: 'meadow} and', insert: 'pasture or', deleted: 'meadow} and', struck: ['meadow', 'and'], caret: 'pasture or' },
   { name: 'heading replacement', find: 'Observations', insert: 'Notes', deleted: 'Observations', struck: ['Observations'], caret: 'Notes' },
-  { name: 'replacement beside \\hspace', find: 'across', insert: 'beyond', deleted: 'across', struck: ['across'], caret: 'beyond', markup: true },
+  { name: 'replacement across \\hspace{2mm}', find: 'drift', select: 'drift\\hspace{2mm}across'.length, insert: 'wander beyond', deleted: 'drift\\hspace{2mm}across', struck: ['drift', 'across'], caret: 'wander beyond' },
   { name: 'replacement across the wrapped line', find: 'where Zeta', insert: 'while Iota', deleted: 'where Zeta', struck: ['where', 'Zeta'], caret: 'while Iota', lines: 2 },
   { name: 'pure insertion', find: 'rain.', after: ' Truly', deleted: '', struck: [], caret: 'Truly' },
   { name: 'replacement spanning Section~\\ref{}', find: 'Section~', select: 'Section~\\ref{sec:obs} for'.length, insert: 'Part two instead', deleted: 'Section~\\ref{sec:obs} for', off: true },
@@ -65,10 +65,10 @@ function measure(page) {
 }
 
 /** Joins every case's card to its marks by data-id; the \ref card says it is off the PDF and has no mark. */
-export async function checkLatexMarks(page, markup) {
+export async function checkLatexMarks(page) {
   await expect.poll(() => page.locator('.gr-pdf-struck').count()).toBeGreaterThan(0);
   const cards = await measure(page);
-  for (const want of cases.filter(c => markup || !c.markup)) {
+  for (const want of cases) {
     const card = cards.find(c => c.deleted === want.deleted && c.inserted.trim() === (want.insert ?? want.after).trim());
     if (!card) throw new Error(`No proposal card for ${want.name}.`);
     if (want.off) {
@@ -82,7 +82,7 @@ export async function checkLatexMarks(page, markup) {
   }
 }
 
-export function latexScene({ ready, find, status, markup }) {
+export function latexScene({ ready, find, status }) {
   const run = view => async ({ page, capture }) => {
     await ready(page);
     for (const change of cases) await edit(page, find, change);
@@ -90,14 +90,14 @@ export function latexScene({ ready, find, status, markup }) {
     await expect(status(page)).toHaveText('Saved', { timeout: 30_000 });
     await page.getByRole('button', { name: view, exact: true }).click();
     await expect(page.locator('#gr-pdf canvas').first()).toBeVisible();
-    await checkLatexMarks(page, markup);
+    await checkLatexMarks(page);
     if (view === 'PDF') {
       await capture('-pdf');
       await page.locator('.gr-items > li').filter({ hasText: offPdf }).scrollIntoViewIfNeeded();
       await capture('-ref');
       await page.getByRole('button', { name: 'Both', exact: true }).click();
       await expect(page.locator('#gr-text .cm-content')).toBeVisible();
-      await checkLatexMarks(page, markup);
+      await checkLatexMarks(page);
       await capture('-both');
     }
   };
