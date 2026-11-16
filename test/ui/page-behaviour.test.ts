@@ -47,7 +47,10 @@ it('clears the draft after Add', async () => {
 })
 it('focuses the name for an overall key before a name is supplied', async () => {
   const { root, model } = await setup(false)
-  act(() => { root.querySelector('#gr-overall')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true })) })
+  const event = new KeyboardEvent('keydown', { key: 'x', bubbles: true, cancelable: true })
+  act(() => { root.querySelector('#gr-overall')!.dispatchEvent(event) })
+  expect(event.defaultPrevented).toBe(true)
+  expect(root.querySelector<HTMLInputElement>('#gr-name')!.value).toBe('')
   expect(model.head.value.status).toBe('Enter your name first.')
   expect(document.activeElement?.id).toBe('gr-name')
 })

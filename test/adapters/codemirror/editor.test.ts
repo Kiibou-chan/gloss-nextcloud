@@ -20,7 +20,9 @@ beforeEach(async () => {
 })
 afterEach(() => { view?.destroy(); document.body.replaceChildren() })
 const key = (key: string, options: KeyboardEventInit = {}) => {
-  view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...options }))
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...options })
+  view.contentDOM.dispatchEvent(event)
+  return event
 }
 
 describe('CodeMirror editor port', () => {
@@ -134,7 +136,7 @@ describe('CodeMirror editor port', () => {
     expect(select).not.toHaveBeenCalled()
     view.contentDOM.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
     expect(select).toHaveBeenLastCalledWith({ from: 0, to: 5 })
-    key('m', { ctrlKey: true, altKey: true })
+    expect(key('µ', { code: 'KeyM', ctrlKey: true, altKey: true }).defaultPrevented).toBe(true)
     expect(select).toHaveBeenCalledTimes(2)
   })
   it('reports refused keystrokes, paste, and input transactions without losing text silently', () => {
@@ -158,7 +160,12 @@ it.each(['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Escape', 'Sh
 })
 it.each(['x', 'Enter', 'Backspace', 'Delete'])('reports editor text key %s as refused input', textKey => {
   const attempt = vi.fn(); editor.onAttempt?.(attempt); editor.setEditable(false)
-  key(textKey)
+  const name = document.createElement('input'); document.body.append(name)
+  editor.onAttempt?.(() => { attempt(); name.focus() })
+  const event = key(textKey)
+  expect(document.activeElement).toBe(name)
+  expect(event.defaultPrevented).toBe(true)
+  expect(name.value).toBe('')
   expect(attempt).toHaveBeenCalled()
 })
 it.each([['Backspace', 'alphabeta'], ['Delete', 'alpha eta']])('keeps normal editable %s and undo working', (textKey, expected) => {
@@ -182,4 +189,34 @@ it('keeps read-only draft text readable despite Nextcloud disabled-control fadin
     expect(view.contentDOM.getAttribute('contenteditable')).toBe('false')
     expect(Number(getComputedStyle(view.contentDOM).opacity)).toBeGreaterThanOrEqual(0.8)
   } finally { styles.remove(); document.body.classList.remove('gr-text') }
+})
+
+it('keeps computed content size and line height equal in editable and read-only states', () => {
+  const styles = document.createElement('style')
+  styles.textContent = '.cm-content[contenteditable="false"] { font-size: 13px; line-height: 20px; }\n' + readFileSync('css/review.css', 'utf8')
+  document.head.append(styles)
+  view.dom.parentElement!.classList.add('gr-text')
+  const typography = () => {
+    const style = getComputedStyle(view.contentDOM)
+    return { size: style.fontSize, pitch: style.lineHeight }
+  }
+  try {
+    const editable = typography()
+    expect(editable.size).not.toBe('')
+    expect(editable.pitch).not.toBe('')
+    editor.setEditable(false)
+    expect(typography()).toEqual(editable)
+  } finally { styles.remove() }
+})
+
+it.each([true, false])('handles the physical comment shortcut with editable=%s without editing or requesting a name', editable => {
+  const attempt = vi.fn(), select = vi.fn(), edit = vi.fn()
+  editor.setEditable(editable)
+  editor.onAttempt?.(attempt); editor.onSelect(select); editor.onEdit(edit)
+  view.dispatch({ selection: EditorSelection.single(0, 5) })
+  expect(key('µ', { code: 'KeyM', ctrlKey: true, altKey: true }).defaultPrevented).toBe(true)
+  expect(select).toHaveBeenCalledExactlyOnceWith({ from: 0, to: 5 })
+  expect(attempt).not.toHaveBeenCalled()
+  expect(edit).not.toHaveBeenCalled()
+  expect(editor.text()).toBe('alpha beta\ngamma')
 })

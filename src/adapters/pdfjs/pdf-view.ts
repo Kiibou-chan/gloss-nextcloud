@@ -1,3 +1,4 @@
+import { isCommentShortcut } from '../browser/comment-shortcut'
 import { getDocument, GlobalWorkerOptions, TextLayer } from 'pdfjs-dist'
 import type { PDFPageProxy, PageViewport, RenderTask } from 'pdfjs-dist'
 import type { PdfPort } from '../../app/ports'
@@ -182,7 +183,6 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
     task = undefined
     if (current) void current.destroy().catch(error => console.error('Could not destroy PDF document', error))
   }
-
   function reportSelection() {
     const selection = window.getSelection()
     if (!selection || selection.isCollapsed || !selection.anchorNode || !selection.focusNode) return false
@@ -196,7 +196,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
     return true
   }
   function commentKey(event: KeyboardEvent) {
-    if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'm') { event.preventDefault(); reportSelection() }
+    if (isCommentShortcut(event)) { event.preventDefault(); reportSelection() }
   }
   el.addEventListener('mouseup', reportSelection)
   el.addEventListener('keydown', commentKey)

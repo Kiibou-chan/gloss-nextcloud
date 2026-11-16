@@ -1,3 +1,4 @@
+import { isCommentShortcut } from '../browser/comment-shortcut'
 import { entersText } from '../../app/text-input'
 import { Annotation, Compartment, EditorState, Prec, StateEffect, StateField, Transaction } from '@codemirror/state'
 import { Decoration, EditorView, WidgetType, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers, type DecorationSet } from '@codemirror/view'
@@ -54,12 +55,16 @@ export function createEditor(parent: HTMLElement, options: { text: string; langu
         Prec.high(EditorView.domEventHandlers({
           mouseup: (_event, view) => { const range = view.state.selection.main; if (!range.empty) onSelect({ from: range.from, to: range.to }) },
           keydown: (event, view) => {
-            if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'm') {
+            if (isCommentShortcut(event)) {
               const range = view.state.selection.main
               if (!range.empty) onSelect({ from: range.from, to: range.to })
               return true
             }
-            if (view.state.readOnly && entersText(event)) onAttempt()
+            if (view.state.readOnly && entersText(event)) {
+              event.preventDefault()
+              onAttempt()
+              return true
+            }
             return false
           },
           paste: (_event, view) => { if (view.state.readOnly) onAttempt(); return false },

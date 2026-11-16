@@ -211,7 +211,9 @@ describe('PDF view', () => {
     expect(view.commentSelection?.()).toBe(true)
     expect(listener).toHaveBeenCalledExactlyOnceWith({ text: 'Page 1', fraction: 0.5 / 3 })
     listener.mockClear()
-    host.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', ctrlKey: true, altKey: true, bubbles: true }))
+    const event = new KeyboardEvent('keydown', { key: 'µ', code: 'KeyM', ctrlKey: true, altKey: true, bubbles: true, cancelable: true })
+    host.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(true)
     expect(listener).toHaveBeenCalledExactlyOnceWith({ text: 'Page 1', fraction: 0.5 / 3 })
   })
 
