@@ -118,7 +118,7 @@ async function main() {
           for (const width of [1600, 640]) {
             await page.setViewportSize({ width, height: 1000 });
             await page.locator('.gr-items > li').last().scrollIntoViewIfNeeded();
-            if (width === 640) await page.locator('#content').evaluate(element => { element.scrollTop = element.scrollHeight; });
+            if (width === 640) await page.locator('#content').evaluate(element => { element.scrollTo({ top: element.scrollHeight, behavior: 'instant' }); });
             await page.waitForTimeout(150);
             const geometry = await page.evaluate(() => {
               const panel = document.querySelector('.gr-side'), footer = document.querySelector('footer');
@@ -134,6 +134,8 @@ async function main() {
             await capture(`-layout-${width}`);
           }
           await page.setViewportSize(options.viewport);
+          await page.waitForTimeout(150);
+          await page.locator('#content').evaluate(element => { element.scrollTo({ top: 0, behavior: 'instant' }); });
         }
         await capture();
         if (['pdf', 'both'].includes(sceneName) && colour === 'dark') {
