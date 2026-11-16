@@ -216,7 +216,7 @@ export function createPdfView(el: HTMLElement, { url, workerUrl }: { url: string
       return loading
     },
     setMarks(next) {
-      placements = next
+      placements = next.filter((m): m is PdfPlacement & { look: 'note' | 'struck' } => m.look !== 'insert')
       for (const page of pages) drawMarks(page)
     },
     scrollToMark(id) {

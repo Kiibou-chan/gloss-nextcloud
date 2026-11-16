@@ -1,6 +1,8 @@
-import { pdfKey, placeMarks } from '../domain/pdf/match'
-import type { PdfPlacement } from '../domain/pdf/match'
-import { shown } from '../domain/source/shown'
+import { pdfKey } from '../domain/pdf/match'
+import { placeItem } from '../domain/pdf/proposal-marks'
+import { proposalLabel } from './brief'
+import type { Note, Proposal } from '../domain/review/model'
+import type { PdfMark } from './ports'
 import type { ViewMode } from './view'
 
 import { SessionState, type SessionActions } from './session-state'
@@ -10,7 +12,7 @@ export class PdfMarks {
   private pdfLoading: Promise<void> | null = null
   private pdfScheduledSignature: string | null = null
   private pdfIndex: ReturnType<typeof pdfKey> | null = null
-  private pdfCache = new Map<string, { signature: string; placements: PdfPlacement[] }>()
+  private pdfCache = new Map<string, { signature: string; marks: PdfMark[] }>()
   constructor(private readonly s: SessionState, private readonly actions: Pick<SessionActions, 'head'>) {}
   async setView(view: ViewMode): Promise<void> {
     if (this.s.disposed) return
@@ -37,7 +39,7 @@ export class PdfMarks {
     this.cancelPdf?.()
     this.cancelPdf = this.s.ports.scheduler.after(400, () => {
       if (this.s.disposed || this.s.view === 'editor' || !this.pdfIndex || !this.s.review) return
-      const next = new Map<string, { signature: string; placements: PdfPlacement[] }>()
+      const next = new Map<string, { signature: string; marks: PdfMark[] }>()
       let changed = false
       for (const item of this.s.review.items()) {
         if (item.kind === 'overall') continue
@@ -46,13 +48,24 @@ export class PdfMarks {
         if (cached?.signature === signature) next.set(item.id, cached)
         else {
           changed = true
-          const text = shown(this.s.draft, this.s.ops, item.from, item.from + item.quote.exact.length)
-          next.set(item.id, { signature, placements: placeMarks(this.pdfIndex, [{ id: item.id, shown: text, fraction: item.from / Math.max(1, this.s.draft.length) }]) })
+          next.set(item.id, { signature, marks: this.place(item) })
         }
       }
-      if (changed || next.size !== this.pdfCache.size) this.s.ports.pdf.setMarks([...next.values()].flatMap(c => c.placements))
+      if (changed || next.size !== this.pdfCache.size) this.s.ports.pdf.setMarks([...next.values()].flatMap(c => c.marks))
       this.pdfCache = next
     })
+  }
+  private place(item: Proposal | Note): PdfMark[] {
+    const source = this.s.source
+    if (!source || !this.pdfIndex) return []
+    const label = item.kind === 'proposal' ? proposalLabel(item.quote.exact, item.proposal) : null
+    const fraction = item.from / Math.max(1, this.s.draft.length)
+    const place = placeItem(source, this.pdfIndex, { id: item.id, from: item.from, to: item.from + item.quote.exact.length, inserts: label !== null }, fraction)
+    if (!place) return []
+    const look = item.kind === 'proposal' ? 'struck' : 'note'
+    const marks: PdfMark[] = place.struck.map(p => ({ ...p, look }))
+    if (place.caret && label !== null) marks.push({ ...place.caret, look: 'insert', words: label })
+    return marks
   }
   dispose(): void { this.cancelPdf?.(); this.cancelPdf = null }
 }

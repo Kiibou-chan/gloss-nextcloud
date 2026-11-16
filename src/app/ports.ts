@@ -1,4 +1,5 @@
 import type { PdfPlacement } from '../domain/pdf/match'
+import type { PdfCaret } from '../domain/pdf/proposal-marks'
 import type { Change } from '../domain/review/model'
 import type { UnplacedView, CardView, DeletedWords, EditorMark, HeadView, ViewMode } from './view'
 export type { Change } from '../domain/review/model'
@@ -15,11 +16,12 @@ export interface EditorPort {
   onEdit(listener: (changes: readonly Change[]) => void): void | (() => void)
   onSelect(listener: (range: { from: number; to: number }) => void): void | (() => void)
 }
+export type PdfMark = (PdfPlacement & { look: 'note' | 'struck' }) | (PdfCaret & { look: 'insert'; words: string })
 export interface PdfPort {
   commentSelection?(): boolean
   dispose?(): void
   show(): Promise<{ pages: readonly (readonly string[])[] }>
-  setMarks(placements: readonly PdfPlacement[]): void
+  setMarks(marks: readonly PdfMark[]): void
   scrollToMark(id: string): void
   onSelect(listener: (s: { text: string; fraction: number }) => void): void | (() => void)
 }

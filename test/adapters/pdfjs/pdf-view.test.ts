@@ -58,7 +58,7 @@ function observe(index: number, on = true) {
   const observer = Observer.instances.find(o => o.targets.has(box))!
   observer.emit(box, on)
 }
-const placement = (page = 1, id = 'abcdefghij') => ({ id, page, startItem: 0, startOffset: 2, endItem: 1, endOffset: 4 })
+const placement = (page = 1, id = 'abcdefghij') => ({ id, page, startItem: 0, startOffset: 2, endItem: 1, endOffset: 4, look: 'note' as const })
 
 beforeEach(() => {
   vi.clearAllMocks()
