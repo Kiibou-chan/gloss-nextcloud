@@ -1,10 +1,12 @@
 # Release live check
 
 This fix-round-2 live check starts from review-app `7918fee` on `rvw-fr2c`.
-The archive contains commit `4c02748`, including the subsequently requested share-path migration guard and its rebuilt bundle.
+The refreshed archive contains commit `7f7ca45` on `rvw-fr2d`, including the unplaced panel typography fix.
+The JavaScript bundle remains byte-identical to the earlier archive.
 `$GLOSS_WORK` denotes the workspace containing the checkouts, archive, and shots folders.
 Current shots, safe DOM probes, result JSON, inspection contact sheets, and job logs are in `$GLOSS_WORK/shots/final4/`.
 Screenshot paths below are relative to that folder.
+The refreshed unplaced shots, live typography probes, and job logs are in `$GLOSS_WORK/shots/final5/`.
 Earlier evidence remains in `../final3/`, `../final2/`, and `../final/`.
 
 ## Regression checks
@@ -32,17 +34,18 @@ All heavy jobs use `HEAVY_MODE=none` through `$GLOSS_WORK/../../tools/heavy-job.
 
 The archive is installed on the disposable Nextcloud 33 instance at port 8090, with debug disabled.
 The archive is `$GLOSS_WORK/archive/gloss-0.1.0.tar.gz`, replacing the previous bundle.
-Its SHA-256 is `7b694ccc59c7a4cd38e4cf83444e571ca3a3eaa6ce63f3e6391030ea65591219`.
+Its SHA-256 is `c10f24d55ef0daa3c9f8f36b35103755d2b6dfa4c1cef2db96a4ea9e3957ad1f`.
+The archive bundle is 853,235 bytes, matching the installed bundle and the committed `js/gloss-review.js`.
 The installed bundle SHA-256 is `689a04ad8b1cdb7ab084025f2f3bcae4a3998f177e5e0b3d28b24e2447e41eeb`.
 The installed manifest SHA-256 is `bae65ef78c106990df8a59edf8bb984eece4e04885d49f326e1b27b6229031e8`.
-Both match the archive bytes, and Gloss 0.1.0 is enabled, as recorded in `archive-probe.txt`.
+Both match the archive bytes, and Gloss 0.1.0 is enabled, as recorded in `../final5/archive-probe.txt`.
 
 | Browser and scene | Light result and shot | Dark result and shot | Assertions and visual inspection |
 | --- | --- | --- | --- |
 | Chromium `password-lapse`, pretty URLs disabled | PASS `chromium/index-mode/password-lapse-light.png` | PASS `chromium/index-mode/password-lapse-dark.png` | Password prompts, saved flourish, stale-token recovery, ended-session wording, and restored flourish and warble are readable; both plain-link path forms find the saved review after re-entering the password. |
 | Chromium `password-lapse`, pretty URLs restored | PASS `chromium/password-lapse-light.png` | PASS `chromium/password-lapse-dark.png` | The fragment survives the actual password form, a fresh browser context restores Ada's review, and both plain-link path forms preserve its key, edit, and overall comment after another password prompt. |
 | Chromium `input-prompts` | PASS `chromium/input-prompts-light.png` | PASS `chromium/input-prompts-dark.png` | N3 focuses the empty name field without inserting the refused character into either the name or draft; keyboard selection opens no comment form, and pointer selection opens a legible form without overlap. |
-| Chromium `unplaced` | PASS `chromium/unplaced-light.png` | PASS `chromium/unplaced-dark.png` | N8 shows Saved after reopening and saving; N9 visibly shows stones replaced with pebbles in Could not place, and the 253-byte original item remains byte-identical after another save. |
+| Chromium `unplaced` | PASS `../final5/chromium/unplaced-light.png` | PASS `../final5/chromium/unplaced-dark.png` | The h2 matches the panel labels in size and aligns with Your review link, with no horizontal section padding, in both themes; struck stones and underlined pebbles remain visible, Saved is shown, and the 253-byte original item remains byte-identical after another save. |
 | Chromium `editor` | PASS `chromium/editor-light.png` | PASS `chromium/editor-dark.png` | Three changes and one comment survive reload; insertion, deletion, and comment cards are legible, and final buttons remain above the footer at 1,600px and 640px. |
 | Chromium `not-set-up` | PASS `chromium/not-set-up-light.png` | PASS `chromium/not-set-up-dark.png` | The explanatory sentence and read-only synthetic draft are clear, with no name or send controls; contrast is 13.59:1 in light and 12.20:1 in dark, at opacity 1. |
 | Chromium `sent` | PASS `chromium/sent-light-after-delete.png` | PASS `chromium/sent-dark-after-delete.png` | N1 deletes the sent review through owner WebDAV inside Node, reopens its link, retains Review sent and read-only content, removes item buttons, and asserts zero review files after two seconds. |
@@ -51,8 +54,10 @@ Both match the archive bytes, and Gloss 0.1.0 is enabled, as recorded in `archiv
 | Firefox `both` | PASS `firefox/both-firefox-light.png` | PASS `firefox/both-firefox-dark.png` | Editor changes, rendered PDF, marks, and comment cards are clear in both themes; footer and stacked-layout assertions pass at both widths. |
 | Firefox `pdf` | PASS `firefox/pdf-firefox-light.png` | PASS `firefox/pdf-firefox-dark.png` | The rendered synthetic garden, stones highlight, Alpha plants selection prompt, and comment controls are legible; wide and narrow final buttons remain reachable. |
 
-All 22 scene/theme results pass, including the additional password configuration run.
-All 99 light and dark shots were inspected, including password intermediate states, before and after deletion, layout shots, and settled PDF shots.
+All 22 earlier scene/theme results pass, including the additional password configuration run.
+The two refreshed unplaced theme results also pass, with live probes measuring both the heading and review-link label at 15px and their left edges at 1,048px.
+All 99 earlier light and dark shots were inspected, including password intermediate states, before and after deletion, layout shots, and settled PDF shots.
+Both refreshed final unplaced shots were visually inspected for matching label size, aligned text, and visible struck and underlined proposal words.
 Each PNG has a neighbouring `.probe.json`, and each scene has a browser-specific `-results.json` listing every captured path.
 N11 measures line pitch at `22.078125px` before and after entering the name in both themes, with font size `14.25px` and computed line height `22.0875px` unchanged.
 Some default editor and combined-view captures retain the side panel's scroll position, cropping the top of the overall-comment field; the dedicated layout shots demonstrate that the final card buttons are reachable above the footer.
@@ -68,11 +73,12 @@ N10 uses the unmodified server-generated URL and asserts HTTP 412, refresh 200, 
 No template URL is injected or replaced.
 The complete save sequence is HTTP 200, 412, 200, 412, 404, and 200, with no requests during the 6.5-second ended-session observation.
 Password shares are removed in the scene's finally block, and fixtures contain only synthetic garden text.
-The final sent scene leaves zero direct files in `Review reviews`, independently confirmed with `scripts/dev-nc.sh count-reviews`.
+The earlier final sent scene left zero direct files in `Review reviews`.
+After the refreshed run, `scripts/dev-nc.sh count-reviews` reports one direct review file left by the dark unplaced scene, whose successful save and preservation are recorded in `../final5/jobs/unplaced.log`.
 
 ## Reproducibility
 
-The archive is rebuilt with `scripts/package.sh $GLOSS_WORK/archive/` from a clean detached checkout of branch head `4c02748`, after committing the storage fix and bundle.
+The refreshed archive is rebuilt with `scripts/package.sh $GLOSS_WORK/archive/` from a clean detached checkout of branch head `7f7ca45`, after committing the CSS fix and heading test.
 Later scene and results changes do not alter the packaged runtime files.
 `scripts/package.sh` changed in the earlier round to reject dirty runtime paths and package committed allowlisted files with deterministic archive metadata.
 The instance is reset with `GLOSS_DEV_NC_FORCE_RESET=1 GLOSS_DEV_NC_COPY=1 scripts/dev-nc.sh reset`.
@@ -82,4 +88,6 @@ Scenes run sequentially with `GLOSS_SHOTS_SKIP_SYNC=1 node scripts/shots.mjs <sc
 Firefox uses `--browser firefox --out $GLOSS_WORK/shots/final4/firefox`.
 The disabled-pretty-URL password run uses `--out $GLOSS_WORK/shots/final4/chromium/index-mode`.
 The runner empties the review folder before each theme.
-The final scene is sent, including the owner deletion and reopen assertion.
+The earlier final scene was sent, including the owner deletion and reopen assertion.
+The refreshed run executes only unplaced in Chromium, in light and dark, with `GLOSS_SHOTS_SKIP_SYNC=1` and output `$GLOSS_WORK/shots/final5/chromium`.
+The external `final5/verify-unplaced.mjs` wrapper adds live assertions for heading size, weight, alignment, zero horizontal padding, and visible deletion and insertion decorations to the existing scene.
