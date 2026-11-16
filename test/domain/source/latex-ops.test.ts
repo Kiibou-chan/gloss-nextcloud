@@ -59,3 +59,58 @@ test('the ops are ordered, disjoint source ranges', () => {
   let last = 0;
   for (const op of ops) if (op.op === 'text') { expect(op.from).toBeGreaterThanOrEqual(last); last = op.to; }
 });
+
+test('a trailing backslash gives ops inside the text', () => {
+  for (const src of ['abc\\', 'word\\\\', '\\']) {
+    for (const op of latexOps(src)) if (op.op === 'text') expect(op.to).toBeLessThanOrEqual(src.length);
+    expect(() => key(src)).not.toThrow();
+  }
+  expect(key('abc\\')).toBe('abc');
+});
+test('sourceKey never throws on seeded random drafts from a small alphabet', () => {
+  const alphabet = ['\\', '[', ']', '{', '}', '%', '$', 'a', 'b', ' ', '\n', 'verb', '|', '😀'];
+  let s = 12345;
+  const next = (n: number) => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s % n; };
+  for (let n = 0; n < 3000; n++) {
+    let src = '';
+    for (let i = next(30); i > 0; i--) src += alphabet[next(alphabet.length)];
+    expect(() => key(src), JSON.stringify(src)).not.toThrow();
+  }
+});
+test('an unclosed bracket after a command or maths stays text and does not hide the rest', () => {
+  expect(key('before $x\\in[0,1)$ after text here')).toContain('aftertexthere');
+  expect(key('\\left[x\\right]')).toBe('x');
+});
+test('an unclosed bracket stops at the paragraph end', () => {
+  expect(key('\\item[a\n\nnext paragraph')).toContain('nextparagraph');
+});
+test('a verb span is literal, so a percent sign inside it is not a comment', () => {
+  expect(key('a \\verb|x % y| b')).toBe('axyb');
+});
+test('an unclosed label brace does not hide later paragraphs', () => {
+  expect(key('\\label{a\n\nlater words')).toContain('laterwords');
+});
+test('an escaped astral character stays in one op', () => {
+  const ops = latexOps('a\\😀b').filter(op => op.op === 'text');
+  expect(ops.some(op => op.op === 'text' && op.to - op.from === 2)).toBe(true);
+  expect(key('a\\😀b')).toContain('b');
+});
+test('brackets in maths and after unknown commands are text and never hide prose', () => {
+  expect(key('We have $x\\in[0,1)$ and then words remain $y\\in(0,1]$ end.')).toContain('andthenwordsremain');
+  expect(key('$\\alpha[x]$ tail')).toBe('xtail');
+  expect(key('a\\ldots[1] text')).toBe('a1text');
+});
+test('optional arguments of commands that take one stay hidden', () => {
+  expect(key('\\caption[short]{Long} \\footnote[2]{n} \\includegraphics[width=3cm]{f} \\usepackage[utf8]{inputenc}')).toBe('longn');
+});
+test('a trailing sentinel word survives seeded random drafts with maths and brackets', () => {
+  const alphabet = ['\\in', '\\alpha', '\\ldots', '\\cite', '\\section', '\\item', '\\\\', '[', ']', '(', ')', '{', '}', '$', '0,1', 'a', ' '];
+  let s = 777;
+  const next = (n: number) => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s % n; };
+  for (let n = 0; n < 3000; n++) {
+    let src = '';
+    for (let i = next(20); i > 0; i--) src += alphabet[next(alphabet.length)];
+    src += '\n\nsentinelword';
+    expect(key(src), JSON.stringify(src)).toContain('sentinelword');
+  }
+});

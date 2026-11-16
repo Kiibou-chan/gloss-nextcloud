@@ -4,6 +4,7 @@ import { SessionState } from '../../src/app/session-state'
 import { DraftReview } from '../../src/domain/review/draft-review'
 import { sourceKey } from '../../src/domain/pdf/match'
 import { plainOps } from '../../src/domain/source/typst-parse'
+import type { PdfPort } from '../../src/app/ports'
 import { fakes } from './fakes'
 
 test('defers PDF marks, reuses unchanged placements, and cancels on disposal', async () => {
@@ -102,4 +103,22 @@ test('ids with no place stay in offPdf, render runs only when the set changes, a
   render.mockClear()
   await unit.setView('editor')
   expect(render).toHaveBeenCalledTimes(1)
+})
+
+test('ids the PDF view reports as undrawn join offPdf and leave it when drawn again', async () => {
+  const f = fakes(), s = new SessionState(f.ports), render = vi.fn(), unit = new PdfMarks(s, { head: vi.fn(), render })
+  let report: (ids: readonly string[]) => void = () => {}
+  ;(f.pdf as PdfPort).onUndrawn = listener => { report = listener; return () => {} }
+  s.draft = 'alpha beta gamma delta'; s.file = 'draft.txt'; s.ops = plainOps(s.draft); s.source = sourceKey(s.file, s.draft, s.ops)
+  s.review = new DraftReview(s.file, s.draft)
+  s.review.comment({ from: 0, to: 5 }, 'found', f.ids.item(), f.clock.now())
+  const [found] = s.review.items().map(i => i.id)
+  await unit.setView('pdf'); await f.advance(400)
+  expect(s.offPdf.size).toBe(0)
+  render.mockClear()
+  report([found!])
+  expect(s.offPdf.has(found!)).toBe(true)
+  expect(render).toHaveBeenCalledTimes(1)
+  report([])
+  expect(s.offPdf.size).toBe(0)
 })

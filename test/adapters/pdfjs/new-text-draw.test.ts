@@ -49,6 +49,14 @@ beforeEach(() => {
 })
 afterEach(() => vi.restoreAllMocks())
 
+describe('undrawn ids in New text', () => {
+  it('returns the ids of marks that drew nothing, and none for a covered or placed one', () => {
+    const missing = drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, 0, 0, 5), struck('cccccccccc', 9, 0, 9, 2), caret('dddddddddd', 0, 99, 'after', 'x'), caret('eeeeeeeeee', 0, 4, 'after', 'flourish')], 'new')
+    expect([...missing]).toEqual(['cccccccccc', 'dddddddddd'])
+    expect(new Set(kids().map(k => k.dataset.id))).toEqual(new Set(['aaaaaaaaaa', 'eeeeeeeeee']))
+  })
+})
+
 describe('a replacement in New text', () => {
   it('covers the struck rectangle two pixels larger left and right and one above and below in the colour of the ring, measured from the canvas', () => {
     drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, 0, 0, 5), caret('aaaaaaaaaa', 0, 4, 'after', 'Omega')], 'new')

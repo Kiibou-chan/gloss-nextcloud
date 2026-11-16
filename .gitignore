@@ -4,3 +4,4 @@ shots/
 build/
 .dev-nc.env
 /vendor/
+!scripts/shots/

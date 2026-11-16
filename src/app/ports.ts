@@ -23,6 +23,7 @@ export interface PdfPort {
   show(): Promise<{ pages: readonly (readonly string[])[] }>
   setMarks(marks: readonly PdfMark[]): void
   setLook(look: PdfLook): void
+  onUndrawn?(listener: (ids: readonly string[]) => void): void | (() => void)
   scrollToMark(id: string): void
   onSelect(listener: (s: { text: string; fraction: number }) => void): void | (() => void)
 }

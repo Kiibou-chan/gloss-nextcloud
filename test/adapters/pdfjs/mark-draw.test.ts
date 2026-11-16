@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Mock } from 'vitest'
 import { drawPageMarks } from '../../../src/adapters/pdfjs/mark-draw'
 import type { PdfMark } from '../../../src/app/ports'
+import { createUndrawnTracker } from '../../../src/adapters/pdfjs/undrawn'
 
 const TEXTS = ['Alpha beta', 'gamma delta']
 let marks: HTMLElement
@@ -40,6 +41,23 @@ beforeEach(() => {
   } })
 })
 afterEach(() => vi.restoreAllMocks())
+
+describe('undrawn ids', () => {
+  it('returns the ids of marks that drew nothing', () => {
+    const missing = drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, 0, 0, 5), struck('cccccccccc', 9, 0, 9, 2), caret('dddddddddd', 0, 99, 'after', 'x')], 'changes')
+    expect([...missing]).toEqual(['cccccccccc', 'dddddddddd'])
+  })
+})
+
+describe('astral caret', () => {
+  it('measures the whole code point, not half of it', () => {
+    const page = makePage()
+    page.layer.textContentItemsStr = ['a😀b', 'x']
+    page.layer.textDivs[0]!.textContent = 'a😀b'
+    drawPageMarks(page, [caret('cccccccccc', 0, 1, 'after', 'n')], 'changes')
+    expect(ranges.map(r => [r.startOffset, r.endOffset])).toContainEqual([1, 3])
+  })
+})
 
 describe('struck words', () => {
   it('draws one struck line per rectangle across two items, measured from the marks layer', () => {
@@ -127,5 +145,17 @@ describe('per page', () => {
     marks.append(document.createElement('div'))
     drawPageMarks({ number: 1, marks: page.marks }, [struck('aaaaaaaaaa', 0, 0, 0, 2)], 'changes')
     expect(kids()).toHaveLength(0)
+  })
+})
+
+describe('undrawn tracker forget', () => {
+  it('reports again when a page with undrawn marks is released', () => {
+    const calls: (readonly string[])[] = []
+    const pages: { marks: HTMLElement }[] = []
+    const tracker = createUndrawnTracker(() => pages)
+    tracker.listen(ids => calls.push(ids))
+    tracker.set(1, new Set(['aaaaaaaaaa']))
+    tracker.forget(1)
+    expect(calls).toEqual([['aaaaaaaaaa'], []])
   })
 })
