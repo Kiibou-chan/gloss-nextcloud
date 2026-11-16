@@ -12,7 +12,7 @@ import { mountHead, mountPanel } from '../../src/ui/mount'
 const renderOptions = options as typeof options & { __r?: (vnode: { type: unknown; props: { id?: string } }) => void }
 
 const head = (extra: Partial<HeadView> = {}): HeadView => ({ name: 'Ada', title: 'synthetic.typ', hasPdf: true, view: 'editor', pdfLook: 'changes', editable: true, canSend: true, status: '', form: null, ...extra })
-const card = (id: string, extra: Partial<CardView> = {}): CardView => ({ id, kind: 'proposal', from: 0, shown: 'old', proposalShown: 'new', comments: [], editable: true, offPdf: false, unmarked: false, ...extra })
+const card = (id: string, extra: Partial<CardView> = {}): CardView => ({ id, kind: 'proposal', from: 0, shown: 'old', proposalShown: 'new', comments: [], editable: true, offPdf: false, unmarked: false, margin: false, ...extra })
 const commands = () => ({ setName: vi.fn(), setView: vi.fn(), setPdfLook: vi.fn(), openForm: vi.fn(), cancelForm: vi.fn(), commentOn: vi.fn(), deleteComment: vi.fn(), undoProposal: vi.fn(), focusItem: vi.fn(), send: vi.fn(), setOverall: vi.fn(), showKeptChanges: vi.fn(), copyReviewLink: vi.fn() } satisfies Pick<ReviewSession, 'setName' | 'setView' | 'setPdfLook' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges' | 'copyReviewLink'>)
 let dispose: (() => void)[] = []
 afterEach(() => { act(() => dispose.forEach(fn => fn())); dispose = []; document.body.replaceChildren() })
@@ -156,10 +156,15 @@ describe('review islands', () => {
     act(() => model.setHead(head({ view: 'editor' }))); expect(group.hasAttribute('hidden')).toBe(true)
     act(() => model.setHead(head({ view: 'pdf', hasPdf: false }))); expect(group.hasAttribute('hidden')).toBe(true)
   })
-  it('shows the quiet PDF line beside the look switch and nothing when it is empty', () => {
+  it('shows the quiet PDF line on a row of its own after the controls and nothing when it is empty', () => {
     const model = createPanelModel(), el = slot()
     act(() => { model.setHead(head({ view: 'pdf', pdfNote: 'Showing your PDF while the draft compiles.' })); dispose.push(mountHead(el, model, commands())) })
-    expect(el.querySelector('.gr-pdf-note-line')?.textContent).toBe('Showing your PDF while the draft compiles.')
+    const line = el.querySelector('.gr-pdf-note-line')!
+    expect(line.textContent).toBe('Showing your PDF while the draft compiles.')
+    expect(line.parentElement).toBe(el.firstElementChild!.parentElement)
+    expect(line.closest('.gr-pdf-look')).toBeNull()
+    const order = [...el.children]
+    expect(order.indexOf(line)).toBeGreaterThan(order.indexOf(el.querySelector('.gr-who')!))
     act(() => model.setHead(head({ view: 'pdf', pdfNote: '' }))); expect(el.querySelector('.gr-pdf-note-line')).toBeNull()
     act(() => model.setHead(head({ view: 'pdf' }))); expect(el.querySelector('.gr-pdf-note-line')).toBeNull()
   })
@@ -187,7 +192,13 @@ describe('the off-PDF line', () => {
     const el = slot()
     act(() => { const model = createPanelModel(); model.setHead(head()); model.upsertCard(card('a')); model.upsertCard(card('b', { unmarked: true })); model.setOrder(['a', 'b']); dispose.push(mountPanel(el, model, commands())) })
     expect(el.querySelector('[data-id="a"] .gr-unmarked')).toBeNull()
-    expect(el.querySelector('[data-id="b"] .gr-unmarked')?.textContent).toBe('Shown in the PDF without marks; Typst cannot mark text inside maths, code, or an argument.')
+    expect(el.querySelector('[data-id="b"] .gr-unmarked')?.textContent).toBe('Shown without marks.')
+    expect(el.querySelector('[data-id="b"] .gr-off-pdf')).toBeNull()
+  })
+  it('points a margin-marked unmarked card to the margin', () => {
+    const el = slot()
+    act(() => { const model = createPanelModel(); model.setHead(head()); model.upsertCard(card('b', { unmarked: true, margin: true })); model.setOrder(['b']); dispose.push(mountPanel(el, model, commands())) })
+    expect(el.querySelector('[data-id="b"] .gr-unmarked')?.textContent).toBe('Shown without marks; see the margin.')
   })
   it('shows "Not shown on the PDF." only on a flagged card', () => {
     const model = createPanelModel(), el = slot()

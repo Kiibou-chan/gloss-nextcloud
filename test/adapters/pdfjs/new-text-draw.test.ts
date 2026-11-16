@@ -78,19 +78,22 @@ describe('a replacement in New text', () => {
     expect(cls('gr-pdf-caret')).toHaveLength(0)
   })
 
-  it('puts the words that do not fit into one callout at the end of the last slot', () => {
+  it('puts the words that do not fit into one hover caret at the end of the last slot, never a callout', () => {
     drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, 0, 0, 5), caret('aaaaaaaaaa', 0, 4, 'after', 'Omega Sigma Tau')], 'new')
     expect(cls('gr-pdf-new').map(k => k.textContent)).toEqual(['Omega'])
-    const callouts = cls('gr-pdf-callout')
-    expect(callouts.map(k => k.textContent)).toEqual(['Sigma Tau'])
-    expect([callouts[0]!.style.left, callouts[0]!.style.top]).toEqual(['139px', '29px'])
+    expect(cls('gr-pdf-callout')).toHaveLength(0)
+    const bars = cls('gr-pdf-caret')
+    expect(bars.map(k => k.querySelector('.gr-pdf-label')!.textContent)).toEqual(['Sigma Tau'])
+    expect([bars[0]!.style.left, bars[0]!.style.top, bars[0]!.style.width, bars[0]!.style.height]).toEqual(['139px', '29px', '2px', '12px'])
+    expect(bars[0]!.tabIndex).toBe(0)
+    expect(bars[0]!.dataset.id).toBe('aaaaaaaaaa')
   })
 
   it('lays the words over two struck rectangles, each at its own height', () => {
     drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, 6, 1, 5), caret('aaaaaaaaaa', 1, 4, 'after', 'one two three four')], 'new')
     expect(cls('gr-pdf-cover')).toHaveLength(2)
     expect(cls('gr-pdf-new').map(k => k.textContent)).toEqual(['one', 'two'])
-    expect(cls('gr-pdf-callout').map(k => k.textContent)).toEqual(['three four'])
+    expect(cls('gr-pdf-caret').map(k => k.querySelector('.gr-pdf-label')!.textContent)).toEqual(['three four'])
   })
 })
 
@@ -120,31 +123,27 @@ describe('the new words in New text', () => {
   })
 })
 
-describe('the callout in New text', () => {
-  it('is cut at forty characters like a Changes label', () => {
-    drawPageMarks(makePage(), [caret('cccccccccc', 0, 4, 'after', 'x'.repeat(60))], 'new')
-    expect(cls('gr-pdf-callout')[0]!.textContent).toBe(`${'x'.repeat(39)}…`)
-  })
-  it('stays inside the page horizontally and below its top', () => {
-    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      return (this instanceof HTMLCanvasElement ? { ...canvasBox, width: 200, height: 100 } : { left: 11, top: 21, width: 170, height: 100 }) as DOMRect
-    })
-    drawPageMarks(makePage(), [caret('cccccccccc', 0, 4, 'after', 'flourish')], 'new')
-    const [callout] = cls('gr-pdf-callout')
-    // 8 characters at 6 px per character plus padding and border, so at most 170 - width from the page's left edge
-    expect(parseFloat(callout!.style.left)).toBeLessThanOrEqual(170 - 48)
-    expect(parseFloat(callout!.style.left)).toBeGreaterThanOrEqual(0)
-    expect(parseFloat(callout!.style.top)).toBeGreaterThanOrEqual(16)
-  })
-})
-
 describe('an insertion and a deletion in New text', () => {
-  it('draws a pure insertion as a callout at its caret and covers nothing', () => {
+  it('draws a pure insertion as a caret with its words as a hover label, never as a callout over the page', () => {
     drawPageMarks(makePage(), [caret('cccccccccc', 0, 4, 'after', 'flourish')], 'new')
     expect(cls('gr-pdf-cover')).toHaveLength(0)
     expect(cls('gr-pdf-new')).toHaveLength(0)
-    const [callout] = cls('gr-pdf-callout')
-    expect([callout!.textContent, callout!.style.left, callout!.style.top]).toEqual(['flourish', '139px', '29px'])
+    expect(cls('gr-pdf-callout')).toHaveLength(0)
+    const [bar] = cls('gr-pdf-caret')
+    expect(bar!.style.width).toBe('2px')
+    expect(bar!.querySelector('.gr-pdf-label')!.textContent).toBe('flourish')
+    expect(bar!.tabIndex).toBe(0)
+    expect(bar!.getAttribute('aria-label')).toBe('flourish')
+  })
+
+  it('cuts a caret label at forty characters and draws none for a line break', () => {
+    drawPageMarks(makePage(), [caret('cccccccccc', 0, 4, 'after', 'x'.repeat(60)), caret('dddddddddd', 1, 4, 'after', '(line break)')], 'new')
+    expect(cls('gr-pdf-caret').map(k => k.querySelector('.gr-pdf-label')?.textContent)).toEqual([`${'x'.repeat(39)}…`])
+  })
+
+  it('keeps the new words over the covers of a replacement and adds no caret for it', () => {
+    drawPageMarks(makePage(), [struck('aaaaaaaaaa', 0, 0, 0, 5), caret('aaaaaaaaaa', 0, 4, 'after', 'Omega')], 'new')
+    expect(cls('gr-pdf-caret')).toHaveLength(0)
   })
 
   it('covers a pure deletion and draws nothing over it', () => {
@@ -208,11 +207,9 @@ describe('the PDF font style in New text', () => {
     expect([word!.style.fontWeight, word!.style.fontStyle]).toEqual(['normal', 'normal'])
     expect(word!.style.fontFamily).not.toBe('')
   })
-  it('gives the callout the same weight and slant and measures with them', () => {
+  it('measures the words to fit with the font weight and slant', () => {
     const measure = vi.fn((text: string) => text.length * 6)
-    drawPageMarks(makePage({ measure, fontOf: () => serifBoldItalic }), [caret('cccccccccc', 0, 4, 'after', 'flourish')], 'new')
-    const [callout] = cls('gr-pdf-callout')
-    expect([callout!.style.fontWeight, callout!.style.fontStyle, callout!.style.fontFamily]).toEqual(['bold', 'italic', 'serif'])
-    expect(measure).toHaveBeenCalledWith('flourish', 11, 'serif', 'italic bold')
+    drawPageMarks(makePage({ measure, fontOf: () => serifBoldItalic }), [struck('cccccccccc', 0, 0, 0, 2), caret('cccccccccc', 0, 1, 'after', 'flourish flourish flourish')], 'new')
+    expect(measure).toHaveBeenCalledWith(expect.stringContaining('flourish'), 12, 'serif', 'italic bold')
   })
 })

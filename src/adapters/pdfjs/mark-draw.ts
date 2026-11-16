@@ -1,7 +1,9 @@
 import type { PdfMark } from '../../app/ports'
 import type { PdfLook } from '../../app/view'
-import { cut, drawNewText, type Entry, type NewTextPage } from './new-text-draw'
+import { BREAK_LABEL } from '../../app/brief'
+import { drawNewText, labelCaret, type Entry, type NewTextPage } from './new-text-draw'
 
+type Insert = Extract<PdfMark, { look: 'insert' }>
 const MARGIN_WIDTH = 3, MARGIN_GAP = 6
 
 export type MarkPage = NewTextPage & {
@@ -56,6 +58,11 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[], look: P
     bar.top = Math.min(bar.top, rect.top); bar.bottom = Math.max(bar.bottom, rect.top + rect.height)
     bars.set(id, bar)
   }
+  const lone: { mark: Insert; rect: DOMRect }[] = []
+  const caretBar = (mark: Insert, rect: DOMRect) => {
+    const bar = place(mark, 'caret', { left: mark.edge === 'after' ? rect.left + rect.width : rect.left, top: rect.top, width: 2, height: rect.height })
+    labelCaret(bar, mark.words)
+  }
   for (const mark of own) {
     if (mark.look === 'insert') {
       const text = layer.textContentItemsStr[mark.item] ?? ''
@@ -63,19 +70,8 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[], look: P
       const range = textRange(sized, mark.item, mark.offset, mark.offset + width)
       const rect = range ? [...range.getClientRects()].find(r => r.width && r.height) : undefined
       if (!rect) { missing.add(mark.id); continue }
-      if (look === 'new') { entry(mark, mark.item).caret = { left: mark.edge === 'after' ? rect.left + rect.width : rect.left, top: rect.top, words: mark.words }; continue }
-      const bar = place(mark, 'caret', { left: mark.edge === 'after' ? rect.left + rect.width : rect.left, top: rect.top, width: 2, height: rect.height })
-      const label = document.createElement('span')
-      label.className = 'gr-pdf-label'
-      label.textContent = cut(mark.words)
-      bar.append(label)
-      bar.tabIndex = 0
-      bar.setAttribute('aria-label', mark.words)
-      bar.addEventListener('click', () => {
-        const open = !bar.classList.contains('gr-open')
-        for (const other of page.marks.querySelectorAll('.gr-pdf-caret.gr-open')) other.classList.remove('gr-open')
-        bar.classList.toggle('gr-open', open)
-      })
+      if (look === 'new') { entry(mark, mark.item).caret = { left: mark.edge === 'after' ? rect.left + rect.width : rect.left, top: rect.top, words: mark.words }; lone.push({ mark, rect }); continue }
+      caretBar(mark, rect)
       continue
     }
     let drew = false
@@ -107,6 +103,10 @@ export function drawPageMarks(page: MarkPage, marks: readonly PdfMark[], look: P
     }
   }
   if (look === 'new') {
+    for (const { mark, rect } of lone) {
+      const e = entries.get(mark.id)
+      if (e && e.struck.length === 0) { e.caret = null; if (mark.words !== BREAK_LABEL) caretBar(mark, rect) }
+    }
     const { covers, words } = drawNewText([...entries.values()], page, origin)
     page.marks.prepend(...covers)
     page.marks.append(...words)

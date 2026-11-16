@@ -83,6 +83,7 @@ it('uses a small Delete button like Add comment', async () => {
   expect(button.classList.contains('gr-small')).toBe(true)
 })
 it.each([
+  ['quiet PDF line row', /\.gr-pdf-note-line\s*\{[^}]*flex-basis:\s*100%/],
   ['status row', /\.gr-status\s*\{[^}]*flex-basis:\s*100%/],
   ['panel-width review link', /\.gr-review-link input[^}]*width:\s*100%/],
   ['panel-width kept changes', /\.gr-conflict textarea[^}]*width:\s*100%/],

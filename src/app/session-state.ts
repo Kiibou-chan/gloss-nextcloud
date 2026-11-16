@@ -37,6 +37,7 @@ export class SessionState {
   listeners: (() => void)[] = []
   unplaced: Item[] = []
   offPdf = new Set<string>()
+  marginMarked = new Set<string>()
   omitted = new Set<string>()
   pdfDoc: PdfDoc | null = null
   pdfNote = ''

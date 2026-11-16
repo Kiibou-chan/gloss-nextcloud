@@ -16,6 +16,7 @@ export class PdfMarks {
   private swapped = false
   private pdfIndex: ReturnType<typeof pdfKey> | null = null
   private offPlaced = new Set<string>()
+  private margined = new Set<string>()
   private undrawn = new Set<string>()
   private unsubscribeUndrawn: (() => void) | null = null
   private pdfCache = new Map<string, { signature: string; marks: PdfMark[] }>()
@@ -66,7 +67,7 @@ export class PdfMarks {
       if (this.s.disposed || this.s.view === 'editor' || !this.pdfIndex || !this.s.review) return
       const next = new Map<string, { signature: string; marks: PdfMark[] }>()
       let changed = false
-      const off = new Set<string>()
+      const off = new Set<string>(), margin = new Set<string>()
       for (const item of this.s.review.items()) {
         if (item.kind === 'overall') continue
         const signature = JSON.stringify([item.from, item.quote, item.kind === 'proposal' ? item.proposal : ''])
@@ -76,13 +77,15 @@ export class PdfMarks {
           changed = true
           next.set(item.id, { signature, marks: this.place(item) })
         }
-        const shownByPdf = item.kind === 'proposal' && (this.s.pdfLook === 'original' || !!this.s.pdfDoc?.shown.has(item.id))
+        const shownByPdf = item.kind === 'proposal' && (this.s.pdfLook === 'original' || !!this.s.pdfDoc?.shown.has(item.id) || !!this.s.pdfDoc?.unmarked.has(item.id))
         if (next.get(item.id)!.marks.length === 0 && !shownByPdf) off.add(item.id)
+        if (item.kind === 'proposal' && next.get(item.id)!.marks.length > 0 && this.s.pdfDoc?.unmarked.has(item.id)) margin.add(item.id)
       }
       const redraw = changed || this.swapped || next.size !== this.pdfCache.size
       this.swapped = false
       this.pdfCache = next
       this.offPlaced = off
+      this.margined = margin
       if (redraw) this.s.ports.pdf.setMarks([...next.values()].flatMap(c => c.marks))
       this.applyOff()
     })
@@ -90,8 +93,10 @@ export class PdfMarks {
   private applyOff(): void {
     const off = new Set(this.offPlaced)
     for (const id of this.undrawn) if (this.pdfCache.has(id)) off.add(id)
-    const same = off.size === this.s.offPdf.size && [...off].every(id => this.s.offPdf.has(id))
+    const margin = new Set([...this.margined].filter(id => !off.has(id)))
+    const same = off.size === this.s.offPdf.size && [...off].every(id => this.s.offPdf.has(id)) && margin.size === this.s.marginMarked.size && [...margin].every(id => this.s.marginMarked.has(id))
     this.s.offPdf = off
+    this.s.marginMarked = margin
     if (!same) this.actions.render()
   }
   private placeCompiled(item: Proposal | Note, doc: PdfDoc): PdfMark[] {

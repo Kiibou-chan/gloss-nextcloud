@@ -6,10 +6,9 @@ type Rect = { left: number; top: number; width: number; height: number }
 /** A struck rectangle, with whether each side may be padded (a space or the item's edge lies beside it). */
 type Struck = Rect & { padLeft?: boolean; padRight?: boolean }
 const LABEL_LIMIT = 40
-export function cut(words: string): string {
+function cut(words: string): string {
   return words.length > LABEL_LIMIT ? `${words.slice(0, LABEL_LIMIT - 1)}…` : words
 }
-const CALLOUT_HEIGHT = 17, CALLOUT_MAX = 242, CALLOUT_CHROME = 10, CALLOUT_SIZE = 11
 /** The struck rectangles of one item on a page in reading order, and the new words with their caret when this page holds it. */
 export type Entry = { id: string; n: number; struck: Struck[]; family: string; weight: 'normal' | 'bold'; slant: 'normal' | 'italic'; size: number | null; caret: { left: number; top: number; words: string } | null }
 export type NewTextPage = { canvas?: HTMLCanvasElement; measure?: (text: string, size: number, family: string, style?: string) => number; fontOf?: (item: number) => { family: string; weight: 'normal' | 'bold'; slant: 'normal' | 'italic' } | null }
@@ -24,6 +23,21 @@ function measureText(text: string, size: number, family: string, style = ''): nu
 function imageOf(canvas: HTMLCanvasElement | undefined): ImageData | null {
   if (!canvas) return null
   try { return canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height) ?? null } catch { return null }
+}
+
+/** Gives a caret bar its words as a label shown only on hover, focus, or a click, so no label covers the page. */
+export function labelCaret(bar: HTMLElement, words: string): void {
+  const label = document.createElement('span')
+  label.className = 'gr-pdf-label'
+  label.textContent = cut(words)
+  bar.append(label)
+  bar.tabIndex = 0
+  bar.setAttribute('aria-label', words)
+  bar.addEventListener('click', () => {
+    const open = !bar.classList.contains('gr-open')
+    for (const other of bar.parentElement?.querySelectorAll('.gr-pdf-caret.gr-open') ?? []) other.classList.remove('gr-open')
+    bar.classList.toggle('gr-open', open)
+  })
 }
 
 const shorthand = (entry: Entry) => `${entry.slant === 'italic' ? 'italic ' : ''}${entry.weight === 'bold' ? 'bold' : ''}`.trim()
@@ -50,16 +64,6 @@ export function drawNewText(entries: readonly Entry[], page: NewTextPage, origin
     return el
   }
   const measure = page.measure ?? measureText
-  const callout = (entry: Entry, full: string, left: number, top: number) => {
-    const text = cut(full)
-    const width = Math.min(CALLOUT_MAX, measure(text, CALLOUT_SIZE, entry.family, shorthand(entry)) + CALLOUT_CHROME)
-    if (origin.width) left = Math.max(origin.left, Math.min(left, origin.left + origin.width - width))
-    top = Math.max(top, origin.top + CALLOUT_HEIGHT)
-    const el = node(entry, 'callout', { left, top, width: 0, height: 0 }, text)
-    el.style.width = el.style.height = ''
-    styleOf(el, entry)
-    words.push(el)
-  }
   for (const entry of entries) {
     for (const rect of entry.struck) {
       const ring = ringOf(image, { left: rect.left - (box?.left ?? 0), top: rect.top - (box?.top ?? 0), width: rect.width, height: rect.height }, ratio)
@@ -71,7 +75,7 @@ export function drawNewText(entries: readonly Entry[], page: NewTextPage, origin
     const text = entry.caret?.words
     if (!text || !entry.caret || text === BREAK_LABEL) continue
     const last = entry.struck.at(-1)
-    if (!last) { callout(entry, text, entry.caret.left, entry.caret.top); continue }
+    if (!last) continue
     const sizes = entry.struck.map(r => entry.size ?? r.height)
     const fit = fitWords(text, entry.struck.map((r, i) => ({ width: r.width, size: sizes[i]! })), (t, size) => measure(t, size, entry.family, shorthand(entry)))
     fit.lines.forEach((line, i) => {
@@ -81,7 +85,11 @@ export function drawNewText(entries: readonly Entry[], page: NewTextPage, origin
       styleOf(el, entry)
       words.push(el)
     })
-    if (fit.overflow) callout(entry, fit.overflow, last.left + last.width, last.top)
+    if (fit.overflow) {
+      const bar = node(entry, 'caret', { left: last.left + last.width, top: last.top, width: 2, height: last.height })
+      labelCaret(bar, fit.overflow)
+      words.push(bar)
+    }
   }
   return { covers, words }
 }

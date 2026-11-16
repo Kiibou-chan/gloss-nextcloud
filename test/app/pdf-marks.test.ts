@@ -174,6 +174,22 @@ test('a proposal Typst cannot mark gets a margin mark on its new words', async (
   expect(s.offPdf.has('p1')).toBe(false)
 })
 
+test('a proposal Typst cannot mark, whose words the page cannot place, is shown without marks and not off the PDF', async () => {
+  const { f, s, unit, doc, kinds } = await compiledSetup({ unwrap: new Set(['p1']), omit: new Set() })
+  f.pdf.showBytes.mockResolvedValue({ pages: [['Alpha beta gamma delta.']] })
+  await unit.showBytes(new Uint8Array([1]), doc()); await f.advance(400)
+  expect(kinds()).not.toContain('p1:margin')
+  expect(s.offPdf.has('p1')).toBe(false)
+  expect(s.marginMarked.has('p1')).toBe(false)
+})
+
+test('a margin-marked proposal Typst cannot mark is recorded as margin-marked', async () => {
+  const { f, s, unit, doc } = await compiledSetup({ unwrap: new Set(['p1']), omit: new Set() })
+  f.pdf.showBytes.mockResolvedValue({ pages: [['Alpha zeta gamma delta.']] })
+  await unit.showBytes(new Uint8Array([1]), doc()); await f.advance(400)
+  expect(s.marginMarked.has('p1')).toBe(true)
+})
+
 test('a proposal the compile left out is off the PDF', async () => {
   const { f, s, unit, doc } = await compiledSetup({ unwrap: new Set(), omit: new Set(['p1']) })
   f.pdf.showBytes.mockResolvedValue({ pages: [['Alpha beta gamma delta.']] })

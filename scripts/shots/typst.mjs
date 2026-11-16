@@ -80,7 +80,9 @@ async function typstCompile(args, helpers) {
   await expect(page.locator('#gr-pdf-look-changes')).toHaveAttribute('aria-pressed', 'true');
   expect(await red(page)).toBeGreaterThan(50);
   expect(await ink(page)).toBeGreaterThan(1000);
-  await expect(page.locator('.gr-unmarked')).toHaveCount(1);
+  await expect(page.locator('.gr-unmarked')).toHaveCount(2);
+  await expect(page.locator('.gr-off-pdf')).toHaveCount(0);
+  await expect(page.locator('.gr-items > li').filter({ hasText: 'covers' }).locator('.gr-unmarked')).toHaveText(/^Shown without marks/);
   await capture('-changes');
   const afterChanges = await compiles(page);
   await page.getByRole('button', { name: 'New text', exact: true }).click();
