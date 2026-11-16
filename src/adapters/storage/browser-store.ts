@@ -10,7 +10,6 @@ function isBackup(value: unknown): value is Backup {
 }
 
 export function createBrowserStore(shareToken: string): BackupStore {
-  // Preserve the spike's path-based preferences, including Nextcloud's deployment prefix.
   const base = location.pathname.replace(/\/$/, '')
   const backupKey = (key: string) => `gloss-review:${shareToken}:${key}`
   const get = (key: string): string | null => {
@@ -18,6 +17,15 @@ export function createBrowserStore(shareToken: string): BackupStore {
   }
   const put = (key: string, value: string): boolean => {
     try { localStorage.setItem(key, value); return true } catch { return false }
+  }
+  const preference = (prefix: string): string | null => {
+    const key = prefix + shareToken, current = get(key)
+    if (current !== null) return current
+    const legacy = get(prefix + base)
+    if (legacy !== null && put(key, legacy)) {
+      try { localStorage.removeItem(prefix + base) } catch { /* Token preference is already stored. */ }
+    }
+    return legacy
   }
   const read = (key: string): Backup | null => {
     try {
@@ -28,16 +36,16 @@ export function createBrowserStore(shareToken: string): BackupStore {
     } catch { return null }
   }
   return {
-    rememberedKey: () => get('gloss-review-id:' + base),
-    remember: key => { put('gloss-review-id:' + base, key) },
+    rememberedKey: () => preference('gloss-review-id:'),
+    remember: key => { put('gloss-review-id:' + shareToken, key) },
     read: key => read(backupKey(key)),
     write: (key, backup) => put(backupKey(key), JSON.stringify(backup)),
     keepConflict: (key, backup) => { put(backupKey(key) + ':conflict', JSON.stringify(backup)) },
     readConflict: key => read(backupKey(key) + ':conflict'),
     view() {
-      const value = get('gloss-review-view:' + base)
+      const value = preference('gloss-review-view:')
       return value === 'editor' || value === 'pdf' || value === 'both' ? value : null
     },
-    setView: view => { put('gloss-review-view:' + base, view) },
+    setView: view => { put('gloss-review-view:' + shareToken, view) },
   }
 }

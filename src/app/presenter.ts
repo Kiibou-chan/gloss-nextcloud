@@ -1,10 +1,10 @@
+import { brief } from './brief'
 import { RESELECT_COMMENT } from './comment-draft'
 import { shown } from '../domain/source/shown'
 import type { CardView } from './view'
 
 import { SessionState, type SessionActions } from './session-state'
 
-function brief(text: string): string { return text.replace(/\s+/g, ' ').trim() }
 
 export class Presenter {
   private cards = new Map<string, string>()

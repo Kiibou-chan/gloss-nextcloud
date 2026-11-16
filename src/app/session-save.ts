@@ -1,3 +1,4 @@
+import { requestName } from './name-guard'
 import { classify } from './failure'
 import { writeReview } from '../domain/format/write'
 import type { Backup } from './ports'
@@ -34,7 +35,10 @@ export class SessionSave {
       onStatus: (status, outcome) => {
         if (outcome && 'status' in outcome && classify(outcome) !== 'retry') {
           if (this.s.record?.sent) { this.s.record.sent = false; this.s.record.sentAt = null }
-          this.s.status = classify(outcome) === 'session' ? status : this.actions.refusal(outcome, 'Not saved: ')
+          const message = this.actions.refusal(outcome, 'Not saved: ')
+          this.s.status = classify(outcome) === 'session' ? status : message.text
+          this.s.blocked ||= message.blocks
+          if (outcome.status === 403) this.s.ports.reviewable = false
           if (outcome.status === 409 && outcome.error === 'conflict') {
             this.s.saved = true
             this.backup(true)
@@ -48,13 +52,12 @@ export class SessionSave {
             this.s.record.revision = outcome.revision; this.s.saved = true
             if (status === 'Review sent. Thank you.') this.s.commentDraft.clear()
           }
-          this.s.status = status === 'Saved' ? (this.s.record?.sent ? 'Sending…' : this.s.unplacedStatus || status) : status
+          this.s.status = status === 'Saved' ? (this.s.record?.sent ? 'Sending…' : status) : status
         }
         this.actions.render()
       },
       onChange: () => { this.backup(this.s.queue?.dirty ?? true); this.actions.head() },
     })
-    if (this.s.queue.refusal) this.s.status = this.actions.refusal(this.s.queue.refusal, 'Not saved: ')
     if (backup?.dirty) this.backup(true)
     this.actions.render()
   }
@@ -79,10 +82,8 @@ export class SessionSave {
     this.cancelBackup?.(); this.cancelBackup = this.s.ports.scheduler.after(300, () => { this.cancelBackup = null; this.backup(this.s.queue?.dirty ?? false); this.actions.head() })
   }
   async send(): Promise<void> {
-    if (this.s.ports.reviewable && !this.s.blocked && !this.s.record?.sent && (this.s.blankName || !this.s.record?.name)) {
-      this.s.status = 'Enter your name first.'; this.actions.head(); this.s.ports.panel.focusName?.(); return
-    }
-    if (this.s.form && this.s.ports.panel.hasCommentDraft?.()) {
+    if (requestName(this.s, () => this.actions.head())) return
+    if (this.s.form && this.s.ports.panel.hasCommentDraft()) {
       this.s.status = 'Add or cancel your comment before sending the review.'; this.actions.head(); return
     }
     if (!this.actions.editable() || (!this.s.review?.items().length && !this.actions.overallText().trim())) return

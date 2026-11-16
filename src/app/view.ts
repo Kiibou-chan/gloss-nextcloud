@@ -6,4 +6,4 @@ export type DeletedWords = { id: string; at: number; text: string }
 export type CardView = { id: string; kind: 'proposal' | 'comment'; from: number; shown: string; proposalShown: string; comments: readonly Comment[]; editable: boolean }
 export type HeadView = { sent?: boolean; reviewable?: boolean; name: string; title: string; hasPdf: boolean; view: ViewMode; editable: boolean; canSend: boolean; status: string; form: { detached?: boolean; target: Target; quote: string; focus: boolean } | null }
 
-export type UnplacedView = { id: string; quote: string; comments: readonly Comment[] }
+export type UnplacedView = { id: string; quote: string; proposal?: string; comments: readonly Comment[] }

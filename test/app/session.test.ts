@@ -203,7 +203,7 @@ describe('ReviewSession', () => {
       { kind: 'proposal', from: 0, quote: { exact: 'beta', prefix: '', suffix: '' }, proposal: 'blue', comments: [], at: f.clock.now() },
       { kind: 'comment', from: 0, quote: { exact: 'missing', prefix: '', suffix: '' }, comments: [{ text: 'lost', at: f.clock.now() }], at: f.clock.now() },
     ] }, revision: 0 }); const s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
-    expect(f.editor.setText).toHaveBeenLastCalledWith('alpha blue gamma delta'); expect(f.head().status).toBe('1 of your earlier items could not be placed; they stay in your review file.'); expect(f.editor.setEditable).toHaveBeenLastCalledWith(false)
+    expect(f.editor.setText).toHaveBeenLastCalledWith('alpha blue gamma delta'); expect(f.head().status).toBe('Review sent. Thank you.'); expect(f.editor.setEditable).toHaveBeenLastCalledWith(false)
   })
   it('can save again after a non-retried refusal', async () => {
     const { f } = await ready(); f.api.save.mockResolvedValueOnce({ status: 400, error: 'badReview' }); f.editor.replace(change); await f.advance(5000)

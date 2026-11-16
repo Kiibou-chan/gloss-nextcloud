@@ -32,3 +32,12 @@ test('uses the resolved main file and language without fetching the draft again'
   expect(s.file).toBe(main.file)
   expect(shown(main.text, s.ops, 0, main.text.length)).toBe('alpha')
 })
+
+test.each([403, 404, 410, 413])('applies explicit refusal editability at the open call site for %i', async status => {
+  const f = fakes(), s = new SessionState(f.ports)
+  const actions = { backup: vi.fn(), changed: vi.fn(), createQueue: vi.fn(), head: vi.fn(), install: vi.fn(), refusal: vi.fn(() => ({ text: 'Refused.', blocks: status !== 413 })), render: vi.fn(), setView: vi.fn() }
+  f.api.open.mockResolvedValue({ status, error: 'refused' })
+  await new Lifecycle(s, actions).loadReview('', null)
+  expect(s.status).toBe('Refused.'); expect(s.blocked).toBe(status !== 413)
+  expect(f.ports.reviewable).toBe(status !== 403)
+})

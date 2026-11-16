@@ -52,10 +52,10 @@ export interface Scheduler { after(ms: number, run: () => void): () => void }
 export type ReviewLinkView = { url: string; message: string }
 export interface PanelPort {
   setUnplaced(items: readonly UnplacedView[]): void
-  setCommentDraft?(text: string): void
-  focusName?(): void
-  hasCommentDraft?(): boolean
-  clearCommentDraft?(): void
+  setCommentDraft(text: string): void
+  focusName(): void
+  hasCommentDraft(): boolean
+  clearCommentDraft(): void
   setLink(view: ReviewLinkView | null): void
   upsertCard(view: CardView): void
   removeCard(id: string): void

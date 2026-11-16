@@ -1,3 +1,4 @@
+import { ProposalWords } from './proposal-words'
 import { Component } from 'preact'
 import type { Signal } from '@preact/signals'
 import type { CardView } from '../app/view'
@@ -11,12 +12,7 @@ export class Card extends Component<Props> {
     const proposal = view.kind === 'proposal'
     return <li data-id={view.id} onClick={() => session.focusItem(view.id)}>
       <div class="gr-card-head">
-        {proposal ? <>
-          {view.shown && <del>{view.shown}</del>}
-          {view.shown && view.proposalShown && ' → '}
-          {view.proposalShown && <ins>{view.proposalShown}</ins>}
-          {!view.shown && !view.proposalShown && '(line break)'}
-        </> : <blockquote>{view.shown}</blockquote>}
+        {proposal ? <ProposalWords original={view.shown} proposal={view.proposalShown} /> : <blockquote>{view.shown}</blockquote>}
       </div>
       {view.comments.map((comment, index) => <p class="gr-comment" key={index}>{comment.text}{view.editable && <>{' '}<button type="button" class="gr-small" onClick={event => { event.stopPropagation(); session.deleteComment(view.id, index) }}>Delete</button></>}</p>)}
       {view.editable && <div class="gr-card-actions">

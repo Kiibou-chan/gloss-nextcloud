@@ -17,11 +17,29 @@ it.each(['changed quote', 'different main file'])('C1 preserves raw unplaced ite
   const s = new ReviewSession({ ...f.ports, panel: model }, { address: '', fragment: '#' + key })
   const unmount = mountPanel(panel, model, s)
   await s.start()
-  expect(model.head.value.status).toBe('1 of your earlier items could not be placed; they stay in your review file.')
-  expect(panel.textContent).toContain('Could not place'); expect(panel.textContent).toContain('beta'); expect(panel.textContent).toContain('<img src=x onerror=alert(1)>'); expect(panel.querySelector('img')).toBeNull()
+  expect(model.head.value.status).toBe('Saved')
+  expect(panel.querySelector('[aria-label="Could not place"]')?.textContent).toContain('1 of your earlier items could not be placed; they stay in your review file.'); expect(panel.textContent).toContain('beta'); expect(panel.textContent).toContain('<img src=x onerror=alert(1)>'); expect(panel.querySelector('img')).toBeNull()
   s.setOverall('A new overall comment'); await f.advance(5000); await settle()
   expect(f.api.save.mock.lastCall![1]).toContain(raw)
   expect(JSON.parse(f.api.save.mock.lastCall![1]).items).toHaveLength(2)
-  expect(model.head.value.status).toBe('1 of your earlier items could not be placed; they stay in your review file.')
+  expect(model.head.value.status).toBe('Saved')
+  s.dispose(); unmount()
+})
+
+it.each([
+  ['beta', '  blue\n words ', 'blue words'],
+  ['beta', '', ''],
+  ['', 'inserted', 'inserted'],
+  ['\n', ' ', ''],
+])('shows an unplaced proposal as a card: %j to %j', async (quote, proposal, shown) => {
+  const f = fakes(), model = createPanelModel(), panel = document.createElement('aside'), at = f.clock.now()
+  const item = { id: '0000000002', kind: 'proposal', file: 'other.txt', from: 0, quote: { exact: quote, prefix: '', suffix: '' }, proposal, comments: [], at }
+  f.api.open.mockResolvedValue({ review: { ...record(), items: [item] }, revision: 1 })
+  const s = new ReviewSession({ ...f.ports, panel: model }, { address: '', fragment: '#' + key })
+  const unmount = mountPanel(panel, model, s); await s.start()
+  expect(model.unplaced.value[0]).toMatchObject({ proposal: shown })
+  expect(panel.querySelector('del')?.textContent ?? '').toBe(quote.trim())
+  expect(panel.querySelector('ins')?.textContent ?? '').toBe(shown)
+  if (!quote.trim() && !shown) expect(panel.textContent).toContain('(line break)')
   s.dispose(); unmount()
 })

@@ -1,3 +1,4 @@
+import { brief } from './brief'
 import type { Clock, Ports } from './ports'
 import type { HeadView } from './view'
 import type { DraftReview } from '../domain/review/draft-review'
@@ -41,8 +42,8 @@ export class CommentDraft {
       detached ||= range.detached
       if (!detached) target = { from: range.start, to: range.end }
     }
-    s.form = { target, quote: d.quote.exact.replace(/\s+/g, ' ').trim(), focus: false, ...(detached ? { detached: true } : {}) }
-    s.ports.panel.setCommentDraft?.(d.text)
+    s.form = { target, quote: brief(d.quote.exact), focus: false, ...(detached ? { detached: true } : {}) }
+    s.ports.panel.setCommentDraft(d.text)
     if (detached) s.status = RESELECT_COMMENT
   }
   update(text: string): void {
@@ -62,6 +63,6 @@ export class CommentDraft {
   clear(): void {
     this.draft = null
     if (this.s.key) this.s.ports.draftStore.clear(this.s.key)
-    this.s.ports.panel.clearCommentDraft?.()
+    this.s.ports.panel.clearCommentDraft()
   }
 }

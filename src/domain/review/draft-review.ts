@@ -14,7 +14,7 @@ export class DraftReview {
 
   constructor(private readonly file: string, private readonly draft: string, placed: readonly Item[] = []) {
     this.current = placed.filter(i => i.kind !== 'overall').filter(i => i.file === file).map(i => ({ ...i, quote: { ...i.quote }, comments: i.comments.map(c => ({ ...c })) }))
-    // Join saved neighbours once at load, before a card can be shown (M3).
+    // Join saved neighbours once at load, before a card can be shown.
     const proposals: Proposal[] = []
     for (const p of this.proposals().sort((a, b) => a.from - b.from)) {
       const previous = proposals[proposals.length - 1]
@@ -48,7 +48,7 @@ export class DraftReview {
     return this.replaceRegions(regions(this.text, ordered, this.map), ordered, newId, now)
   }
 
-  /** N2: the reconciliation path is uncapped, preserving whole-draft identities. */
+  /** The reconciliation path is uncapped, preserving whole-draft identities. */
   rebuild(text: string, newId: NewId, now: string): Edits {
     return text === this.text ? { changed: new Set(), removed: new Set() }
       : this.replaceRegions([{ from: 0, to: this.text.length }], [{ from: 0, to: this.text.length, insert: text }], newId, now, true)

@@ -23,3 +23,16 @@ test('backs up changes after 300 ms and saves with explicit options after five s
   unit.changed(); unit.dispose(); await f.advance(5000)
   expect(f.api.save).toHaveBeenCalledTimes(1)
 })
+
+test.each([403, 404, 410, 413])('applies explicit refusal editability at the save call site for %i', async status => {
+  const f = fakes(), s = new SessionState(f.ports)
+  const actions = { clearLinkMessage: vi.fn(), editable: () => true, head: vi.fn(), keepConflict: vi.fn(), overallText: () => '', refusal: vi.fn(() => ({ text: 'Refused.', blocks: status !== 413 })), render: vi.fn() }
+  s.key = 'Abcdef1234567890'; s.file = 'draft.txt'; s.draft = 'alpha'
+  s.record = { revision: 0, name: 'Ada', draft: { file: s.file, etag: 'v1' }, sent: false, sentAt: null, updatedAt: f.clock.now(), items: [] }
+  s.review = new DraftReview(s.file, s.draft); f.editor.setText(s.draft)
+  f.api.save.mockResolvedValue({ status, error: 'refused' })
+  const unit = new SessionSave(s, actions); unit.createQueue(); unit.changed(); await f.advance(5000)
+  expect(s.status).toBe('Refused.'); expect(s.blocked).toBe(status !== 413)
+  expect(f.ports.reviewable).toBe(status !== 403)
+  unit.dispose()
+})

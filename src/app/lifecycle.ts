@@ -85,16 +85,25 @@ export class Lifecycle {
     try {
       const opened = await this.s.ports.api.open(this.s.key)
       if (this.s.disposed || generation !== this.s.generation) return
-      if ('status' in opened) { this.s.status = this.actions.refusal(opened, 'Could not load your review: '); return }
+      if ('status' in opened) {
+        const message = this.actions.refusal(opened, 'Could not load your review: ')
+        this.s.status = message.text; this.s.blocked ||= message.blocks
+        if (opened.status === 403) this.s.ports.reviewable = false
+        return
+      }
       if (opened.review === null) {
         this.s.saved = false
         if (!name && backup) {
           const result = readBackup(backup.review, this.s.ports.ids)
           if (result && !('error' in result)) name = result.record.name
         }
-        if (backup && (backup.dirty || backup.saved)) {
-          this.restore({ ...backup, revision: 0 })
-          backup = { ...backup, revision: 0, pending: backup.pending?.revision === 0 ? backup.pending : null, saved: false, dirty: true }
+        if (backup) {
+          this.restore(backup)
+          if (!backup.dirty && this.s.record?.sent) this.s.saved = backup.saved
+          else {
+            this.restore({ ...backup, revision: 0 })
+            backup = { ...backup, revision: 0, pending: backup.pending?.revision === 0 ? backup.pending : null, saved: false, dirty: true }
+          }
         } else if (name) this.actions.install(this.emptyRecord(name))
       } else {
         const result = readReview(opened.rawReview ?? opened.review, () => this.s.ports.ids.item())

@@ -49,6 +49,18 @@ it.each([false, true])('M2 restores a missing review from backup and saves revis
   expect(f.panel.setOverallView).toHaveBeenLastCalledWith('retained'); expect(f.api.save.mock.lastCall![2]).toBe(0)
   expect(JSON.parse(f.api.save.mock.lastCall![1]).revision).toBe(1); s.dispose()
 })
+it('M2 restores a missing review from a clean sent backup read-only without saving again', async () => {
+  const f = fakes(), sent = { ...record('retained sent words'), revision: 7, sent: true, sentAt: '2026-11-15T20:00:00Z' }
+  f.store.remember(key); f.store.write(key, { review: JSON.stringify(sent), revision: 7, saved: true, dirty: false, pending: null, at: 'then' })
+  const s = new ReviewSession(f.ports); await s.start()
+  expect(f.panel.setOverallView).toHaveBeenLastCalledWith('retained sent words')
+  expect(f.head()).toMatchObject({ sent: true, editable: false, canSend: false, status: 'Review sent. Thank you.' })
+  expect(s.dirty).toBe(false)
+  await s.send(); s.setOverall('ignored'); await s.setName('ignored'); await f.advance(60000); s.pagehide(); s.online(); await settle()
+  expect(f.api.save).not.toHaveBeenCalled()
+  expect(f.store.read(key)).toMatchObject({ dirty: false })
+  s.dispose()
+})
 it('M3 pagehide duplicates the immutable in-flight bytes with keepalive', async () => {
   const f = fakes(), s = new ReviewSession(f.ports); await s.start(); await s.setName('Ada')
   f.api.save.mockImplementation(() => new Promise(() => {})); s.setOverall('pending'); await f.advance(5000)

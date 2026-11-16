@@ -40,7 +40,7 @@ test('C1 keeps an overlapping proposal raw and listed once after an overall edit
     const items = JSON.parse(saved).items
     expect(items).toHaveLength(3)
     expect(items.filter((item: { id: string }) => item.id === '0000000002')).toEqual([JSON.parse(raw)])
-    expect(f.panel.setUnplaced).toHaveBeenLastCalledWith([{ id: '0000000002', quote: 'beta', comments: JSON.parse(raw).comments }])
+    expect(f.panel.setUnplaced).toHaveBeenLastCalledWith([{ id: '0000000002', quote: 'beta', proposal: 'second replacement', comments: JSON.parse(raw).comments }])
     expect(f.editor.text()).toBe('first replacement')
   } finally { session.dispose() }
 })

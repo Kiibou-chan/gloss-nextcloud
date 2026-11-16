@@ -10,6 +10,8 @@ import { SessionItems } from './items'
 import { Presenter } from './presenter'
 import { PdfMarks } from './pdf-marks'
 import { LinkKey } from './link-key'
+import { editorTarget } from './editor-target'
+import { requestName } from './name-guard'
 
 /** Public commands used by the review islands. */
 export class ReviewSession {
@@ -34,12 +36,7 @@ export class ReviewSession {
       keepConflict: (...args) => this.lifecycle.keepConflict(...args),
       overallText: (...args) => this.items.overallText(...args),
       publishLink: (...args) => this.link.publishLink(...args),
-      refusal: (failure, prefix) => {
-        const message = refusal(failure, prefix)
-        if (message.blocks) this.s.blocked = true
-        if (failure.status === 403) ports.reviewable = false
-        return message.text
-      },
+      refusal,
       render: (...args) => this.presenter.render(...args),
       setView: (...args) => this.pdf.setView(...args),
     }
@@ -55,13 +52,11 @@ export class ReviewSession {
     this.listen(ports.editor.onSelect(range => {
       if (!this.presenter.editable()) { this.requestName(); return }
       if (!this.s.review || range.to <= range.from) return
-      const a = this.s.review.fromApplied(range.from), b = this.s.review.fromApplied(range.to)
-      const target = 'inside' in a ? { id: a.inside } : 'inside' in b ? { id: b.inside } : this.s.review.targetFor(a.at, b.at)
-      this.items.openForm(target, false)
+      this.items.openForm(editorTarget(this.s.review, range), false)
     }))
     this.listen(ports.pdf.onSelect(selection => {
       if (!this.presenter.editable()) { this.requestName(); return }
-      if (!this.s.source || !this.s.review || (ports.panel.hasCommentDraft?.() && !this.s.form?.detached)) return
+      if (!this.s.source || !this.s.review || (ports.panel.hasCommentDraft() && !this.s.form?.detached)) return
       const range = toSource(this.s.source, selection.text, selection.fraction)
       if (!range) this.s.status = 'That selection could not be placed in the draft. Select a little more, or use the editor.'
       else {
@@ -73,9 +68,7 @@ export class ReviewSession {
   }
   requestName(): void {
     if (this.s.disposed || this.presenter.editable()) return
-    if (this.s.ports.reviewable && !this.s.blocked && !this.s.record?.sent && (this.s.blankName || !this.s.record?.name)) {
-      this.s.status = 'Enter your name first.'; this.presenter.head(); this.s.ports.panel.focusName?.()
-    } else {
+    if (!requestName(this.s, () => this.presenter.head())) {
       this.s.status ||= 'This review is read-only.'; this.presenter.head()
     }
   }
@@ -84,14 +77,13 @@ export class ReviewSession {
     if (this.s.ports.pdf.commentSelection?.()) return
     const range = this.s.ports.editor.selection?.()
     if (!range || range.to <= range.from || !this.s.review) return
-    const a = this.s.review.fromApplied(range.from), b = this.s.review.fromApplied(range.to)
-    this.items.openForm('inside' in a ? { id: a.inside } : 'inside' in b ? { id: b.inside } : this.s.review.targetFor(a.at, b.at))
+    this.items.openForm(editorTarget(this.s.review, range))
   }
   async start(): Promise<void> { await this.lifecycle.start(); this.s.commentDraft.restore(); this.presenter.head() }
   async setName(name: string): Promise<void> { await this.lifecycle.setName(name); this.s.commentDraft.restore(); this.presenter.head() }
   pagehide(): void { return this.saving.pagehide() }
   openForm(target: Target, focus = true): void { return this.items.openForm(target, focus) }
-  setCommentDraft(text: string): void { this.s.commentDraft.update(text); this.s.ports.panel.setCommentDraft?.(text) }
+  setCommentDraft(text: string): void { this.s.commentDraft.update(text); this.s.ports.panel.setCommentDraft(text) }
   cancelForm(): void { return this.items.cancelForm() }
   commentOn(target: Target, text: string): void { return this.items.commentOn(target, text) }
   deleteComment(id: string, index: number): void { return this.items.deleteComment(id, index) }

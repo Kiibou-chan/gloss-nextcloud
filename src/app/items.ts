@@ -1,3 +1,4 @@
+import { brief } from './brief'
 import type { ReviewRecord } from '../domain/format/record'
 import { DraftReview } from '../domain/review/draft-review'
 import type { Change, Target } from '../domain/review/model'
@@ -5,7 +6,6 @@ import { placeItems } from '../domain/text/quote'
 
 import { SessionState, type SessionActions } from './session-state'
 
-function brief(text: string): string { return text.replace(/\s+/g, ' ').trim() }
 
 export class SessionItems {
   constructor(private readonly s: SessionState, private readonly actions: Pick<SessionActions, 'changed' | 'editable' | 'head' | 'render'>) {}
@@ -13,10 +13,10 @@ export class SessionItems {
     const placed = placeItems(record.items.filter(i => i.kind === 'overall' || i.file === this.s.file), this.s.draft)
     const ids = new Set(placed.placed.map(i => i.id))
     this.s.unplaced = record.items.filter(i => !ids.has(i.id))
-    this.s.ports.panel.setUnplaced(this.s.unplaced.flatMap(i => i.kind === 'overall' ? [] : [{ id: i.id, quote: i.quote.exact, comments: i.comments }]))
+    this.s.ports.panel.setUnplaced(this.s.unplaced.flatMap(i => i.kind === 'overall' ? [] : [{ id: i.id, quote: brief(i.quote.exact), ...(i.kind === 'proposal' ? { proposal: brief(i.proposal) } : {}), comments: i.comments }]))
     this.s.record = record; this.s.review = new DraftReview(this.s.file, this.s.draft, placed.placed)
     this.s.overallDraft = record.items.find(item => item.kind === 'overall')?.text ?? ''
-    this.s.status = this.s.unplacedStatus || (record.sent ? 'Review sent. Thank you.' : '')
+    this.s.status = record.sent ? 'Review sent. Thank you.' : ''
     this.s.ports.editor.setText(this.s.review.applied()); this.actions.render()
   }
   edit(changes: readonly Change[]): void {
@@ -24,7 +24,7 @@ export class SessionItems {
     this.s.review.edit(changes, () => this.s.ports.ids.item(), this.s.ports.clock.now()); this.actions.changed()
   }
   openForm(target: Target, focus = true): void {
-    if (!this.actions.editable() || !this.s.review || (this.s.ports.panel.hasCommentDraft?.() && !this.s.form?.detached)) return
+    if (!this.actions.editable() || !this.s.review || (this.s.ports.panel.hasCommentDraft() && !this.s.form?.detached)) return
     if (this.s.form?.detached) this.s.status = ''
     let quote: string
     if ('id' in target) {

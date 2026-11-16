@@ -22,7 +22,7 @@ export interface SessionActions {
   keepConflict(backup: Backup): void
   overallText(): string
   publishLink(): void
-  refusal(failure: Failure, prefix: string): string
+  refusal(failure: Failure, prefix: string): { text: string; blocks: boolean }
   render(): void
   setView(view: ViewMode): Promise<void>
 }
@@ -33,9 +33,6 @@ export class SessionState {
   disposed = false
   listeners: (() => void)[] = []
   unplaced: Item[] = []
-  get unplacedStatus(): string {
-    return this.unplaced.length ? `${this.unplaced.length} of your earlier items could not be placed; they stay in your review file.` : ''
-  }
   saved = false
   blocked = false
   pendingName = ''
