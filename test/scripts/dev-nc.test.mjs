@@ -40,3 +40,9 @@ test('accepts plain decimal development port 8090 with a Docker stub', () => {
   expect(result.status, result.stderr).toBe(0);
   expect(result.docker).toContain('container inspect gloss-dev-nc');
 });
+
+test('shares and copies every fixture folder, Latex among them', () => {
+  const script = readFileSync(resolve('scripts/dev-nc.sh'), 'utf8');
+  expect(script).toContain("for (const folder of ['Review', 'Plain', 'Long', 'Latex']) {");
+  expect(script).toMatch(/docker cp test\/fixtures\/nc\/Latex "\$container:\/var\/www\/html\/data\/gloss-owner\/files\/Latex"/);
+});

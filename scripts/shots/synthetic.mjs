@@ -1,10 +1,10 @@
 // The route-mocked synthetic mode: the real bundle and adapters against a page and API simulated in the browser context.
 import { readFile } from 'node:fs/promises';
 
-export const syntheticScenes = ['overall', 'review-link', 'pdf-proposals', 'both'];
+export const syntheticScenes = ['overall', 'review-link', 'pdf-proposals', 'both', 'latex-proposals'];
 const gardenScenes = ['overall', 'review-link'];
 const root = new URL('../../', import.meta.url);
-const fixtureMain = { Review: 'paper.typ' };
+const fixtureMain = { Review: 'paper.typ', Latex: 'paper.tex' };
 
 async function fixtureFiles(sceneName, folder) {
   if (gardenScenes.includes(sceneName)) {

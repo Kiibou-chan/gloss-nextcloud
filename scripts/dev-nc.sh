@@ -76,7 +76,7 @@ print(json.dumps([{'href': r.findtext('{DAV:}href'), 'collection': r.find('.//{D
       if (!state.links[arg]) throw Error();
       console.log(state.links[arg]);
     } else if (action === 'share') {
-      for (const folder of ['Review', 'Plain', 'Long']) {
+      for (const folder of ['Review', 'Plain', 'Long', 'Latex']) {
         const config = `user = "${state.owner}:${state.password}"\n`;
         const result = spawnSync('curl', ['--silent', '--fail', '--config', '-', '-H', 'OCS-APIRequest: true', '-X', 'POST', '--data-urlencode', `path=/${folder}`, '--data', 'shareType=3&permissions=1', `${state.base}/ocs/v2.php/apps/files_sharing/api/v1/shares?format=json`], { input: config, encoding: 'utf8' });
         if (result.status !== 0) throw Error();
@@ -172,6 +172,7 @@ JS
   occ app:enable notifications >/dev/null
   docker cp test/fixtures/nc/Review "$container:/var/www/html/data/gloss-owner/files/Review"
   docker cp test/fixtures/nc/Plain "$container:/var/www/html/data/gloss-owner/files/Plain"
+  docker cp test/fixtures/nc/Latex "$container:/var/www/html/data/gloss-owner/files/Latex"
   docker cp build/nc/Long "$container:/var/www/html/data/gloss-owner/files/Long"
   docker exec "$container" chown -R www-data:www-data /var/www/html/data/gloss-owner/files
   occ files:scan --path=gloss-owner/files >/dev/null

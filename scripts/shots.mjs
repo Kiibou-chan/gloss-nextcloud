@@ -167,7 +167,7 @@ async function main() {
         })) : {};
         const frames = (error.stack ?? '').split('\n').filter(line => /^\s+at .*scripts\//.test(line));
         results.push({ scene: sceneName, browser: browserName, colour, result: 'fail', shots, shot, probe, frames });
-        console.log(`FAIL ${sceneName} ${browserName} ${colour}: ${JSON.stringify({ probe, frames })}`);
+        console.log(`FAIL ${sceneName} ${browserName} ${colour}: ${JSON.stringify({ message: String(error.message).split("\n")[0], probe, frames })}`);
       } finally { await context.close(); }
     }
   } finally { await browser.close(); }
