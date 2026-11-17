@@ -99,8 +99,10 @@ class ReviewController extends AuthPublicShareController {
 			&& in_array($share->getShareType(), [IShare::TYPE_LINK, IShare::TYPE_EMAIL], true)
 			&& ($share->getPermissions() & Constants::PERMISSION_READ) !== 0
 			&& !$share->getHideDownload()
+			&& $share->getAttributes()?->getAttribute('permissions', 'download') !== false
 			&& $share->getNode() instanceof Folder
-			&& $share->getNode()->isReadable();
+			&& $share->getNode()->isReadable()
+			&& $share->getNode()->isShareable();
 	}
 
 	protected function isPasswordProtected(): bool {
@@ -219,6 +221,9 @@ class ReviewController extends AuthPublicShareController {
 	}
 
 	private function requireShare(): IShare {
+		if (!$this->isValidToken()) {
+			throw new NotFoundException('The share cannot be read.');
+		}
 		return $this->getShare() ?? throw new NotFoundException('The share is not a folder.');
 	}
 

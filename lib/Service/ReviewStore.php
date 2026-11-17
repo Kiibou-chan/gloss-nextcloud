@@ -140,7 +140,7 @@ class ReviewStore {
 	}
 
 	private function result(File $file, \stdClass $review, bool $sentNow, Folder $folder): SaveResult {
-		$draftFile = $this->draftLocator->locate($folder)?->main->getName() ?? '';
+		$draftFile = $sentNow ? ($this->draftLocator->locate($folder)?->main->getName() ?? '') : '';
 		return new SaveResult($review->revision, $sentNow, $file->getId(), $file->getPath(), $review->name, $draftFile);
 	}
 }
