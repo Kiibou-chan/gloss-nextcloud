@@ -8,7 +8,6 @@ use OCA\Gloss\Exception\ReviewRefused;
 use OCA\Gloss\Service\ReviewKey;
 use OCA\Gloss\Service\ReviewStore;
 use OCP\Constants;
-use OCP\Share;
 use OCA\Gloss\Service\SentNotifier;
 use OCP\Files\File;
 use OCP\Files\Folder;
@@ -87,7 +86,7 @@ final class ReviewStoreTest extends TestCase {
 		$this->share->method('getNodeId')->willReturn(23);
 		$this->share->method('getToken')->willReturn('synthetic-link');
 		$this->share->method('getPermissions')->willReturn(Constants::PERMISSION_READ);
-		$this->share->method('getShareType')->willReturn(Share::TYPE_LINK);
+		$this->share->method('getShareType')->willReturn(IShare::TYPE_LINK);
 		$this->share->method('getSharedBy')->willReturn('synthetic-owner');
 		$user = $this->createMock(Folder::class);
 		$user->method('getFirstNodeById')->with(23)->willReturn($folder);

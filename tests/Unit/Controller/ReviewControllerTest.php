@@ -16,7 +16,6 @@ use OCA\Gloss\Service\SharedFiles;
 use OCP\AppFramework\Http\Attribute\BruteForceProtection;
 use OCP\AppFramework\Http\Attribute\AnonRateLimit;
 use OCP\Constants;
-use OCP\Share;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\IRequest;
@@ -28,7 +27,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ReviewControllerTest extends TestCase {
-	private function controller(Folder $folder, ?ReviewStore $store = null, ?IShare $share = null, ?SentNotifier $notifier = null, int $permissions = Constants::PERMISSION_READ, int $type = Share::TYPE_LINK, bool $hideDownload = false, bool $readable = true): ReviewController {
+	private function controller(Folder $folder, ?ReviewStore $store = null, ?IShare $share = null, ?SentNotifier $notifier = null, int $permissions = Constants::PERMISSION_READ, int $type = IShare::TYPE_LINK, bool $hideDownload = false, bool $readable = true): ReviewController {
 		$share ??= $this->createMock(IShare::class);
 		$share->method('getNode')->willReturn($folder);
 		$share->method('getPermissions')->willReturn($permissions);
@@ -45,10 +44,10 @@ final class ReviewControllerTest extends TestCase {
 	public static function inaccessibleShares(): array {
 		$rows = [];
 		foreach (['draft', 'pdf', 'page', 'file'] as $action) {
-			$rows["$action create-only"] = [$action, Constants::PERMISSION_CREATE, false, true, Share::TYPE_LINK];
-			$rows["$action hide-download"] = [$action, Constants::PERMISSION_READ, true, true, Share::TYPE_LINK];
-			$rows["$action unreadable"] = [$action, Constants::PERMISSION_READ, false, false, Share::TYPE_LINK];
-			$rows["$action remote"] = [$action, Constants::PERMISSION_READ, false, true, Share::TYPE_REMOTE];
+			$rows["$action create-only"] = [$action, Constants::PERMISSION_CREATE, false, true, IShare::TYPE_LINK];
+			$rows["$action hide-download"] = [$action, Constants::PERMISSION_READ, true, true, IShare::TYPE_LINK];
+			$rows["$action unreadable"] = [$action, Constants::PERMISSION_READ, false, false, IShare::TYPE_LINK];
+			$rows["$action remote"] = [$action, Constants::PERMISSION_READ, false, true, IShare::TYPE_REMOTE];
 		}
 		return $rows;
 	}
@@ -68,19 +67,19 @@ final class ReviewControllerTest extends TestCase {
 	}
 
 	public function testReadOnlyLinkAndEmailPassTokenValidation(): void {
-		foreach ([Share::TYPE_LINK, Share::TYPE_EMAIL] as $type) {
+		foreach ([IShare::TYPE_LINK, IShare::TYPE_EMAIL] as $type) {
 			self::assertTrue($this->controller($this->createMock(Folder::class), type: $type)->isValidToken());
 		}
 	}
 
 	public static function unreviewableShares(): array {
 		return [
-			'update' => [Constants::PERMISSION_READ | Constants::PERMISSION_UPDATE, Share::TYPE_LINK, 'owner'],
-			'create' => [Constants::PERMISSION_READ | Constants::PERMISSION_CREATE, Share::TYPE_LINK, 'owner'],
-			'delete' => [Constants::PERMISSION_READ | Constants::PERMISSION_DELETE, Share::TYPE_LINK, 'owner'],
-			'reshare' => [Constants::PERMISSION_READ, Share::TYPE_LINK, 'recipient'],
-			'federated' => [Constants::PERMISSION_READ, Share::TYPE_REMOTE, 'owner'],
-			'email' => [Constants::PERMISSION_READ, Share::TYPE_EMAIL, 'owner'],
+			'update' => [Constants::PERMISSION_READ | Constants::PERMISSION_UPDATE, IShare::TYPE_LINK, 'owner'],
+			'create' => [Constants::PERMISSION_READ | Constants::PERMISSION_CREATE, IShare::TYPE_LINK, 'owner'],
+			'delete' => [Constants::PERMISSION_READ | Constants::PERMISSION_DELETE, IShare::TYPE_LINK, 'owner'],
+			'reshare' => [Constants::PERMISSION_READ, IShare::TYPE_LINK, 'recipient'],
+			'federated' => [Constants::PERMISSION_READ, IShare::TYPE_REMOTE, 'owner'],
+			'email' => [Constants::PERMISSION_READ, IShare::TYPE_EMAIL, 'owner'],
 		];
 	}
 
@@ -128,7 +127,7 @@ final class ReviewControllerTest extends TestCase {
 
 	#[DataProvider('unreviewableShares')]
 	public function testPageReportsUnreviewableSharesWithValidMarker(int $permissions, int $type, string $sharedBy): void {
-		if ($type === Share::TYPE_REMOTE) {
+		if ($type === IShare::TYPE_REMOTE) {
 			// S1 refuses federated shares before the page is rendered.
 			$this->expectException(\OCP\Files\NotFoundException::class);
 		}
@@ -165,7 +164,7 @@ final class ReviewControllerTest extends TestCase {
 		$folder->method('getDirectoryListing')->willReturn([]);
 		$share = $this->createMock(IShare::class);
 		$share->method('getNode')->willReturn($folder);
-		$share->method('getShareType')->willReturn(Share::TYPE_LINK);
+		$share->method('getShareType')->willReturn(IShare::TYPE_LINK);
 		$share->method('getPermissions')->willReturn(Constants::PERMISSION_READ);
 		$folder->method('isReadable')->willReturn(true);
 		$manager = $this->createMock(IManager::class);
