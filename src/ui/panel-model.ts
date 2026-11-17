@@ -7,7 +7,10 @@ import { flushIslands } from './island'
 
 /** Only the public session commands are available to the islands and their fakes. */
 export type PanelCommands = Pick<ReviewSession, 'setName' | 'setView' | 'setPdfLook' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges'> & Pick<ReviewSession, 'copyReviewLink'> & Partial<Pick<ReviewSession, 'requestName' | 'commentSelection' | 'setCommentDraft'>>
+type FinishStep = 'review' | 'comment' | 'summary'
 export interface PanelModel extends PanelPort {
+  readonly step: Signal<FinishStep>
+  setStep(step: FinishStep): void
   readonly unplaced: Signal<readonly UnplacedView[]>
   readonly commentDraft: Signal<string>
   readonly overall: Signal<string>
@@ -30,8 +33,10 @@ export function createPanelModel(): PanelModel {
   const count = signal({ changes: 0, comments: 0 })
   const head = signal<HeadView>({ name: '', title: '', hasPdf: false, view: 'editor', pdfLook: 'changes', editable: false, canSend: false, status: '', form: null })
   const conflict = signal<{ text: string; show: boolean } | null>(null)
+  const step = signal<FinishStep>('review')
   return {
-    link, unplaced, commentDraft,
+    link, unplaced, commentDraft, step,
+    setStep(next) { step.value = next; flushIslands() },
     setUnplaced(items) { unplaced.value = items; flushIslands() },
     focusName() { document.getElementById('gr-name')?.focus() },
     setCommentDraft(text) { commentDraft.value = text; flushIslands() },
@@ -50,6 +55,6 @@ export function createPanelModel(): PanelModel {
     removeCard(id) { cards.delete(id); flushIslands() },
     setOrder(ids) { order.value = [...ids]; flushIslands() },
     setCount(value) { count.value = { ...value }; flushIslands() },
-    setHead(view) { head.value = view; flushIslands() },
+    setHead(view) { head.value = view; if (view.sent || view.reviewable === false) step.value = 'review'; flushIslands() },
   }
 }

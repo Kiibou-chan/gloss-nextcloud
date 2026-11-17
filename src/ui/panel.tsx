@@ -6,16 +6,16 @@ import { Card } from './card'
 import { CommentForm } from './comment-form'
 import type { PanelCommands, PanelModel } from './panel-model'
 
-function Count({ model }: { model: PanelModel }) {
+export function Count({ model, id = 'gr-count' }: { model: PanelModel; id?: string }) {
   const { changes, comments } = model.count.value
-  return <div id="gr-count" class="gr-count">{changes} {changes === 1 ? 'change' : 'changes'}, {comments} {comments === 1 ? 'comment' : 'comments'}</div>
+  return <div id={id || undefined} class="gr-count">{changes} {changes === 1 ? 'change' : 'changes'}, {comments} {comments === 1 ? 'comment' : 'comments'}</div>
 }
-function Cards({ model, session }: { model: PanelModel; session: PanelCommands }) {
-  return <ol id="gr-items" class="gr-items">{model.order.value.map(id => {
+export function Cards({ model, session, id = 'gr-items' }: { model: PanelModel; session: PanelCommands; id?: string }) {
+  return <ol id={id || undefined} class="gr-items">{model.order.value.map(id => {
     const item = model.cards.get(id)
     return item ? <Card key={id} id={id} item={item} session={session} /> : null
   })}</ol>
 }
 export function Panel({ model, session }: { model: PanelModel; session: PanelCommands }) {
-  return <>{model.conflict.value && <Conflict {...model.conflict.value} onShow={() => session.showKeptChanges()} />}<Overall model={model} session={session} /><CommentForm model={model} session={session} /><ReviewLink model={model} session={session} /><Unplaced model={model} /><Count model={model} /><Cards model={model} session={session} /></>
+  return <>{model.conflict.value && <Conflict {...model.conflict.value} onShow={() => session.showKeptChanges()} />}<Overall model={model} /><CommentForm model={model} session={session} /><ReviewLink model={model} session={session} /><Unplaced model={model} /><Count model={model} /><Cards model={model} session={session} /></>
 }

@@ -14,12 +14,19 @@ const content = page => page.locator('#gr-text .cm-content');
 const count = page => page.locator('.gr-count');
 const status = page => page.getByRole('status');
 const name = page => page.getByRole('textbox', { name: 'Your name' });
+const finish = page => page.getByRole('button', { name: 'Finish review', exact: true });
 const send = page => page.getByRole('button', { name: 'Send review', exact: true });
 
+async function sendReview(page) {
+  await finish(page).click();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await send(page).click();
+}
+
 async function ready(page) {
-  await expect(content(page)).toBeVisible();
   await name(page).fill(reviewer);
   await name(page).press('Tab');
+  await expect(content(page)).toBeVisible();
   await expect(content(page)).toHaveAttribute('contenteditable', 'true');
 }
 
@@ -347,23 +354,24 @@ export const scenes = {
     await expect(page.getByText('This link is not set up for reviewing.', { exact: true })).toBeVisible();
     await expect(content(page)).toHaveAttribute('contenteditable', 'false');
     await expect(name(page)).toHaveCount(0);
-    await expect(send(page)).toHaveCount(0);
+    await expect(finish(page)).toHaveCount(0);
   } },
   waiting: { requires: 'F1b and F2', run: waiting },
   'review-link': { requires: 'F1b and F3', run: reviewLink },
   overall: { requires: 'F4', run: async ({ page }) => {
-    if (!await page.getByRole('textbox', { name: 'Overall comment' }).count()) throw new Error('Scene needs feature F4.');
     await ready(page);
     const before = await count(page).textContent();
+    await finish(page).click();
     const box = page.getByRole('textbox', { name: 'Overall comment' });
     await expect(box, 'Scene needs feature F4.').toBeVisible();
     await box.fill('The synthetic garden needs one more observation.');
-    await expect(count(page)).toHaveText(before);
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await expect(page.getByText('The synthetic garden needs one more observation.', { exact: true })).toBeVisible();
     await expect(send(page)).toBeEnabled();
   } },
   bell: { requires: 'F5', run: async args => {
     await editor(args);
-    await send(args.page).click();
+    await sendReview(args.page);
     await expect(status(args.page)).toHaveText('Review sent. Thank you.');
     const owner = await ownerPage(args);
     try {
@@ -374,7 +382,7 @@ export const scenes = {
   } },
   sent: { run: async args => {
     await editor(args);
-    await send(args.page).click();
+    await sendReview(args.page);
     await expect(status(args.page)).toHaveText('Review sent. Thank you.');
     await expect(content(args.page)).toHaveAttribute('contenteditable', 'false');
     await expect(args.page.locator('.gr-items button')).toHaveCount(0);

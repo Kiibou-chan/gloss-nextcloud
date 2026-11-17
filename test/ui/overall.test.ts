@@ -3,7 +3,7 @@ import { act } from 'preact/test-utils'
 import { ReviewSession } from '../../src/app/session'
 import { fakes } from '../app/fakes'
 import { createPanelModel } from '../../src/ui/panel-model'
-import { mountPanel } from '../../src/ui/mount'
+import { mountFinish, mountPanel } from '../../src/ui/mount'
 import type { PanelCommands } from '../../src/ui/panel-model'
 
 let dispose: (() => void) | undefined
@@ -14,19 +14,21 @@ function setup(editable = true, reviewable = true) {
   model.setOverallView?.('Saved synthetic note')
   const session = { setName: vi.fn(), setView: vi.fn(), setPdfLook: vi.fn(), openForm: vi.fn(), cancelForm: vi.fn(), commentOn: vi.fn(), deleteComment: vi.fn(), undoProposal: vi.fn(), focusItem: vi.fn(), send: vi.fn(), setOverall: vi.fn(), showKeptChanges: vi.fn(), copyReviewLink: vi.fn() } satisfies PanelCommands
   const el = document.createElement('div'); document.body.append(el)
-  dispose = mountPanel(el, model, session)
-  act(() => {})
-  return { model, session, el }
+  const fin = document.createElement('div'); document.body.append(fin)
+  const unmountPanel = mountPanel(el, model, session), unmountFinish = mountFinish(fin, model, session)
+  dispose = () => { unmountPanel(); unmountFinish() }
+  if (editable) act(() => model.setStep('comment'))
+  return { model, session, el: fin, panelEl: el }
 }
 it('shows an accessible Overall comment box first, with restored text and an unchanged count', () => {
   const { el } = setup()
   const box = el.querySelector<HTMLTextAreaElement>('#gr-overall')
   expect(box).not.toBeNull()
-  expect(el.querySelector('label[for="gr-overall"]')?.textContent).toBe('Overall comment')
+  expect(box!.getAttribute('aria-label')).toBe('Overall comment')
   expect(box!.value).toBe('Saved synthetic note')
   expect(box!.readOnly).toBe(false)
   expect(el.querySelector('textarea')).toBe(box)
-  expect(el.querySelector('#gr-count')?.textContent).toBe('0 changes, 0 comments')
+  expect(el.querySelector('.gr-count')?.textContent).toBe('0 changes, 0 comments')
 })
 it('reports every input, keeps focus, and draws port updates synchronously', () => {
   const { el, model, session } = setup()
@@ -42,10 +44,10 @@ it('reports every input, keeps focus, and draws port updates synchronously', () 
   expect(session.setOverall).toHaveBeenLastCalledWith('')
 })
 it.each([{ editable: false, reviewable: true }, { editable: false, reviewable: false }])('is read-only when editing is unavailable: %o', ({ editable, reviewable }) => {
-  const { el } = setup(editable, reviewable)
+  const { panelEl } = setup(editable, reviewable), el = panelEl
   const box = el.querySelector<HTMLTextAreaElement>('#gr-overall')
   expect(box).toBeNull()
-  expect(el.querySelector('.gr-overall-text')?.textContent).toBe('Overall commentSaved synthetic note')
+  expect(panelEl.querySelector('.gr-overall-text')?.textContent).toBe('Overall commentSaved synthetic note')
 })
 
 it('keeps a typed space in the controlled box while disabling Send and omitting the saved item', async () => {
@@ -53,9 +55,9 @@ it('keeps a typed space in the controlled box while disabling Send and omitting 
   const session = new ReviewSession({ ...f.ports, panel: model })
   await session.start(); await session.setName('Ada')
   const el = document.createElement('div'); document.body.append(el)
-  const unmount = mountPanel(el, model, session)
+  const unmount = mountFinish(el, model, session)
   dispose = () => { unmount(); session.dispose() }
-  act(() => {})
+  act(() => model.setStep('comment'))
   const box = el.querySelector<HTMLTextAreaElement>('#gr-overall')!
   act(() => { box.value = 'x'; box.dispatchEvent(new Event('input', { bubbles: true })) })
   expect(model.head.value.canSend).toBe(true)

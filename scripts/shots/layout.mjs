@@ -35,7 +35,7 @@ export function layoutScene({ ready, status }) {
         } catch { window.__shift = null; }
       });
       await page.goto(state.links.Typst, { waitUntil: 'networkidle' });
-      await expect(page.locator('#gr-text .cm-content')).toBeVisible();
+      await expect(page.locator('#gr-text .cm-content')).toBeAttached();
       await page.waitForTimeout(1500);
       const shift = await page.evaluate(() => window.__shift);
       if (shift !== null) expect(shift, `layout shift while loading ${JSON.stringify(await page.evaluate(() => window.__shiftLog))}`).toBeLessThan(loadShiftLimit);
@@ -43,16 +43,17 @@ export function layoutScene({ ready, status }) {
       for (const size of [{ width: 900, height: 700 }, { width: 640, height: 800 }]) {
         await page.setViewportSize(size);
         await page.reload({ waitUntil: 'networkidle' });
-        await expect(page.locator('#gr-text .cm-content')).toBeVisible();
+        await expect(page.locator('#gr-text .cm-content')).toBeAttached();
         await page.waitForTimeout(1000);
         const narrow = await page.evaluate(() => window.__shift);
         if (narrow !== null) expect(narrow, `layout shift while loading at ${size.width}px ${JSON.stringify(await page.evaluate(() => window.__shiftLog))}`).toBeLessThan(loadShiftLimit);
       }
       await page.setViewportSize(original);
       await page.reload({ waitUntil: 'networkidle' });
-      await expect(page.locator('#gr-text .cm-content')).toBeVisible();
+      await expect(page.locator('#gr-text .cm-content')).toBeAttached();
       const first = await geometry(page);
       const seen = [];
+      await ready(page);
       for (const [label, view] of [...views, views[0]]) {
         await page.getByRole('button', { name: label, exact: true }).click();
         await expect(page.locator('#gloss-review')).toHaveAttribute('data-view', view);
@@ -63,7 +64,6 @@ export function layoutScene({ ready, status }) {
         expect(differences(first, now), `${view} geometry`).toEqual([]);
         await capture(`-${view}`);
       }
-      await ready(page);
       await expect(status(page)).toBeVisible();
       expect(differences(first, await geometry(page)), 'geometry once the name is set').toEqual([]);
     },

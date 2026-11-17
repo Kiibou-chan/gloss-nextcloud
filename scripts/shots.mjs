@@ -144,6 +144,8 @@ async function main() {
           await capture('-settled');
         }
         if (fixture && sceneName === 'overall') {
+          await page.getByRole('button', { name: 'Finish review', exact: true }).click();
+          await page.getByRole('button', { name: 'Continue', exact: true }).click();
           await page.getByRole('button', { name: 'Send review', exact: true }).click();
           await page.getByRole('status').getByText('Review sent. Thank you.', { exact: true }).waitFor();
           if (!await page.locator('.gr-overall-text').count() || await page.locator('#gr-overall').count()) throw new Error('Sent overall comment must be plain text.');

@@ -199,7 +199,7 @@ it('renders an unreviewable page without a name field or Send', async () => {
   const unmountHead = mountHead(header, model, session), unmountPanel = mountPanel(panel, model, session)
   try {
     await session.start()
-    expect(header.querySelector('input')).toBeNull(); expect(header.querySelector('#gr-send')).toBeNull()
+    expect(header.querySelector('input')).toBeNull(); expect(header.querySelector('#gr-finish')).toBeNull()
     expect(header.textContent + panel.textContent).toContain('This link is not set up for reviewing.')
     expect(f.editor.setEditable).toHaveBeenLastCalledWith(false)
   } finally { session.dispose(); unmountHead(); unmountPanel() }

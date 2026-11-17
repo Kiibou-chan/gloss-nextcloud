@@ -5,16 +5,18 @@ import { ReviewSession } from '../../src/app/session'
 import { createPanelModel } from '../../src/ui/panel-model'
 import { Head } from '../../src/ui/head'
 import { Panel } from '../../src/ui/panel'
+import { Finish } from '../../src/ui/finish'
 import { fakes } from '../app/fakes'
 import { readFileSync } from 'node:fs'
 
 let clean = () => {}
 afterEach(() => { act(clean); document.body.replaceChildren() })
-async function setup(named = true) {
+async function setup(named = true, comment = false) {
   const f = fakes(), model = createPanelModel(), session = new ReviewSession({ ...f.ports, panel: model })
   await session.start(); if (named) await session.setName('Ada')
   const root = document.createElement('div'); document.body.append(root)
-  act(() => render(h('div', {}, h(Head, { model, session }), h(Panel, { model, session })), root))
+  act(() => render(h('div', {}, h(Head, { model, session }), h(Panel, { model, session }), h(Finish, { model, session })), root))
+  if (comment) act(() => model.setStep('comment'))
   clean = () => { render(null, root); session.dispose() }
   return { f, model, session, root }
 }
@@ -46,7 +48,7 @@ it('clears the draft after Add', async () => {
   expect(model.commentDraft.value).toBe(''); expect(model.head.value.form).toBeNull()
 })
 it('focuses the name for an overall key before a name is supplied', async () => {
-  const { root, model } = await setup(false)
+  const { root, model } = await setup(false, true)
   const event = new KeyboardEvent('keydown', { key: 'x', bubbles: true, cancelable: true })
   act(() => { root.querySelector('#gr-overall')!.dispatchEvent(event) })
   expect(event.defaultPrevented).toBe(true)
@@ -62,12 +64,12 @@ it('hides permanent read-only hints and empty overall, renders saved overall as 
   act(() => { model.setOverallView('Synthetic sent note'); model.setHead({ ...model.head.value, reviewable: true, sent: true }) })
   expect(root.querySelector<HTMLTextAreaElement>('textarea#gr-overall')).toBeNull()
   expect(root.textContent).toContain('Synthetic sent note')
-  expect(root.querySelector<HTMLInputElement>('#gr-name')!.disabled).toBe(true)
+  expect(root.querySelector<HTMLButtonElement>('.gr-name-quiet')!.disabled).toBe(true)
 })
 it('disables the name field after Send', async () => {
   const { root, model } = await setup()
   act(() => model.setHead({ ...model.head.value, sent: true, editable: false }))
-  expect(root.querySelector<HTMLInputElement>('#gr-name')!.disabled).toBe(true)
+  expect(root.querySelector<HTMLButtonElement>('.gr-name-quiet')!.disabled).toBe(true)
 })
 it('shows a saved overall comment as plain text when read-only', async () => {
   const { root, model } = await setup()
@@ -108,7 +110,7 @@ it('keeps an unfinished comment visible when Send is attempted', async () => {
   expect(model.head.value.sent).toBe(false)
 })
 it.each(['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Escape', 'Shift', 'Control', 'Alt', 'Meta'])('does not request a name for Overall navigation key %s', async key => {
-  const { root, model } = await setup(false)
+  const { root, model } = await setup(false, true)
   const box = root.querySelector<HTMLTextAreaElement>('#gr-overall')!
   box.focus()
   act(() => { box.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })) })
@@ -116,17 +118,17 @@ it.each(['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Escape', 'Sh
   expect(document.activeElement).toBe(box)
 })
 it('requests a name for an Overall paste before a name is supplied', async () => {
-  const { root, model } = await setup(false)
+  const { root, model } = await setup(false, true)
   act(() => { root.querySelector('#gr-overall')!.dispatchEvent(new Event('paste', { bubbles: true })) })
   expect(model.head.value.status).toBe('Enter your name first.')
 })
 it.each(['x', 'Enter', 'Backspace', 'Delete'])('requests a name for Overall text key %s', async key => {
-  const { root, model } = await setup(false)
+  const { root, model } = await setup(false, true)
   act(() => { root.querySelector('#gr-overall')!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })) })
   expect(model.head.value.status).toBe('Enter your name first.')
 })
 it('does not request a name for Overall Shift+Tab', async () => {
-  const { root, model } = await setup(false)
+  const { root, model } = await setup(false, true)
   act(() => { root.querySelector('#gr-overall')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true })) })
   expect(model.head.value.status).toBe('Enter your name to start.')
 })

@@ -15,6 +15,7 @@ vi.mock('../src/ui/mount', async importOriginal => {
   const original = await importOriginal<typeof import('../src/ui/mount')>()
   return {
     mountHead: (...args: Parameters<typeof original.mountHead>) => { state.order.push('head'); expect(state.f!.editor.onEdit).toBeDefined(); return original.mountHead(...args) },
+    mountFinish: (...args: Parameters<typeof original.mountFinish>) => original.mountFinish(...args),
     mountPanel: (...args: Parameters<typeof original.mountPanel>) => { state.order.push('panel'); return original.mountPanel(...args) },
   }
 })
@@ -40,7 +41,7 @@ it('wires the template, session, islands, view layout, and teardown', async () =
   expect(state.f.api.draft).toHaveBeenCalledTimes(1)
   const name = el.querySelector<HTMLInputElement>('#gr-name')!
   name.value = 'Ada'; name.dispatchEvent(new Event('input', { bubbles: true })); name.dispatchEvent(new Event('change', { bubbles: true }))
-  await vi.waitFor(() => expect(el.querySelector('#gr-send')).not.toBeNull())
+  await vi.waitFor(() => expect(el.querySelector('#gr-finish')).not.toBeNull())
   await vi.waitFor(() => expect(state.f!.editor.setEditable).toHaveBeenLastCalledWith(true))
   expect(state.f.api.open).not.toHaveBeenCalled()
   expect(state.f.store.rememberedKey()).toMatch(/^[A-Za-z0-9]{16}$/)

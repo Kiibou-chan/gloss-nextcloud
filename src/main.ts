@@ -13,7 +13,7 @@ import { browserScheduler } from './adapters/browser/scheduler'
 import { browserClipboard } from './adapters/browser/clipboard'
 import { languageOf, spellLanguage } from './domain/source/language'
 import { createPanelModel } from './ui/panel-model'
-import { mountHead, mountPanel } from './ui/mount'
+import { mountFinish, mountHead, mountPanel } from './ui/mount'
 
 declare const __APP_VERSION__: string
 
@@ -46,6 +46,12 @@ export async function mountReview(root: HTMLElement): Promise<() => void> {
   }, { address: location.href, fragment: location.hash }, { ...main, language })
   const unmountHead = mountHead(header, model, session)
   const unmountPanel = mountPanel(side, model, session)
+  const finish = document.createElement('section')
+  finish.className = 'gr-finish'; finish.setAttribute('aria-label', 'Finish review')
+  root.append(finish)
+  const unmountFinish = mountFinish(finish, model, session)
+  // island-effects: allow mirrors the step onto the page root and the finish section outside any island
+  const unsubscribeStep = model.step.subscribe(step => { root.dataset.step = step; finish.hidden = step === 'review' })
   const unsubscribe = model.head.subscribe(view => {
     root.dataset.view = view.view
     text.hidden = view.view === 'pdf'
@@ -58,7 +64,7 @@ export async function mountReview(root: HTMLElement): Promise<() => void> {
     window.removeEventListener('pagehide', onPageHide)
     window.removeEventListener('beforeunload', onBeforeUnload)
     window.removeEventListener('online', onOnline)
-    session.dispose(); unsubscribe(); unmountPanel(); unmountHead()
+    session.dispose(); unsubscribe(); unsubscribeStep(); unmountFinish(); finish.remove(); unmountPanel(); unmountHead()
     editor.dispose?.(); pdf.dispose?.()
   }
   const onPageHide = (event: PageTransitionEvent) => { session.pagehide(); if (!event.persisted) dispose() }

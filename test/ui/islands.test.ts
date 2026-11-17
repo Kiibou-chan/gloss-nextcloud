@@ -11,6 +11,8 @@ import { mountHead, mountPanel } from '../../src/ui/mount'
 
 const renderOptions = options as typeof options & { __r?: (vnode: { type: unknown; props: { id?: string } }) => void }
 
+const openName = (el: HTMLElement) => { click(el.querySelector('.gr-name-quiet')); return el.querySelector<HTMLInputElement>('#gr-name')! }
+const saveName = (el: HTMLElement) => act(() => { el.querySelector('.gr-name-pop')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })) })
 const head = (extra: Partial<HeadView> = {}): HeadView => ({ name: 'Ada', title: 'synthetic.typ', hasPdf: true, view: 'editor', pdfLook: 'changes', editable: true, canSend: true, status: '', form: null, ...extra })
 const card = (id: string, extra: Partial<CardView> = {}): CardView => ({ id, kind: 'proposal', from: 0, shown: 'old', proposalShown: 'new', comments: [], editable: true, offPdf: false, unmarked: false, margin: false, ...extra })
 const commands = () => ({ setName: vi.fn(), setView: vi.fn(), setPdfLook: vi.fn(), openForm: vi.fn(), cancelForm: vi.fn(), commentOn: vi.fn(), deleteComment: vi.fn(), undoProposal: vi.fn(), focusItem: vi.fn(), send: vi.fn(), setOverall: vi.fn(), showKeptChanges: vi.fn(), copyReviewLink: vi.fn() } satisfies Pick<ReviewSession, 'setName' | 'setView' | 'setPdfLook' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges' | 'copyReviewLink'>)
@@ -105,42 +107,56 @@ describe('review islands', () => {
     click(el.querySelector('#gr-cancel')); expect(session.cancelForm).toHaveBeenCalledOnce()
     act(() => model.setHead(head())); expect(el.querySelector('#gr-form')?.hasAttribute('hidden')).toBe(true)
   })
-  it('keeps an unfinished name through head updates and commits non-blank names on change', () => {
+  it('keeps an unfinished name through head updates and commits non-blank names on save', () => {
     const model = createPanelModel(), session = commands(), el = slot()
     act(() => { model.setHead(head()); dispose.push(mountHead(el, model, session)) })
-    const name = el.querySelector<HTMLInputElement>('#gr-name')!
+    expect(el.querySelector('.gr-name-quiet')?.textContent).toBe('Reviewing as Ada')
+    const name = openName(el)
     act(() => { name.value = 'Grace'; name.dispatchEvent(new Event('input', { bubbles: true })) })
     expect(session.setName).not.toHaveBeenCalled()
     act(() => model.setHead(head({ status: 'Saved' })))
     expect(name.value).toBe('Grace')
-    act(() => { name.dispatchEvent(new Event('change', { bubbles: true })) })
+    saveName(el)
     expect(session.setName).toHaveBeenCalledExactlyOnceWith('Grace')
+    expect(el.querySelector('#gr-name')).toBeNull()
     act(() => model.setHead(head({ name: 'Katherine' })))
-    expect(name.value).toBe('Katherine')
-    act(() => {
-      name.value = '  Mary  '; name.dispatchEvent(new Event('input', { bubbles: true }))
-      name.dispatchEvent(new Event('change', { bubbles: true }))
-    })
+    expect(openName(el).value).toBe('Katherine')
+    act(() => { const n = el.querySelector<HTMLInputElement>('#gr-name')!; n.value = '  Mary  '; n.dispatchEvent(new Event('input', { bubbles: true })) })
+    saveName(el)
     expect(session.setName).toHaveBeenLastCalledWith('Mary')
-    act(() => {
-      name.value = '   '; name.dispatchEvent(new Event('input', { bubbles: true }))
-      name.dispatchEvent(new Event('change', { bubbles: true }))
-    })
-    expect(session.setName).toHaveBeenCalledTimes(3); expect(session.setName).toHaveBeenLastCalledWith('')
+    const blank = openName(el)
+    act(() => { blank.value = '   '; blank.dispatchEvent(new Event('input', { bubbles: true })) })
+    expect(el.querySelector<HTMLButtonElement>('.gr-name-pop button[type="submit"]')?.disabled).toBe(true)
+    saveName(el)
+    expect(session.setName).toHaveBeenCalledTimes(2)
   })
-  it('renders the head, view aria state, name and Send commands, and disabled Send', () => {
+  it('shows the welcome card while the name is blank and starts on submit', () => {
+    const model = createPanelModel(), session = commands(), el = slot()
+    act(() => { model.setHead(head({ name: '' })); dispose.push(mountHead(el, model, session)) })
+    const card = el.querySelector('.gr-welcome')!
+    expect(card.querySelector('h2')?.textContent).toBe('synthetic.typ')
+    const go = card.querySelector<HTMLButtonElement>('button[type="submit"]')!
+    expect(go.textContent).toBe('Start reviewing'); expect(go.disabled).toBe(true)
+    expect(el.querySelector('.gr-name-quiet')).toBeNull()
+    const name = card.querySelector<HTMLInputElement>('#gr-name')!
+    act(() => { name.value = ' Grace '; name.dispatchEvent(new Event('input', { bubbles: true })) })
+    expect(go.disabled).toBe(false)
+    act(() => { card.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })) })
+    expect(session.setName).toHaveBeenCalledExactlyOnceWith('Grace')
+  })
+  it('renders the head, view aria state, name and Finish commands, and disabled Finish', () => {
     const model = createPanelModel(), session = commands(), el = slot()
     act(() => { model.setHead(head()); dispose.push(mountHead(el, model, session)) })
     expect(el.querySelector('#gr-title.gr-title')?.textContent).toBe('synthetic.typ')
     expect(el.querySelector('#gr-view-editor')?.getAttribute('aria-pressed')).toBe('true')
     expect(el.querySelector('#gr-view-pdf')?.getAttribute('aria-pressed')).toBe('false')
     for (const mode of ['editor', 'pdf', 'both']) { click(el.querySelector('#gr-view-' + mode)); expect(session.setView).toHaveBeenLastCalledWith(mode) }
-    const name = el.querySelector<HTMLInputElement>('#gr-name')!
-    act(() => { name.value = 'Grace'; name.dispatchEvent(new Event('change', { bubbles: true })) }); expect(session.setName).toHaveBeenCalledWith('Grace')
-    click(el.querySelector('#gr-send')); expect(session.send).toHaveBeenCalledOnce()
+    const name = openName(el)
+    act(() => { name.value = 'Grace'; name.dispatchEvent(new Event('input', { bubbles: true })) }); saveName(el); expect(session.setName).toHaveBeenCalledWith('Grace')
+    click(el.querySelector('#gr-finish')); expect(model.step.value).toBe('comment'); expect(session.send).not.toHaveBeenCalled()
     act(() => model.setHead(head({ hasPdf: false, view: 'both', canSend: false, status: 'Review sent. Thank you.' })))
     expect(el.querySelector('.gr-views')?.hasAttribute('hidden')).toBe(true); expect(el.querySelector('#gr-view-both')?.getAttribute('aria-pressed')).toBe('true')
-    expect(el.querySelector<HTMLButtonElement>('#gr-send')?.disabled).toBe(true); expect(el.querySelector('[role="status"]')?.textContent).toBe('Review sent. Thank you.')
+    expect(el.querySelector<HTMLButtonElement>('#gr-finish')?.disabled).toBe(true); expect(el.querySelector('[role="status"]')?.textContent).toBe('Review sent. Thank you.')
   })
   it('renders the PDF look switch with Changes pressed, hidden in the editor view, and calling setPdfLook', () => {
     const model = createPanelModel(), session = commands(), el = slot()
@@ -182,8 +198,9 @@ describe('review islands', () => {
 it('skips a name change when the trimmed name is unchanged', () => {
   const model = createPanelModel(), session = commands(), el = slot()
   act(() => { model.setHead(head()); dispose.push(mountHead(el, model, session)) })
-  const name = el.querySelector<HTMLInputElement>('#gr-name')!
-  act(() => { name.value = '  Ada  '; name.dispatchEvent(new Event('change', { bubbles: true })) })
+  const name = openName(el)
+  act(() => { name.value = '  Ada  '; name.dispatchEvent(new Event('input', { bubbles: true })) })
+  saveName(el)
   expect(session.setName).not.toHaveBeenCalled()
 })
 
