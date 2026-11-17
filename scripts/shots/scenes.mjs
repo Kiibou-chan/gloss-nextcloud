@@ -3,6 +3,7 @@ import { checkCaretHover, checkNewText } from './new-text.mjs';
 import { typstScenes } from './typst.mjs';
 import { compiles, settled, watchCompiles } from './compile-settle.mjs';
 import { liveScenes, sentFileRemoved } from './live.mjs';
+import { layoutScene } from './layout.mjs';
 import { expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -326,6 +327,7 @@ export const scenes = {
   pdf: { run: pdf },
   'pdf-proposals': { run: args => proposals(args, 'PDF') },
   both: { run: args => proposals(args, 'Both') },
+  layout: layoutScene({ ready, status }),
   'latex-proposals': latexScene({ ready, find, status }),
   ...typstScenes({ ready, find, comment, status, content, pdfSelection }),
   search: { run: async ({ page, capture }) => {

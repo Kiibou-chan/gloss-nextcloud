@@ -1,7 +1,7 @@
 // The route-mocked synthetic mode: the real bundle and adapters against a page and API simulated in the browser context.
 import { readFile, readdir } from 'node:fs/promises';
 
-export const syntheticScenes = ['overall', 'review-link', 'pdf-proposals', 'both', 'latex-proposals', 'typst-compile', 'typst-fallback', 'typst-error', 'typst-lines', 'typst-proposals', 'typst-no-fonts'];
+export const syntheticScenes = ['overall', 'review-link', 'pdf-proposals', 'both', 'latex-proposals', 'typst-compile', 'typst-fallback', 'typst-error', 'typst-lines', 'typst-proposals', 'typst-no-fonts', 'layout'];
 const gardenScenes = ['overall', 'review-link'];
 const root = new URL('../../', import.meta.url);
 const fixtureMain = { Review: 'paper.typ', Latex: 'paper.tex', Typst: 'paper.typ' };
@@ -47,7 +47,7 @@ export async function syntheticRoutes(context, sceneName, reviews, folder = 'Rev
     readFile(new URL('js/gloss-review.js', root), 'utf8'), readFile(new URL('css/review.css', root), 'utf8'), fixtureFiles(sceneName, folder, draft),
   ]);
   const withPdf = files.pdf !== null;
-  const typst = (folder === 'Typst' && sceneName.startsWith('typst-')) || ['both', 'pdf-proposals'].includes(sceneName);
+  const typst = (folder === 'Typst' && sceneName.startsWith('typst-')) || ['both', 'pdf-proposals', 'layout'].includes(sceneName);
   const [typstWorker, typstWasm, fonts] = typst
     ? await Promise.all([readFile(new URL('js/typst.worker.js', root), 'utf8'), readFile(new URL('js/typst-compiler.wasm', root)), readdir(new URL('fonts/', root))])
     : [null, null, []];
