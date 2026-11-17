@@ -253,7 +253,7 @@ async function proposals(args, view) {
   await expect(page.locator('.gr-items > li').filter({ has: page.locator('ins', { hasText: 'Iota' }) })).toHaveCount(1);
   await expect(status(page)).toHaveText('Saved', { timeout: 30_000 });
   await page.getByRole('button', { name: view, exact: true }).click();
-  await expect(page.locator('.gr-pdf-note-line')).not.toHaveText('Showing your PDF while the draft compiles.', { timeout: 30_000 });
+  await expect.poll(async () => (await page.locator('.gr-pdf-note-line').allTextContents()).includes('Showing your PDF while the draft compiles.'), { timeout: 30_000 }).toBe(false);
   await expect(page.locator('#gr-pdf canvas').first()).toBeVisible();
   await checkProposalMarks(page);
   await checkNewText(page);

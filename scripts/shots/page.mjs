@@ -102,7 +102,7 @@ try {
     await expect(page.locator('#gr-status')).toHaveText('Saved', { timeout: 20_000 }); await capture('editor');
     await page.getByRole('button', { name: 'Both', exact: true }).click();
     await expect(page.locator('#gr-status')).toHaveText('Loading the PDF…'); await capture('pdf-loading'); releasePdf();
-    await expect(page.locator('.gr-pdf-note-line')).not.toHaveText('Showing your PDF while the draft compiles.', { timeout: 30_000 });
+    await expect.poll(async () => (await page.locator('.gr-pdf-note-line').allTextContents()).includes('Showing your PDF while the draft compiles.'), { timeout: 30_000 }).toBe(false);
     await expect(page.locator('.gr-page .textLayer span').first()).toBeVisible();
     await expect(page.locator('.gr-pdf-mark').first()).toBeVisible();
     await expect(page.locator('#gr-status')).not.toHaveText('Loading the PDF…'); await capture('both');
