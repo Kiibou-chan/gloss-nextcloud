@@ -20,6 +20,7 @@ use OCP\AppFramework\Http\StreamResponse;
 use OCP\AppFramework\Http\Template\PublicTemplateResponse;
 use OCP\AppFramework\AuthPublicShareController;
 use OCP\AppFramework\Http\TemplateResponse;
+use OCP\Constants;
 use OCP\Files\Folder;
 use OCP\Files\NotFoundException;
 use OCP\IRequest;
@@ -94,7 +95,12 @@ class ReviewController extends AuthPublicShareController {
 
 	public function isValidToken(): bool {
 		$share = $this->getShare();
-		return $share !== null && $share->getNode() instanceof Folder;
+		return $share !== null
+			&& in_array($share->getShareType(), [IShare::TYPE_LINK, IShare::TYPE_EMAIL], true)
+			&& ($share->getPermissions() & Constants::PERMISSION_READ) !== 0
+			&& !$share->getHideDownload()
+			&& $share->getNode() instanceof Folder
+			&& $share->getNode()->isReadable();
 	}
 
 	protected function isPasswordProtected(): bool {
@@ -104,10 +110,11 @@ class ReviewController extends AuthPublicShareController {
 	#[PublicPage]
 	#[NoCSRFRequired]
 	public function page(): PublicTemplateResponse {
+		$folder = $this->folder();
 		Util::addScript('gloss', 'gloss-review');
 		Util::addStyle('gloss', 'review');
 		Util::addStyle('gloss', 'pdf-text-layer');
-		$draft = $this->draftLocator->locate($this->folder())?->main;
+		$draft = $this->draftLocator->locate($folder)?->main;
 		$response = new PublicTemplateResponse('gloss', 'review', [
 			'token' => $this->getToken(),
 			'passwordProtected' => $this->isPasswordProtected(),
@@ -115,7 +122,7 @@ class ReviewController extends AuthPublicShareController {
 			'csrfTokenUrl' => $this->urls->linkToRoute('core.CSRFToken.index'),
 			'fragmentScope' => hash('sha256', $this->getToken()),
 			'draftName' => $draft?->getName() ?? '',
-			'hasPdf' => $this->draftLocator->pdf($this->folder()) !== null,
+			'hasPdf' => $this->draftLocator->pdf($folder) !== null,
 			'worker' => $this->urls->linkTo('gloss', 'js/pdf.worker.js'),
 			'reviewable' => $this->reviewStore->isReviewable($this->requireShare()),
 		]);
@@ -227,6 +234,9 @@ class ReviewController extends AuthPublicShareController {
 	}
 
 	private function folder(): Folder {
+		if (!$this->isValidToken()) {
+			throw new NotFoundException('The share cannot be read.');
+		}
 		$node = $this->getShare()?->getNode();
 		if (!$node instanceof Folder) {
 			throw new NotFoundException('The share is not a folder.');

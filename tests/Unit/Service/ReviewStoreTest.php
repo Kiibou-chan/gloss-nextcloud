@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Gloss\Tests\Unit\Service;
 
 use OCA\Gloss\Exception\ReviewRefused;
+use OCA\Gloss\Service\DraftLocator;
 use OCA\Gloss\Service\ReviewKey;
 use OCA\Gloss\Service\ReviewStore;
 use OCP\Constants;
@@ -93,7 +94,7 @@ final class ReviewStoreTest extends TestCase {
 		$root = $this->createMock(IRootFolder::class);
 		$root->method('getUserFolder')->with('synthetic-owner')->willReturn($user);
 		$this->locks = $this->createMock(ILockingProvider::class);
-		return new ReviewStore($root, $this->locks);
+		return new ReviewStore($root, $this->locks, new DraftLocator());
 	}
 
 	public static function markers(): array {

@@ -114,7 +114,7 @@ final class ReviewControllerTest extends TestCase {
 		$root->expects(self::never())->method('getUserFolder');
 		$locks = $this->createMock(\OCP\Lock\ILockingProvider::class);
 		$locks->expects(self::never())->method('acquireLock');
-		$store = new ReviewStore($root, $locks);
+		$store = new ReviewStore($root, $locks, new DraftLocator());
 		$controller = $this->controller($folder, $store, $share, permissions: $permissions, type: $type);
 		$response = $action === 'open' ? $controller->open('AbCdEf0123456789') : $controller->save('AbCdEf0123456789', '{"format":1,"revision":1,"name":"Ada","sent":false,"items":[]}', 0);
 		self::assertSame(403, $response->getStatus());
@@ -148,7 +148,7 @@ final class ReviewControllerTest extends TestCase {
 		$share = $this->createMock(IShare::class);
 		$share->method('getSharedBy')->willReturn($sharedBy);
 		$share->method('getShareOwner')->willReturn('owner');
-		$store = new ReviewStore($this->createMock(\OCP\Files\IRootFolder::class), $this->createMock(\OCP\Lock\ILockingProvider::class));
+		$store = new ReviewStore($this->createMock(\OCP\Files\IRootFolder::class), $this->createMock(\OCP\Lock\ILockingProvider::class), new DraftLocator());
 		$controller = $this->controller($folder, $store, $share, permissions: $permissions, type: $type);
 		self::assertFalse($controller->page()->getParams()['reviewable']);
 	}

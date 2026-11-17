@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Gloss\Service;
 
 use OCA\Gloss\Exception\ReviewRefused;
+use OCP\Constants;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
@@ -14,10 +15,15 @@ use OCP\Lock\LockedException;
 use OCP\Share\IShare;
 
 class ReviewStore {
-	public function __construct(private IRootFolder $root, private ILockingProvider $locks) {
+	public function __construct(private IRootFolder $root, private ILockingProvider $locks, private DraftLocator $draftLocator) {
 	}
 
 	public function isReviewable(IShare $share): bool {
+		if ($share->getShareType() !== IShare::TYPE_LINK
+			|| ($share->getPermissions() & (Constants::PERMISSION_UPDATE | Constants::PERMISSION_CREATE | Constants::PERMISSION_DELETE)) !== 0
+			|| $share->getSharedBy() !== $share->getShareOwner()) {
+			return false;
+		}
 		$folder = $share->getNode();
 		if (!$folder instanceof Folder) {
 			return false;
@@ -61,7 +67,7 @@ class ReviewStore {
 			$revision = $stored?->revision ?? 0;
 			// A retry of a landed save is successful even when it was Send.
 			if ($stored !== null && $revision === $incoming->revision && $bytes === $review) {
-				return $this->result($file, $incoming, false);
+				return $this->result($file, $incoming, false, $share->getNode());
 			}
 			if ($stored?->sent === true) {
 				throw new ReviewRefused(409, 'sent');
@@ -80,7 +86,7 @@ class ReviewStore {
 			} else {
 				$file->putContent($review);
 			}
-			return $this->result($file, $incoming, $incoming->sent);
+			return $this->result($file, $incoming, $incoming->sent, $share->getNode());
 		} finally {
 			$this->locks->releaseLock($lock, ILockingProvider::LOCK_EXCLUSIVE);
 		}
@@ -133,8 +139,8 @@ class ReviewStore {
 		return $review;
 	}
 
-	private function result(File $file, \stdClass $review, bool $sentNow): SaveResult {
-		$draftFile = $review->draft->file ?? '';
-		return new SaveResult($review->revision, $sentNow, $file->getId(), $file->getPath(), $review->name, is_string($draftFile) ? $draftFile : '');
+	private function result(File $file, \stdClass $review, bool $sentNow, Folder $folder): SaveResult {
+		$draftFile = $this->draftLocator->locate($folder)?->main->getName() ?? '';
+		return new SaveResult($review->revision, $sentNow, $file->getId(), $file->getPath(), $review->name, $draftFile);
 	}
 }
