@@ -19,6 +19,7 @@ export function differences(before, after) {
       if (Math.abs(before[name][field] - after[name][field]) > tolerance) found.push(`${name}.${field}: ${before[name][field]} -> ${after[name][field]}`);
     }
   }
+  if (Math.abs(before.side.width - after.side.width) > tolerance) found.push(`side.width: ${before.side.width} -> ${after.side.width}`);
   return found;
 }
 
@@ -38,6 +39,18 @@ export function layoutScene({ ready, status }) {
       await page.waitForTimeout(1500);
       const shift = await page.evaluate(() => window.__shift);
       if (shift !== null) expect(shift, `layout shift while loading ${JSON.stringify(await page.evaluate(() => window.__shiftLog))}`).toBeLessThan(loadShiftLimit);
+      const original = page.viewportSize();
+      for (const size of [{ width: 900, height: 700 }, { width: 640, height: 800 }]) {
+        await page.setViewportSize(size);
+        await page.reload({ waitUntil: 'networkidle' });
+        await expect(page.locator('#gr-text .cm-content')).toBeVisible();
+        await page.waitForTimeout(1000);
+        const narrow = await page.evaluate(() => window.__shift);
+        if (narrow !== null) expect(narrow, `layout shift while loading at ${size.width}px ${JSON.stringify(await page.evaluate(() => window.__shiftLog))}`).toBeLessThan(loadShiftLimit);
+      }
+      await page.setViewportSize(original);
+      await page.reload({ waitUntil: 'networkidle' });
+      await expect(page.locator('#gr-text .cm-content')).toBeVisible();
       const first = await geometry(page);
       const seen = [];
       for (const [label, view] of [...views, views[0]]) {

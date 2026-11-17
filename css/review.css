@@ -4,9 +4,9 @@ body:has(#gloss-review) footer.guest-box { display: none; }
 .gr-head { box-sizing: border-box; min-height: 62px; align-content: flex-start; display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; padding: 8px 16px 0; border-bottom: 1px solid var(--gr-line); background: var(--gr-bg); }
 .gr-head::before { content: ""; order: 97; flex-basis: 100%; height: 0; }
 .gr-title { font-weight: 600; flex: 1 1 auto; }
-.gr-status { order: 99; flex: 1 1 0; min-width: 0; min-height: 1.75em; line-height: 1.75em; color: var(--gr-ink-3); font-size: 12px; }
-.gr-pdf-note-line { order: 98; flex: 0 1 auto; line-height: 1.75em; font-size: 12px; color: var(--gr-ink-3); }
-.gr-body { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: stretch; min-height: 0; overflow: hidden; padding: 12px 16px; }
+.gr-status { order: 99; flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1.75em; line-height: 1.75em; color: var(--gr-ink-3); font-size: 12px; }
+.gr-pdf-note-line { order: 98; flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.75em; font-size: 12px; color: var(--gr-ink-3); }
+.gr-body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: stretch; min-height: 0; overflow: hidden; padding: 12px 16px; }
 #gloss-review[data-view="both"] .gr-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 320px; }
 #gloss-review[data-view="pdf"] #gr-text { display: none; }
 @media (max-width: 800px) { .gr-body, #gloss-review[data-view="both"] .gr-body { grid-template-columns: minmax(0, 1fr); overflow-y: auto; } }
@@ -102,7 +102,7 @@ body[data-themes*="dark"] .gr-card-head ins { color: #7ee29b; }
 .gr-text .cm-content[contenteditable="false"] { opacity: 1; color: var(--color-main-text); }
 
 @media (max-width: 800px) {
-  .gr-text, .gr-pdf, .gr-side { min-height: 24em; }
+  .gr-text, .gr-pdf, .gr-side { min-height: max(24em, 60vh); }
 }
 .gr-pdf-new { box-sizing: border-box; overflow: visible; white-space: nowrap; line-height: 1; color: #1b1b1b; background: rgba(46, 157, 79, 0.14); border-bottom: 2px solid #2e9d4f; }
 .gr-pdf-margin { background: #1f7a3a; border-radius: 1px; }
@@ -122,14 +122,13 @@ body[data-themes*="dark"] #gloss-review { --gr-bg:#1A1C1E; --gr-surface:#222528;
 @media (prefers-color-scheme: dark) { body:not([data-themes*="light"]) #gloss-review { --gr-bg:#1A1C1E; --gr-surface:#222528; --gr-panel:#2A2D31; --gr-line:#34383D; --gr-ink:#E6E8EA; --gr-ink-2:#C0C5CA; --gr-ink-3:#9AA0A6; --gr-ink-off:#6B7076;
   --gr-point:#6FA3E6; --gr-accent:#B596F0; --gr-you:var(--color-primary-element,#94ACEA); --gr-on-you:var(--color-primary-element-text,#14181A);
   --gr-btn-fill:rgb(255 255 255 / .07); --gr-btn-fill-hover:rgb(255 255 255 / .12); --gr-old:#F2928A; --gr-new:#7EC79A; color-scheme: dark; } }
-#gloss-review .gr-head { background: var(--gr-bg); border-bottom: 1px solid var(--gr-line); padding: 8px 16px; align-items: center; gap: 10px; }
 #gloss-review .gr-title { font-weight: 600; font-size: 13.5px; color: var(--gr-ink); }
 #gloss-review button { font: inherit; font-size: 12.5px; padding: 3px 10px; border-radius: var(--gr-r-2); border: 1px solid transparent; background: var(--gr-btn-fill); color: var(--gr-ink); cursor: pointer; min-height: 0; line-height: 1.45; box-shadow: none; }
 #gloss-review button:hover { background: var(--gr-btn-fill-hover); }
 #gloss-review button:active { background: var(--gr-press-fill); }
 #gloss-review button:focus-visible { outline: 2px solid var(--gr-you); outline-offset: 1px; }
-#gloss-review button.primary, #gloss-review .gr-head #gr-finish-btn { background: var(--gr-you); color: var(--gr-on-you); }
-#gloss-review button.primary:hover, #gloss-review #gr-finish-btn:hover { background: var(--gr-you); filter: brightness(1.08); }
+#gloss-review button.primary { background: var(--gr-you); color: var(--gr-on-you); }
+#gloss-review button.primary:hover { background: var(--gr-you); filter: brightness(1.08); }
 #gloss-review .gr-views { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--gr-btn-fill); }
 #gloss-review .gr-views button { background: none; padding: 2px 10px; border-radius: 6px; color: var(--gr-ink-2); }
 #gloss-review .gr-views button:hover { background: var(--gr-btn-fill-hover); color: var(--gr-ink); }
@@ -140,12 +139,10 @@ body[data-themes*="dark"] #gloss-review .gr-views button[aria-pressed="true"] { 
 #gloss-review input:not([type=checkbox]):not([type=radio]):focus, #gloss-review textarea:focus { outline: none; border-color: var(--gr-you); background: var(--gr-surface); }
 #gloss-review input::placeholder, #gloss-review textarea::placeholder { color: var(--gr-ink-3); }
 #gloss-review .gr-who { color: var(--gr-ink-3); font-size: 12px; }
-#gloss-review .gr-who { display: flex; flex-direction: row; align-items: center; gap: 8px; }
-#gloss-review .gr-who input { width: 11em; }
 #gloss-review .gr-count, #gloss-review .gr-status { color: var(--gr-ink-3); font-size: 12px; }
 #gloss-review .gr-side { gap: 8px; }
 #gloss-review .gr-items { gap: 8px; }
-#gloss-review .gr-items > li, #gloss-review .gr-finish .gr-side > li { padding: 8px; border: 1px solid var(--gr-line); border-radius: var(--gr-r-2); background: var(--gr-surface); box-shadow: none; }
+#gloss-review .gr-items > li { padding: 8px; border: 1px solid var(--gr-line); border-radius: var(--gr-r-2); background: var(--gr-surface); box-shadow: none; }
 #gloss-review .gr-items > li:not(:has(blockquote)) > :first-child { border-left: 3px solid var(--gr-accent); border-radius: 0 var(--gr-r-1) var(--gr-r-1) 0; padding: 4px 8px; background: color-mix(in srgb, var(--gr-accent) 9%, var(--gr-surface)); }
 #gloss-review .gr-items > li:has(blockquote) > .gr-card-head, #gloss-review .gr-items > li:has(blockquote) blockquote { border-left: 0; background: none; padding-left: 0; }
 #gloss-review .gr-items > li:has(blockquote) { border-left: 3px solid var(--gr-point); background: color-mix(in srgb, var(--gr-point) 7%, var(--gr-surface)); }
@@ -157,3 +154,4 @@ body[data-themes*="dark"] #gloss-review .gr-views button[aria-pressed="true"] { 
 #gloss-review .gr-text .cm-editor, #gloss-review .gr-pdf { border: 1px solid var(--gr-line); border-radius: var(--gr-r-2); background: var(--gr-surface); }
 #gloss-review .gr-pdf { background: var(--gr-panel); }
 #gloss-review .gr-actions button:not(.primary) { background: var(--gr-btn-fill); }
+#gloss-review .gr-card-actions button, #gloss-review .gr-items .gr-small { min-height: 24px; }

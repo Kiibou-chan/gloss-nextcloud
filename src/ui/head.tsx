@@ -18,7 +18,7 @@ export function Head({ model, session }: { model: PanelModel; session: PanelComm
       if (name !== model.head.value.name) void session.setName(name)
     }} /></label>}
     {view.reviewable !== false && <button id="gr-send" type="button" class="primary" disabled={!view.canSend} onClick={() => void session.send()}>Send review</button>}
-    {!!view.pdfNote && view.hasPdf && view.view !== 'editor' && <div class="gr-pdf-note-line">{view.pdfNote}</div>}
-    <div id="gr-status" class="gr-status" role="status">{view.status}</div>
+    {!!view.pdfNote && view.hasPdf && view.view !== 'editor' && <div class="gr-pdf-note-line" title={view.pdfNote}>{view.pdfNote}</div>}
+    <div id="gr-status" class="gr-status" role="status" title={view.status}>{view.status}</div>
   </>
 }
