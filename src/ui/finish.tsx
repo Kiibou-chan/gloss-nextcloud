@@ -2,11 +2,13 @@ import { OverallField } from './overall'
 import { Cards, Count } from './panel'
 import type { PanelCommands, PanelModel } from './panel-model'
 
+const focusHeading = (el: HTMLElement | null) => { if (el && document.activeElement !== el) el.focus() }
+
 export function Finish({ model, session }: { model: PanelModel; session: PanelCommands }) {
   const step = model.step.value, head = model.head.value
   if (step === 'comment') {
     return <div class="gr-fin-comment">
-      <h2>Finish your review</h2>
+      <h2 tabIndex={-1} ref={focusHeading}>Finish your review</h2>
       <Count model={model} id="" />
       <OverallField model={model} session={session} />
       <div class="gr-fin-actions">
@@ -18,7 +20,7 @@ export function Finish({ model, session }: { model: PanelModel; session: PanelCo
   if (step === 'summary') {
     const overall = model.overall.value.trim()
     return <div class="gr-fin-summary">
-      <h2>Send your review</h2>
+      <h2 tabIndex={-1} ref={focusHeading}>Send your review</h2>
       <p class="gr-fin-meta">Draft <b>{head.title}</b></p>
       <Count model={model} id="" />
       <h3>Overall comment</h3>

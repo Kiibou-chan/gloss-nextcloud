@@ -51,3 +51,10 @@ it('returns to the review step once the review is sent', () => {
   act(() => model.setHead(head({ sent: true })))
   expect(model.step.value).toBe('review')
 })
+it('moves focus to the step heading', () => {
+  const { model, el } = setup()
+  act(() => model.setStep('comment'))
+  expect(document.activeElement).toBe(el.querySelector('h2'))
+  act(() => model.setStep('summary'))
+  expect(document.activeElement).toBe(el.querySelector('h2'))
+})
