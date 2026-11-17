@@ -91,6 +91,7 @@ body[data-themes*="dark"] .gr-card-head ins { color: #7ee29b; }
 .gr-unplaced h2 { font-size: 1em; font-weight: 600; margin: 0 0 0.5rem; }
 .gr-unplaced blockquote, .gr-unplaced p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .gr-unplaced ol { padding-left: 1.25rem; }
+.gr-unplaced li > blockquote, .gr-unplaced li > p { margin: 0 0 0.25rem; }
 .gr-quote { max-height: 8em; overflow-y: auto; overflow-wrap: anywhere; }
 .gr-review-link { display: flex; flex-direction: column; gap: 4px; }
 .gr-review-link label, .gr-conflict label { display: flex; flex-direction: column; gap: 4px; }
