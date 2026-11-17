@@ -14,6 +14,7 @@ import { SessionState, type SessionActions } from './session-state'
 export class Lifecycle {
   constructor(private readonly s: SessionState, private readonly actions: Pick<SessionActions, 'backup' | 'changed' | 'createQueue' | 'head' | 'install' | 'refusal' | 'render' | 'setView' | 'restoreLook'>) {}
   async start(): Promise<void> {
+    this.s.loading = true
     try {
       const d = this.s.main ? null : await this.s.ports.api.draft()
       if (this.s.disposed) return
@@ -43,6 +44,7 @@ export class Lifecycle {
         await this.loadReview('', backup)
       }
     } catch { this.s.status = 'Could not load the draft.'; this.actions.head() }
+    finally { this.s.loading = false; this.actions.render() }
   }
   async setName(name: string): Promise<void> {
     if (this.s.disposed || !this.s.ports.reviewable || this.s.blocked || !this.s.review || this.s.record?.sent) return

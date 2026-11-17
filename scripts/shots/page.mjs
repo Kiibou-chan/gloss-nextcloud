@@ -18,6 +18,7 @@ try {
   for (const colour of ['light', 'dark']) {
     const context = await browser.newContext({ colorScheme: colour, ignoreHTTPSErrors: true, permissions: engine === 'chromium' ? ['clipboard-read', 'clipboard-write'] : [], viewport: { width: 1600, height: 1000 } });
     const records = new Map();
+    let reviewGate = Promise.resolve();
     let releasePdf;
     const pdfGate = new Promise(done => { releasePdf = done; });
     const html = reviewable => `<!doctype html><html lang="en"><meta charset="utf-8"><title>Synthetic review</title><style>
@@ -36,6 +37,7 @@ try {
       if (path.endsWith('/pdf')) { await pdfGate; return route.fulfill({ contentType: 'application/pdf', body: pdf }); }
       if (path.endsWith('/draft')) return route.fulfill({ json: { main: 'paper.typ', files: [{ file: 'paper.typ', text: source, etag: 'synthetic-v1' }] } });
       if (path.endsWith('/review/open')) {
+        await reviewGate;
         const params = new URLSearchParams(route.request().postData() ?? '');
         const record = records.get(params.get('key'));
         return route.fulfill({ json: record ? { review: record, revision: record.revision } : { review: null } });
@@ -114,7 +116,14 @@ try {
     await expect(page.locator('#gr-comment')).toHaveValue('Half-typed synthetic comment, retained while checking another passage.'); await capture('draft-retained');
     await content.press('ArrowRight'); await page.keyboard.type(' Synthetic editor addition.');
     await expect(page.locator('#gr-status')).toHaveText('Saved', { timeout: 20_000 });
-    await page.reload({ waitUntil: 'networkidle' });
+    let releaseReview;
+    reviewGate = new Promise(done => { releaseReview = done; });
+    const opening = page.waitForRequest('**/review/open');
+    await page.reload({ waitUntil: 'domcontentloaded' }); await opening;
+    await expect(page.locator('#gr-title')).toHaveText('paper.typ');
+    await expect(page.locator('.gr-welcome')).toHaveCount(0);
+    expect(await page.evaluate(() => document.activeElement?.id)).not.toBe('gr-name');
+    await capture('returning-loading'); releaseReview();
     await expect(page.locator('#gr-form')).toBeVisible();
     await expect(page.locator('#gr-comment')).toHaveValue('Half-typed synthetic comment, retained while checking another passage.');
     await expect(page.locator('#gr-quote')).toHaveText(/^.{200}…$/s); await capture('draft-reloaded');

@@ -18,7 +18,7 @@ export function Head({ model, session }: { model: PanelModel; session: PanelComm
     <div class={view.view === 'editor' ? 'gr-views gr-pdf-look gr-off' : 'gr-views gr-pdf-look'} role="group" aria-label="PDF shows" hidden={!view.hasPdf}>
       {(['original', 'changes', 'new'] as const).map(look => <button type="button" id={`gr-pdf-look-${look}`} key={look} aria-pressed={view.pdfLook === look} onClick={() => void session.setPdfLook(look)}>{look === 'new' ? 'New text' : look === 'original' ? 'Original' : 'Changes'}</button>)}
     </div>
-    {view.reviewable !== false && !!view.title && !view.name && !view.sent && <section class="gr-welcome" aria-label="Start reviewing">
+    {view.reviewable !== false && !view.loading && !!view.title && !view.name && !view.sent && <section class="gr-welcome" aria-label="Start reviewing">
       <form class="gr-welcome-card" onSubmit={event => { event.preventDefault(); commit(draftName.value) }}>
         <h2>{view.title}</h2>
         <label>Your name <input id="gr-name" type="text" maxLength={100} autoComplete="name" value={draftName.value} ref={focusOnce} onInput={event => { draft.value = { saved: model.head.value.name, name: event.currentTarget.value } }} onChange={event => commit(event.currentTarget.value)} /></label>

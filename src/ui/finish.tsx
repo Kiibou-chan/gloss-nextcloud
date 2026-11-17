@@ -9,20 +9,20 @@ export function Finish({ model, session }: { model: PanelModel; session: PanelCo
   const step = model.step.value, head = model.head.value
   const reason = !head.canSend ? (!head.editable && head.status.trim() ? head.status : 'Add a change or a comment before sending.') : ''
   if (step === 'comment') {
-    return <div class="gr-fin-comment">
+    return <div key="comment" class="gr-fin-comment">
       <h2 tabIndex={-1} ref={focusHeading}>Finish your review</h2>
       <Count model={model} id="" />
       <OverallField model={model} session={session} />
       <p class="gr-fin-status" role="status">{reason}</p>
       <div class="gr-fin-actions">
-        <button type="button" id="gr-fin-back" onClick={() => model.setStep('review')}>Back to review</button>
+        <button type="button" id="gr-fin-back" onClick={() => { model.setStep('review'); document.getElementById('gr-finish')?.focus() }}>Back to review</button>
         <button type="button" id="gr-fin-continue" class="primary" disabled={!head.canSend} onClick={() => model.setStep('summary')}>Continue</button>
       </div>
     </div>
   }
   if (step === 'summary') {
     const overall = model.overall.value.trim()
-    return <div class="gr-fin-summary">
+    return <div key="summary" class="gr-fin-summary">
       <h2 tabIndex={-1} ref={focusHeading}>Send your review</h2>
       <p class="gr-fin-meta">Draft <b>{head.title}</b></p>
       <Count model={model} id="" />

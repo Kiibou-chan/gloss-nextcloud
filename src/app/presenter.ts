@@ -19,7 +19,7 @@ export class Presenter {
     this.s.ports.editor.setEditable(editable)
     this.s.ports.panel.setOverallView(this.actions.overallText())
     const status = this.s.blankName && ['', 'Saving…', 'Saved'].includes(this.s.status) ? 'Enter your name to continue.' : this.s.status || (this.s.ports.reviewable && !this.s.record && !this.s.loading ? 'Enter your name to start.' : '')
-    this.s.ports.panel.setHead({ sent: this.s.record?.sent ?? false, reviewable: this.s.ports.reviewable, name: this.s.blankName ? '' : this.s.record?.name ?? this.s.pendingName, title: this.s.file, hasPdf: this.s.ports.hasPdf !== false, view: this.s.view, pdfLook: this.s.pdfLook, pdfNote: this.s.pdfNote, editable, canSend: editable && (this.order.length > 0 || !!this.actions.overallText().trim()), status: (this.s.form?.detached ? RESELECT_COMMENT : status) + (this.s.backupFailed ? ' Not backed up in this browser.' : ''), form: this.s.form })
+    this.s.ports.panel.setHead({ loading: this.s.loading, sent: this.s.record?.sent ?? false, reviewable: this.s.ports.reviewable, name: this.s.blankName ? '' : this.s.record?.name ?? this.s.pendingName, title: this.s.file, hasPdf: this.s.ports.hasPdf !== false, view: this.s.view, pdfLook: this.s.pdfLook, pdfNote: this.s.pdfNote, editable, canSend: editable && (this.order.length > 0 || !!this.actions.overallText().trim()), status: (this.s.form?.detached ? RESELECT_COMMENT : status) + (this.s.backupFailed ? ' Not backed up in this browser.' : ''), form: this.s.form })
   }
   render(): void {
     if (this.s.disposed) return

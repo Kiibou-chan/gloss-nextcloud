@@ -52,3 +52,23 @@ test.each([403, 404, 410, 413])('applies explicit refusal editability at the ope
   expect(s.status).toBe('Refused.'); expect(s.blocked).toBe(status !== 413)
   expect(f.ports.reviewable).toBe(status !== 403)
 })
+
+test('stays loading from draft discovery through view setup and review restoration', async () => {
+  const f = fakes(), s = new SessionState(f.ports)
+  let releaseView!: () => void, releaseOpen!: () => void
+  const viewGate = new Promise<void>(resolve => { releaseView = resolve })
+  const openGate = new Promise<void>(resolve => { releaseOpen = resolve })
+  const phases: boolean[] = []
+  const actions = { backup: vi.fn(), changed: vi.fn(), createQueue: vi.fn(), head: vi.fn(), install: vi.fn(), refusal: vi.fn(), render: vi.fn(() => { phases.push(s.loading) }), restoreLook: vi.fn(), setView: vi.fn(() => viewGate) }
+  f.store.remember('Abcdef1234567890')
+  f.api.open.mockImplementation(async () => { await openGate; return { review: null } })
+  const starting = new Lifecycle(s, actions).start()
+  expect(s.loading).toBe(true)
+  await Promise.resolve()
+  expect(s.file).toBe('draft.txt'); expect(s.loading).toBe(true)
+  expect(phases.every(Boolean)).toBe(true)
+  releaseView(); await Promise.resolve()
+  expect(f.api.open).toHaveBeenCalledOnce(); expect(s.loading).toBe(true)
+  releaseOpen(); await starting
+  expect(s.loading).toBe(false); expect(phases.at(-1)).toBe(false)
+})

@@ -31,7 +31,7 @@ export function createPanelModel(): PanelModel {
   const cards = new Map<string, Signal<CardView>>()
   const order = signal<readonly string[]>([])
   const count = signal({ changes: 0, comments: 0 })
-  const head = signal<HeadView>({ name: '', title: '', hasPdf: false, view: 'editor', pdfLook: 'changes', editable: false, canSend: false, status: '', form: null })
+  const head = signal<HeadView>({ loading: true, name: '', title: '', hasPdf: false, view: 'editor', pdfLook: 'changes', editable: false, canSend: false, status: '', form: null })
   const conflict = signal<{ text: string; show: boolean } | null>(null)
   const step = signal<FinishStep>('review')
   return {

@@ -13,7 +13,7 @@ const renderOptions = options as typeof options & { __r?: (vnode: { type: unknow
 
 const openName = (el: HTMLElement) => { click(el.querySelector('.gr-name-quiet')); return el.querySelector<HTMLInputElement>('#gr-name')! }
 const saveName = (el: HTMLElement) => act(() => { el.querySelector('.gr-name-pop')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })) })
-const head = (extra: Partial<HeadView> = {}): HeadView => ({ name: 'Ada', title: 'synthetic.typ', hasPdf: true, view: 'editor', pdfLook: 'changes', editable: true, canSend: true, status: '', form: null, ...extra })
+const head = (extra: Partial<HeadView> = {}): HeadView => ({ loading: false, name: 'Ada', title: 'synthetic.typ', hasPdf: true, view: 'editor', pdfLook: 'changes', editable: true, canSend: true, status: '', form: null, ...extra })
 const card = (id: string, extra: Partial<CardView> = {}): CardView => ({ id, kind: 'proposal', from: 0, shown: 'old', proposalShown: 'new', comments: [], editable: true, offPdf: false, unmarked: false, margin: false, ...extra })
 const commands = () => ({ setName: vi.fn(), setView: vi.fn(), setPdfLook: vi.fn(), openForm: vi.fn(), cancelForm: vi.fn(), commentOn: vi.fn(), deleteComment: vi.fn(), undoProposal: vi.fn(), focusItem: vi.fn(), send: vi.fn(), setOverall: vi.fn(), showKeptChanges: vi.fn(), copyReviewLink: vi.fn() } satisfies Pick<ReviewSession, 'setName' | 'setView' | 'setPdfLook' | 'openForm' | 'cancelForm' | 'commentOn' | 'deleteComment' | 'undoProposal' | 'focusItem' | 'send' | 'setOverall' | 'showKeptChanges' | 'copyReviewLink'>)
 let dispose: (() => void)[] = []
@@ -238,4 +238,18 @@ it('hides the welcome hint while a name is typed and restores it when cleared', 
   expect(status()).toBe('Enter your name to start.')
   act(() => { name.value = 'Ada'; name.dispatchEvent(new Event('input', { bubbles: true })); model.setHead(head({ name: '', status: 'Name could not be saved.' })) })
   expect(status()).toBe('Name could not be saved.')
+})
+
+it('waits for loading to end before showing the welcome card or focusing the name', () => {
+  const model = createPanelModel(), el = slot()
+  dispose.push(mountHead(el, model, commands()))
+  expect(el.querySelector('.gr-welcome')).toBeNull()
+  expect(document.activeElement?.id).not.toBe('gr-name')
+  act(() => model.setHead({ ...model.head.value, title: 'synthetic.typ' }))
+  expect(el.querySelector('.gr-welcome')).toBeNull()
+  expect(document.activeElement?.id).not.toBe('gr-name')
+  expect(model.head.value).toMatchObject({ loading: true })
+  act(() => model.setHead(head({ name: '', loading: false })))
+  expect(el.querySelector('.gr-welcome')).not.toBeNull()
+  expect(document.activeElement).toBe(el.querySelector('#gr-name'))
 })

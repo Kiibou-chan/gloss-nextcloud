@@ -85,6 +85,7 @@ it('uses a small Delete button like Add comment', async () => {
   expect(button.classList.contains('gr-small')).toBe(true)
 })
 it.each([
+  ['single-column comment step up to 1000 px', /@media \(max-width:\s*1000px\)\s*\{ #gloss-review\[data-step="comment"\] \{ grid-template-columns: minmax\(0, 1fr\); \} #gloss-review\[data-step="comment"\] \.gr-body \{ display: none;/],
   ['quiet PDF line shares the status row', /\.gr-pdf-note-line\s*\{[^}]*order:\s*98/],
   ['reserved status row', /\.gr-status\s*\{[^}]*min-height:\s*1\.75em/],
   ['panel-width review link', /\.gr-review-link input[^}]*width:\s*100%/],

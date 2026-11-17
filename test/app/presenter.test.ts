@@ -74,3 +74,12 @@ test('a card tells whether its unmarked words have a margin mark', () => {
   s.marginMarked = new Set([id]); unit.render()
   expect(f.panel.upsertCard).toHaveBeenLastCalledWith(expect.objectContaining({ unmarked: true, margin: true }))
 })
+
+test('publishes whether the session is still loading', () => {
+  const f = fakes(), s = new SessionState(f.ports)
+  const unit = new Presenter(s, { publishLink: vi.fn(), overallText: () => '', deferPdf: vi.fn() })
+  for (const loading of [true, false]) {
+    s.loading = loading; unit.head()
+    expect(f.panel.setHead).toHaveBeenLastCalledWith(expect.objectContaining({ loading }))
+  }
+})

@@ -184,7 +184,7 @@ body[data-themes*="dark"] #gloss-review .gr-views button[aria-pressed="true"] { 
 #gloss-review[data-step="comment"] .gr-side .gr-card-actions, #gloss-review[data-step="comment"] .gr-side .gr-small,
 #gloss-review[data-step="comment"] .gr-side .gr-count, #gloss-review[data-step="comment"] #gr-hint,
 #gloss-review[data-step="comment"] #gr-form, #gloss-review[data-step="comment"] .gr-review-link { display: none; }
-@media (max-width: 520px) { #gloss-review[data-step="comment"] { grid-template-columns: minmax(0, 1fr); } #gloss-review[data-step="comment"] .gr-body { display: none; } }
+@media (max-width: 1000px) { #gloss-review[data-step="comment"] { grid-template-columns: minmax(0, 1fr); } #gloss-review[data-step="comment"] .gr-body { display: none; } }
 .gr-fin-comment, .gr-fin-summary { display: flex; flex-direction: column; gap: 12px; }
 .gr-fin-summary { width: min(640px, 100%); margin: 0 auto; padding-top: 8px; }
 .gr-finish h2 { margin: 0; font-size: 1.35em; font-weight: 600; }
