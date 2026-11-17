@@ -25,7 +25,7 @@ async function expectOverlayAndLine(page, errors, line) {
   // The stack overflow of a missing compiler came about 600 ms after the line.
   await page.waitForTimeout(2000);
   await expect(page.locator('.gr-pdf-note-line')).toHaveText(line);
-  expect(errors).toEqual([]);
+  if (errors.length) throw new Error(`Page errors: ${JSON.stringify(errors)}`);
 }
 
 async function twoEdits({ page }, { ready, find, status }) {
@@ -53,17 +53,16 @@ async function lines(args, helpers) {
 
 async function proposals(args, helpers) {
   const { page, capture } = args;
-  const { ready, status, content } = helpers;
+  const { ready, status, find } = helpers;
   const errors = watchErrors(page);
   await ready(page);
-  await content(page).click();
-  await page.keyboard.press('Control+Home');
   for (let i = 0; i < 401; i++) {
-    await page.keyboard.press('Control+Shift+ArrowRight');
-    await page.keyboard.insertText('x');
-    await page.keyboard.press('ArrowRight');
+    await find(page, `w${String(i * 10 + 1).padStart(4, '0')}`);
+    await page.keyboard.insertText('y');
   }
-  await expect(page.locator('.gr-items > li')).toHaveCount(401, { timeout: 60_000 });
+  await find(page, 'grow');
+  await page.keyboard.insertText('flourish');
+  await expect(page.locator('.gr-items > li')).toHaveCount(402, { timeout: 60_000 });
   await expect(status(page)).toHaveText('Saved', { timeout: 60_000 });
   await expectOverlayAndLine(page, errors, LINES.large);
   await capture('-changes');
@@ -79,7 +78,7 @@ async function noFonts(args, helpers) {
 }
 
 const linesDraft = async () => ({ main: 'paper.typ', text: `${await paper()}${Array.from({ length: 2000 }, (_, i) => `// Synthetic filler ${i + 1}.`).join('\n')}\n` });
-const wordsDraft = async () => ({ main: 'paper.typ', text: `${Array.from({ length: 401 }, (_, i) => `word${i + 1}`).join(' ')}\n\n${await paper()}` });
+const wordsDraft = async () => ({ main: 'paper.typ', text: `${Array.from({ length: 4010 }, (_, i) => `w${String(i + 1).padStart(4, '0')}`).join(' ')}\n\n${await paper()}` });
 const errorDraft = async () => ({ main: 'paper.typ', text: `${await paper()}\n#let broken = (1,\n` });
 
 export function typstLimitScenes(helpers) {

@@ -115,7 +115,7 @@ test('the Typst limit scenes carry drafts that cannot compile live, and are synt
   const lines = await scenes['typst-lines'].draft();
   expect(limits.tooLargeToCompile(lines.text, 0)).toBe(true);
   const words = await scenes['typst-proposals'].draft();
-  expect(words.text.split('\n')[0].split(' ')).toHaveLength(401);
+  expect(words.text.split('\n')[0].split(' ')).toHaveLength(4010);
   expect(limits.tooLargeToCompile(words.text, 0)).toBe(false);
   expect((await scenes['typst-error'].draft()).text).toContain('#let broken = (1,');
 });
