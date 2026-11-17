@@ -1,6 +1,7 @@
 import { checkPageNotClipped, latexScene } from './latex.mjs';
-import { checkCaretHover, checkLookKept, checkNewText } from './new-text.mjs';
+import { checkCaretHover, checkNewText } from './new-text.mjs';
 import { typstScenes } from './typst.mjs';
+import { compiles, settled, watchCompiles } from './compile-settle.mjs';
 import { liveScenes, sentFileRemoved } from './live.mjs';
 import { expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
@@ -240,8 +241,20 @@ async function checkProposalMarks(page) {
   await page.locator('.gr-items > li').filter({ hasText: 'Not shown on the PDF.' }).scrollIntoViewIfNeeded();
 }
 
+/** The compiled PDF carries the changes itself, so the overlay of the uploaded PDF is gone. */
+async function checkCompiledLook(page, look) {
+  await expect(page.locator('.gr-pdf-struck, .gr-pdf-caret, .gr-pdf-cover')).toHaveCount(0);
+  await expect(page.locator('.gr-off-pdf')).toHaveCount(0);
+  if (look === 'new') {
+    await expect(page.locator('#gr-pdf .textLayer')).toContainText('flourish');
+    await expect(page.locator('#gr-pdf .textLayer')).not.toContainText('grow');
+  }
+}
+
 async function proposals(args, view) {
-  const { page, capture } = args;
+  const { page, context, capture } = args;
+  await watchCompiles(context);
+  await page.reload({ waitUntil: 'networkidle' });
   await editor(args);
   await find(page, 'Observations');
   await page.keyboard.insertText('Notes');
@@ -253,14 +266,24 @@ async function proposals(args, view) {
   await expect(page.locator('.gr-items > li').filter({ has: page.locator('ins', { hasText: 'Iota' }) })).toHaveCount(1);
   await expect(status(page)).toHaveText('Saved', { timeout: 30_000 });
   await page.getByRole('button', { name: view, exact: true }).click();
-  await expect.poll(async () => (await page.locator('.gr-pdf-note-line').allTextContents()).includes('Showing your PDF while the draft compiles.'), { timeout: 30_000 }).toBe(false);
   await expect(page.locator('#gr-pdf canvas').first()).toBeVisible();
-  await checkProposalMarks(page);
-  await checkNewText(page);
+  // A compiled draft draws the changes in the PDF itself; only the fallback overlays the uploaded one.
+  if (await settled(page, 0) === 'compiled') await checkCompiledLook(page, 'changes');
+  else await checkProposalMarks(page);
+  const afterChanges = await compiles(page);
+  await page.getByRole('button', { name: 'New text', exact: true }).click();
+  const newLook = await settled(page, afterChanges);
+  if (newLook === 'compiled') {
+    await expect(page.locator('#gr-pdf-look-new')).toHaveAttribute('aria-pressed', 'true');
+    await checkCompiledLook(page, 'new');
+  } else await checkNewText(page);
   await capture('-new');
-  await checkLookKept(page, async target => { await expect(target.locator('#gr-pdf canvas').first()).toBeVisible(); await expect.poll(() => target.locator('.gr-pdf-cover').count()).toBeGreaterThan(0); });
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect(page.locator('#gr-pdf canvas').first()).toBeVisible();
+  await expect(page.locator('#gr-pdf-look-new')).toHaveAttribute('aria-pressed', 'true');
+  await settled(page, 0);
   await page.getByRole('button', { name: 'Changes', exact: true }).click();
-  await expect.poll(() => page.locator('.gr-pdf-struck').count()).toBeGreaterThan(0);
+  await settled(page, 0);
 }
 
 async function long({ page, out, prefix }) {

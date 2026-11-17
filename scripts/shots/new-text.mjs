@@ -21,7 +21,7 @@ function drawn(page) {
 }
 
 export async function checkNewText(page) {
-  await page.getByRole('button', { name: 'New text', exact: true }).click();
+  if (await page.locator('#gr-pdf-look-new').getAttribute('aria-pressed') !== 'true') await page.getByRole('button', { name: 'New text', exact: true }).click();
   await expect(page.locator('#gr-pdf-look-new')).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(() => page.locator('.gr-pdf-cover').count()).toBeGreaterThan(0);
   await expect(page.locator('.gr-pdf-struck')).toHaveCount(0);

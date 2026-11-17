@@ -1,27 +1,9 @@
 // The typst-compile and typst-fallback scenes: the draft compiled in the browser under three looks, and the overlay on the uploaded PDF when it cannot compile.
 import { expect } from '@playwright/test';
 import { typstLimitScenes } from './typst-limits.mjs';
+import { COMPILING, compiles, watchCompiles } from './compile-settle.mjs';
 
-const COMPILING = 'Showing your PDF while the draft compiles.';
 const PACKAGE = 'Showing your PDF; the draft uses a package the browser cannot load.';
-
-/** Records each compiler worker answer on `window.__compiles`, before the page's own scripts run. */
-async function watchCompiles(context) {
-  await context.addInitScript(() => {
-    const Original = window.Worker;
-    window.__compiles = [];
-    window.Worker = class extends Original {
-      constructor(...args) {
-        super(...args);
-        this.addEventListener('message', event => {
-          if (event.data && typeof event.data.ms === 'number') window.__compiles.push({ ms: event.data.ms, pdf: !!event.data.pdf });
-        });
-      }
-    };
-  });
-}
-
-const compiles = page => page.evaluate(() => window.__compiles.length);
 
 /** The compiled look has landed: a new answer arrived and the quiet line is gone. */
 async function compiled(page, before) {

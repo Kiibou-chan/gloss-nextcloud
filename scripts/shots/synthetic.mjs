@@ -47,7 +47,7 @@ export async function syntheticRoutes(context, sceneName, reviews, folder = 'Rev
     readFile(new URL('js/gloss-review.js', root), 'utf8'), readFile(new URL('css/review.css', root), 'utf8'), fixtureFiles(sceneName, folder, draft),
   ]);
   const withPdf = files.pdf !== null;
-  const typst = folder === 'Typst' && sceneName.startsWith('typst-');
+  const typst = (folder === 'Typst' && sceneName.startsWith('typst-')) || ['both', 'pdf-proposals'].includes(sceneName);
   const [typstWorker, typstWasm, fonts] = typst
     ? await Promise.all([readFile(new URL('js/typst.worker.js', root), 'utf8'), readFile(new URL('js/typst-compiler.wasm', root)), readdir(new URL('fonts/', root))])
     : [null, null, []];
