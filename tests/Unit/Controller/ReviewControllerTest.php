@@ -56,6 +56,7 @@ final class ReviewControllerTest extends TestCase {
 	#[DataProvider('inaccessibleShares')]
 	public function testServingEndpointsRejectInaccessibleShares(string $action, int $permissions, bool $hidden, bool $readable, int $type): void {
 		$controller = $this->controller($this->createMock(Folder::class), permissions: $permissions, type: $type, hideDownload: $hidden, readable: $readable);
+		if ($action === 'page') { $this->pageServices(); }
 		$this->expectException(\OCP\Files\NotFoundException::class);
 		$controller->$action();
 	}
@@ -83,8 +84,18 @@ final class ReviewControllerTest extends TestCase {
 		];
 	}
 
-	#[DataProvider('unreviewableShares')]
-	public function testOpenAndSaveRefuseUnreviewableSharesWithValidMarker(int $permissions, int $type, string $sharedBy): void {
+	public static function unreviewableActions(): array {
+		$rows = [];
+		foreach (self::unreviewableShares() as $name => $share) {
+			foreach (['open', 'save'] as $action) {
+				$rows["$action $name"] = [$action, ...$share];
+			}
+		}
+		return $rows;
+	}
+
+	#[DataProvider('unreviewableActions')]
+	public function testOpenAndSaveRefuseUnreviewableSharesWithValidMarker(string $action, int $permissions, int $type, string $sharedBy): void {
 		$marker = $this->createMock(File::class);
 		$marker->method('getContent')->willReturn('{}');
 		$folder = $this->createMock(Folder::class);
@@ -98,11 +109,9 @@ final class ReviewControllerTest extends TestCase {
 		$locks->expects(self::never())->method('acquireLock');
 		$store = new ReviewStore($root, $locks);
 		$controller = $this->controller($folder, $store, $share, permissions: $permissions, type: $type);
-		foreach (['open', 'save'] as $action) {
-			$response = $action === 'open' ? $controller->open('AbCdEf0123456789') : $controller->save('AbCdEf0123456789', '{"format":1,"revision":1,"name":"Ada","sent":false,"items":[]}', 0);
-			self::assertSame(403, $response->getStatus());
-			self::assertSame(['error' => 'notReviewable'], $response->getData());
-		}
+		$response = $action === 'open' ? $controller->open('AbCdEf0123456789') : $controller->save('AbCdEf0123456789', '{"format":1,"revision":1,"name":"Ada","sent":false,"items":[]}', 0);
+		self::assertSame(403, $response->getStatus());
+		self::assertSame(['error' => 'notReviewable'], $response->getData());
 		self::assertFalse($store->isReviewable($share));
 	}
 
