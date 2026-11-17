@@ -58,3 +58,21 @@ it('moves focus to the step heading', () => {
   act(() => model.setStep('summary'))
   expect(document.activeElement).toBe(el.querySelector('h2'))
 })
+
+
+it.each(['comment', 'summary'] as const)('disables sending from %s with an explanation inside the step', step => {
+  const { model, el, send } = setup('')
+  const selector = step === 'comment' ? '#gr-fin-continue' : '#gr-send'
+  for (const status of ['', 'Saved', 'Saving…', 'Review link copied.']) {
+    act(() => { model.setStep(step); model.setHead(head({ canSend: false, status })) })
+    expect(el.querySelector<HTMLButtonElement>(selector)?.disabled).toBe(true)
+    expect(el.querySelector('[role="status"]')?.textContent).toBe('Add a change or a comment before sending.')
+    click(el.querySelector(selector))
+    expect(model.step.value).toBe(step); expect(send).not.toHaveBeenCalled()
+  }
+  act(() => model.setHead(head({ canSend: false, editable: false, status: 'This review is read-only.' })))
+  expect(el.querySelector('[role="status"]')?.textContent).toBe('This review is read-only.')
+  act(() => model.setHead(head()))
+  expect(el.querySelector<HTMLButtonElement>(selector)?.disabled).toBe(false)
+  expect(el.querySelector('[role="status"]')?.textContent ?? '').toBe('')
+})

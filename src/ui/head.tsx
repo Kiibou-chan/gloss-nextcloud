@@ -9,6 +9,7 @@ export function Head({ model, session }: { model: PanelModel; session: PanelComm
   const editing = useSignal(false)
   const commit = (value: string) => { const name = value.trim(); if (name && name !== model.head.value.name) void session.setName(name) }
   const draftName = useComputed(() => draft.value.saved === model.head.value.name ? draft.value.name : model.head.value.name)
+  const status = view.status === 'Enter your name to start.' && draftName.value.trim() ? '' : view.status
   return <>
     <div id="gr-title" class="gr-title">{view.title}</div>
     <div class="gr-views" role="group" aria-label="View" hidden={!view.hasPdf}>
@@ -21,7 +22,7 @@ export function Head({ model, session }: { model: PanelModel; session: PanelComm
       <form class="gr-welcome-card" onSubmit={event => { event.preventDefault(); commit(draftName.value) }}>
         <h2>{view.title}</h2>
         <label>Your name <input id="gr-name" type="text" maxLength={100} autoComplete="name" value={draftName.value} ref={focusOnce} onInput={event => { draft.value = { saved: model.head.value.name, name: event.currentTarget.value } }} onChange={event => commit(event.currentTarget.value)} /></label>
-        <p class="gr-welcome-status" role="status">{view.status}</p>
+        <p class="gr-welcome-status" role="status">{status}</p>
         <button type="submit" class="primary" disabled={!draftName.value.trim()}>Start reviewing</button>
       </form>
     </section>}
@@ -32,6 +33,6 @@ export function Head({ model, session }: { model: PanelModel; session: PanelComm
     </form>}
     {view.reviewable !== false && <button id="gr-finish" type="button" class="primary" disabled={!view.canSend} onClick={() => model.setStep('comment')}>Finish review</button>}
     {!!view.pdfNote && view.hasPdf && view.view !== 'editor' && <div class="gr-pdf-note-line" title={view.pdfNote}>{view.pdfNote}</div>}
-    <div id="gr-status" class="gr-status" role="status" title={view.status}>{view.status}</div>
+    <div id="gr-status" class="gr-status" role="status" title={status}>{status}</div>
   </>
 }

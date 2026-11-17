@@ -224,3 +224,18 @@ describe('the off-PDF line', () => {
     expect(el.querySelector('[data-id="b"] .gr-off-pdf')?.textContent).toBe('Not shown on the PDF.')
   })
 })
+
+
+it('hides the welcome hint while a name is typed and restores it when cleared', () => {
+  const model = createPanelModel(), el = slot()
+  act(() => { model.setHead(head({ name: '', status: 'Enter your name to start.' })); dispose.push(mountHead(el, model, commands())) })
+  const name = el.querySelector<HTMLInputElement>('#gr-name')!
+  const status = () => el.querySelector('.gr-welcome [role="status"]')?.textContent ?? ''
+  expect(status()).toBe('Enter your name to start.')
+  act(() => { name.value = 'Ada'; name.dispatchEvent(new Event('input', { bubbles: true })) })
+  expect(status()).toBe('')
+  act(() => { name.value = ''; name.dispatchEvent(new Event('input', { bubbles: true })) })
+  expect(status()).toBe('Enter your name to start.')
+  act(() => { name.value = 'Ada'; name.dispatchEvent(new Event('input', { bubbles: true })); model.setHead(head({ name: '', status: 'Name could not be saved.' })) })
+  expect(status()).toBe('Name could not be saved.')
+})

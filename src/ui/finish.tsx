@@ -1,3 +1,4 @@
+import { Unplaced } from './unplaced'
 import { OverallField } from './overall'
 import { Cards, Count } from './panel'
 import type { PanelCommands, PanelModel } from './panel-model'
@@ -6,14 +7,16 @@ const focusHeading = (el: HTMLElement | null) => { if (el && document.activeElem
 
 export function Finish({ model, session }: { model: PanelModel; session: PanelCommands }) {
   const step = model.step.value, head = model.head.value
+  const reason = !head.canSend ? (!head.editable && head.status.trim() ? head.status : 'Add a change or a comment before sending.') : ''
   if (step === 'comment') {
     return <div class="gr-fin-comment">
       <h2 tabIndex={-1} ref={focusHeading}>Finish your review</h2>
       <Count model={model} id="" />
       <OverallField model={model} session={session} />
+      <p class="gr-fin-status" role="status">{reason}</p>
       <div class="gr-fin-actions">
         <button type="button" id="gr-fin-back" onClick={() => model.setStep('review')}>Back to review</button>
-        <button type="button" id="gr-fin-continue" class="primary" onClick={() => model.setStep('summary')}>Continue</button>
+        <button type="button" id="gr-fin-continue" class="primary" disabled={!head.canSend} onClick={() => model.setStep('summary')}>Continue</button>
       </div>
     </div>
   }
@@ -27,6 +30,8 @@ export function Finish({ model, session }: { model: PanelModel; session: PanelCo
       {overall ? <div class="gr-fin-text">{model.overall.value}</div> : <div class="gr-fin-text gr-fin-none">No overall comment</div>}
       <h3>Your changes and comments</h3>
       <Cards model={model} session={session} id="" />
+      <Unplaced model={model} heading="h3" />
+      <p class="gr-fin-status" role="status">{reason}</p>
       <div class="gr-fin-actions">
         <button type="button" id="gr-fin-summary-back" onClick={() => model.setStep('comment')}>Back</button>
         <button type="button" id="gr-send" class="primary" disabled={!head.canSend} onClick={() => void session.send()}>Send review</button>

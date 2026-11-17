@@ -5,6 +5,8 @@ import { EditorView } from '@codemirror/view'
 import { EditorSelection } from '@codemirror/state'
 import { redo, undo } from '@codemirror/commands'
 import { syntaxTree } from '@codemirror/language'
+import { ReviewSession } from '../../../src/app/session'
+import { fakes } from '../../app/fakes'
 import type { Change, EditorPort } from '../../../src/app/ports'
 
 let editor: EditorPort
@@ -219,4 +221,60 @@ it.each([true, false])('handles the physical comment shortcut with editable=%s w
   expect(attempt).not.toHaveBeenCalled()
   expect(edit).not.toHaveBeenCalled()
   expect(editor.text()).toBe('alpha beta\ngamma')
+})
+
+
+const largePaste = Array.from({ length: 300 }, (_, i) => `Synthetic paragraph ${i}: alpha beta gamma.\nA second synthetic line.\n`).join('\n')
+it.each(['append', 'selection'] as const)('undoes and redoes a large multi-paragraph paste in one step: %s', mode => {
+  const original = editor.text(), from = mode === 'append' ? original.length : 3, to = mode === 'append' ? from : 12
+  view.dispatch({ changes: { from, to, insert: largePaste }, userEvent: 'input.paste' })
+  const pasted = original.slice(0, from) + largePaste + original.slice(to)
+  expect(editor.text()).toBe(pasted)
+  expect(undo(view)).toBe(true); expect(editor.text()).toBe(original)
+  expect(redo(view)).toBe(true); expect(editor.text()).toBe(pasted)
+})
+
+it.each([false, true])('preserves paste undo and redo through session save, with overlapping comment=%s', async commented => {
+  const f = fakes(), session = new ReviewSession({ ...f.ports, editor })
+  try {
+    await session.start(); await session.setName('Ada')
+    const original = editor.text()
+    if (commented) session.commentOn({ from: 6, to: 10 }, 'Synthetic comment on beta')
+    const setText = vi.spyOn(editor, 'setText')
+    view.dispatch({ changes: { from: 3, to: 12, insert: largePaste }, userEvent: 'input.paste' })
+    const pasted = original.slice(0, 3) + largePaste + original.slice(12)
+    expect(editor.text()).toBe(pasted)
+    await f.advance(5000)
+    expect(f.api.save).toHaveBeenCalled()
+    expect(f.head().status).toBe('Saved')
+    expect(JSON.parse(f.api.save.mock.lastCall![1]).items.some((item: { kind: string }) => item.kind === 'proposal')).toBe(true)
+    expect(setText).not.toHaveBeenCalled()
+    expect(undo(view)).toBe(true); expect(editor.text()).toBe(original)
+    await f.advance(5000)
+    expect(redo(view)).toBe(true); expect(editor.text()).toBe(pasted)
+    await f.advance(5000)
+    expect(f.head().status).toBe('Saved')
+    if (commented) expect(f.api.save.mock.lastCall![1]).toContain('Synthetic comment on beta')
+    expect(setText).not.toHaveBeenCalled()
+  } finally { session.dispose() }
+})
+
+it('preserves paste history when saving reconciles an editor and review mismatch', async () => {
+  const f = fakes(), session = new ReviewSession({ ...f.ports, editor })
+  try {
+    await session.start(); await session.setName('Ada')
+    const original = editor.text()
+    session.commentOn({ from: 6, to: 10 }, 'Synthetic comment retained through reconciliation')
+    // Simulate a missed edit notification so SessionSave.body must rebuild the review.
+    editor.onEdit(() => {})
+    view.dispatch({ changes: { from: 3, to: 12, insert: largePaste }, userEvent: 'input.paste' })
+    const pasted = editor.text()
+    session.setOverall('Synthetic save trigger')
+    await f.advance(5000)
+    expect(f.diagnostic).toHaveBeenCalledWith('The editor and review differed; the review was rebuilt.')
+    expect(f.head().status).toBe('Saved')
+    expect(f.api.save.mock.lastCall![1]).toContain('Synthetic comment retained through reconciliation')
+    expect(undo(view)).toBe(true); expect(editor.text()).toBe(original)
+    expect(redo(view)).toBe(true); expect(editor.text()).toBe(pasted)
+  } finally { session.dispose() }
 })

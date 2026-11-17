@@ -198,3 +198,7 @@ body[data-themes*="dark"] #gloss-review .gr-views button[aria-pressed="true"] { 
 .gr-fin-summary .gr-items li { cursor: default; }
 .gr-fin-summary .gr-items button { display: none; }
 .gr-fin-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; }
+
+.gr-fin-status { margin: 0; color: var(--gr-ink-2); font-size: 13px; }
+.gr-fin-status:empty { display: none; }
+.gr-fin-summary .gr-unplaced h3 { margin: 0 0 0.5rem; }

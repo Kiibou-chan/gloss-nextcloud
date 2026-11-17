@@ -16,7 +16,7 @@ await mkdir(out, { recursive: true });
 const browser = await ({ chromium, firefox }[engine]).launch();
 try {
   for (const colour of ['light', 'dark']) {
-    const context = await browser.newContext({ colorScheme: colour, viewport: { width: 1600, height: 1000 } });
+    const context = await browser.newContext({ colorScheme: colour, ignoreHTTPSErrors: true, permissions: engine === 'chromium' ? ['clipboard-read', 'clipboard-write'] : [], viewport: { width: 1600, height: 1000 } });
     const records = new Map();
     let releasePdf;
     const pdfGate = new Promise(done => { releasePdf = done; });
@@ -29,7 +29,7 @@ try {
       ${pdfCss}\n${css}
       [contenteditable] { font-family: system-ui, sans-serif; }
       </style><body><p>Synthetic review fixture, ${engine}, ${colour}.</p><div id="gloss-review" data-token="synthetic" data-worker="/pdf.worker.js" data-reviewable="${reviewable ? 1 : 0}" data-has-pdf="1"><header class="gr-head"></header><main class="gr-body"><article id="gr-text" class="gr-text"></article><article id="gr-pdf" class="gr-pdf" hidden></article><aside class="gr-side"></aside></main></div><script src="/gloss-review.js"></script></body></html>`;
-    await context.route('http://gloss.invalid/**', async route => {
+    await context.route('https://gloss.invalid/**', async route => {
       const path = new URL(route.request().url()).pathname;
       if (path === '/gloss-review.js') return route.fulfill({ contentType: 'text/javascript', body: bundle });
       if (path === '/pdf.worker.js') return route.fulfill({ contentType: 'text/javascript', body: worker });
@@ -68,10 +68,40 @@ try {
       await capture('finish-comment' + (text ? '' : '-empty'));
       await page.getByRole('button', { name: 'Continue', exact: true }).click(); await capture('finish-summary' + (text ? '' : '-empty'));
     };
-    await page.goto('http://gloss.invalid/r/review', { waitUntil: 'networkidle' });
+    await page.goto('https://gloss.invalid/r/review', { waitUntil: 'networkidle' });
     await expect(page.locator('#gr-status')).toHaveText('Enter your name to start.'); await capture('initial');
-    await page.locator('#gr-name').fill('Ada Example'); await capture('welcome-typed'); await page.getByRole('button', { name: 'Start reviewing', exact: true }).click();
+    await page.locator('#gr-name').fill('Ada Example'); await expect(page.locator('.gr-welcome-status')).toHaveText(''); await capture('welcome-typed'); await page.getByRole('button', { name: 'Start reviewing', exact: true }).click();
     await expect(page.locator('.gr-name-quiet')).toHaveText('Reviewing as Ada Example');
+    // Use the real clipboard and keyboard paste, then wait for the save/rebuild path.
+    const largePaste = Array.from({ length: 120 }, (_, i) => `Synthetic paragraph ${i}: imaginary plants and clouds.\nAnother invented line.\n`).join('\n');
+    // Reconstruct the saved document to check all text, including lines outside CodeMirror's viewport.
+    const savedText = () => {
+      const record = [...records.values()].at(-1);
+      if (!record) return null;
+      let text = source;
+      for (const item of record.items.filter(item => item.kind === 'proposal').sort((a, b) => b.from - a.from)) {
+        text = text.slice(0, item.from) + item.proposal + text.slice(item.from + item.quote.exact.length);
+      }
+      return text;
+    };
+    await expect(content).toHaveAttribute('contenteditable', 'true');
+    await content.click(); await content.press('Control+End');
+    await page.evaluate(text => navigator.clipboard.writeText(text), largePaste);
+    await content.press('Control+v');
+    await expect(page.locator('#gr-status')).toHaveText('Saved', { timeout: 20_000 });
+    await expect.poll(savedText).toBe(source + largePaste);
+    await content.press('Control+z');
+    await expect(page.locator('#gr-status')).toHaveText('Saved', { timeout: 20_000 });
+    await expect.poll(savedText).toBe(source);
+    await expect(content).toHaveText(source.replaceAll('\n', ''));
+    await content.press('Control+Shift+z');
+    await expect(page.locator('#gr-status')).toHaveText('Saved', { timeout: 20_000 });
+    await expect.poll(savedText).toBe(source + largePaste);
+    await capture('paste-redone');
+    // Restore the fixture for the remaining page scenes.
+    await content.press('Control+z');
+    await expect(page.locator('#gr-status')).toHaveText('Saved', { timeout: 20_000 });
+    await expect.poll(savedText).toBe(source);
     await content.click(); await content.press('Control+a');
     await expect(page.locator('#gr-form')).toBeHidden();
     await page.getByRole('button', { name: 'Comment on selection', exact: true }).click();
@@ -116,7 +146,7 @@ try {
     await page.getByRole('button', { name: 'Send review', exact: true }).click();
     await expect(page.locator('#gr-status')).toHaveText('Review sent. Thank you.');
     await expect(page.locator('.gr-name-quiet')).toBeDisabled(); await expect(page.locator('textarea#gr-overall')).toHaveCount(0); await capture('sent');
-    await page.goto('http://gloss.invalid/r/plain');
+    await page.goto('https://gloss.invalid/r/plain');
     await expect(page.locator('#gr-status')).toHaveText('This link is not set up for reviewing.');
     await expect(page.locator('textarea#gr-overall')).toHaveCount(0); await capture('unreviewable');
     const key = 'Abcdef1234567890', at = '2026-11-15T20:00:00.000Z', from = source.indexOf('grow');
@@ -125,7 +155,7 @@ try {
     await page.evaluate(({ key, record, at }) => {
       localStorage.setItem('gloss-review:synthetic:' + key, JSON.stringify({ review: JSON.stringify(record), revision: 3, pending: null, saved: true, dirty: true, at }));
     }, { key, record, at });
-    await page.goto(`http://gloss.invalid/r/conflict#${key}`);
+    await page.goto(`https://gloss.invalid/r/conflict#${key}`);
     await expect(page.locator('#gr-status')).toContainText('were not restored');
     await page.getByRole('button', { name: 'Show the changes from this browser' }).click(); await capture('kept-changes');
     await context.close();

@@ -2,7 +2,7 @@ import { expect, it } from 'vitest'
 import { ReviewSession } from '../../src/app/session'
 import { fakes } from '../app/fakes'
 import { createPanelModel } from '../../src/ui/panel-model'
-import { mountPanel } from '../../src/ui/mount'
+import { mountPanel, mountFinish } from '../../src/ui/mount'
 
 const key = 'Abcdef1234567890', other = 'Zyxwvu9876543210'
 const settle = async () => { for (let n = 0; n < 30; n++) await Promise.resolve() }
@@ -44,4 +44,23 @@ it.each([
   expect(panel.querySelector('ins')?.textContent ?? '').toBe(shown)
   if (!quote.trim() && !shown) expect(panel.textContent).toContain('(line break)')
   s.dispose(); unmount()
+})
+
+
+it('lists unplaced items under a small summary heading and updates them live', async () => {
+  const f = fakes(), model = createPanelModel(), panel = document.createElement('div')
+  const s = new ReviewSession({ ...f.ports, panel: model })
+  const unmount = mountFinish(panel, model, s)
+  try {
+    model.setStep('summary')
+    model.setUnplaced([{ id: 'synthetic', quote: '<old>', proposal: '<new>', comments: [{ text: '<note>', at: f.clock.now() }] }])
+    const section = panel.querySelector('[aria-label="Could not place"]')
+    expect(section?.querySelector('h3')?.textContent).toBe('Could not place')
+    expect(section?.querySelector('del')?.textContent).toBe('<old>')
+    expect(section?.querySelector('ins')?.textContent).toBe('<new>')
+    expect(section?.textContent).toContain('<note>')
+    expect(section?.querySelector('note')).toBeNull()
+    model.setUnplaced([])
+    expect(panel.querySelector('[aria-label="Could not place"]')).toBeNull()
+  } finally { s.dispose(); unmount() }
 })
