@@ -15,6 +15,8 @@ use OCA\Gloss\Service\SentNotifier;
 use OCA\Gloss\Service\SharedFiles;
 use OCP\AppFramework\Http\Attribute\BruteForceProtection;
 use OCP\AppFramework\Http\Attribute\AnonRateLimit;
+use OCP\Constants;
+use OCP\Share;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\IRequest;
@@ -26,14 +28,112 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ReviewControllerTest extends TestCase {
-	private function controller(Folder $folder, ?ReviewStore $store = null, ?IShare $share = null, ?SentNotifier $notifier = null): ReviewController {
+	private function controller(Folder $folder, ?ReviewStore $store = null, ?IShare $share = null, ?SentNotifier $notifier = null, int $permissions = Constants::PERMISSION_READ, int $type = Share::TYPE_LINK, bool $hideDownload = false, bool $readable = true): ReviewController {
 		$share ??= $this->createMock(IShare::class);
 		$share->method('getNode')->willReturn($folder);
+		$share->method('getPermissions')->willReturn($permissions);
+		$share->method('getShareType')->willReturn($type);
+		$share->method('getHideDownload')->willReturn($hideDownload);
+		$folder->method('isReadable')->willReturn($readable);
 		$manager = $this->createMock(IManager::class);
 		$manager->method('getShareByToken')->with('synthetic-link')->willReturn($share);
 		$controller = new ReviewController('gloss', $this->createMock(IRequest::class), $this->createMock(ISession::class), $manager, $this->createMock(IURLGenerator::class), new DraftLocator(), $store ?? $this->createMock(ReviewStore::class), $notifier ?? $this->createMock(SentNotifier::class), new SharedFiles());
 		$controller->setToken('synthetic-link');
 		return $controller;
+	}
+
+	public static function inaccessibleShares(): array {
+		$rows = [];
+		foreach (['draft', 'pdf', 'page', 'file'] as $action) {
+			$rows["$action create-only"] = [$action, Constants::PERMISSION_CREATE, false, true, Share::TYPE_LINK];
+			$rows["$action hide-download"] = [$action, Constants::PERMISSION_READ, true, true, Share::TYPE_LINK];
+			$rows["$action unreadable"] = [$action, Constants::PERMISSION_READ, false, false, Share::TYPE_LINK];
+			$rows["$action remote"] = [$action, Constants::PERMISSION_READ, false, true, Share::TYPE_REMOTE];
+		}
+		return $rows;
+	}
+
+	#[DataProvider('inaccessibleShares')]
+	public function testServingEndpointsRejectInaccessibleShares(string $action, int $permissions, bool $hidden, bool $readable, int $type): void {
+		$controller = $this->controller($this->createMock(Folder::class), permissions: $permissions, type: $type, hideDownload: $hidden, readable: $readable);
+		$this->expectException(\OCP\Files\NotFoundException::class);
+		$controller->$action();
+	}
+
+	#[DataProvider('inaccessibleShares')]
+	public function testInvalidSharesFailTokenValidation(string $action, int $permissions, bool $hidden, bool $readable, int $type): void {
+		$controller = $this->controller($this->createMock(Folder::class), permissions: $permissions, type: $type, hideDownload: $hidden, readable: $readable);
+		self::assertFalse($controller->isValidToken());
+	}
+
+	public function testReadOnlyLinkAndEmailPassTokenValidation(): void {
+		foreach ([Share::TYPE_LINK, Share::TYPE_EMAIL] as $type) {
+			self::assertTrue($this->controller($this->createMock(Folder::class), type: $type)->isValidToken());
+		}
+	}
+
+	public static function unreviewableShares(): array {
+		return [
+			'update' => [Constants::PERMISSION_READ | Constants::PERMISSION_UPDATE, Share::TYPE_LINK, 'owner'],
+			'create' => [Constants::PERMISSION_READ | Constants::PERMISSION_CREATE, Share::TYPE_LINK, 'owner'],
+			'delete' => [Constants::PERMISSION_READ | Constants::PERMISSION_DELETE, Share::TYPE_LINK, 'owner'],
+			'reshare' => [Constants::PERMISSION_READ, Share::TYPE_LINK, 'recipient'],
+			'federated' => [Constants::PERMISSION_READ, Share::TYPE_REMOTE, 'owner'],
+			'email' => [Constants::PERMISSION_READ, Share::TYPE_EMAIL, 'owner'],
+		];
+	}
+
+	#[DataProvider('unreviewableShares')]
+	public function testOpenAndSaveRefuseUnreviewableSharesWithValidMarker(int $permissions, int $type, string $sharedBy): void {
+		$marker = $this->createMock(File::class);
+		$marker->method('getContent')->willReturn('{}');
+		$folder = $this->createMock(Folder::class);
+		$folder->method('get')->with('.gloss-review')->willReturn($marker);
+		$share = $this->createMock(IShare::class);
+		$share->method('getSharedBy')->willReturn($sharedBy);
+		$share->method('getShareOwner')->willReturn('owner');
+		$root = $this->createMock(\OCP\Files\IRootFolder::class);
+		$root->expects(self::never())->method('getUserFolder');
+		$locks = $this->createMock(\OCP\Lock\ILockingProvider::class);
+		$locks->expects(self::never())->method('acquireLock');
+		$store = new ReviewStore($root, $locks);
+		$controller = $this->controller($folder, $store, $share, permissions: $permissions, type: $type);
+		foreach (['open', 'save'] as $action) {
+			$response = $action === 'open' ? $controller->open('AbCdEf0123456789') : $controller->save('AbCdEf0123456789', '{"format":1,"revision":1,"name":"Ada","sent":false,"items":[]}', 0);
+			self::assertSame(403, $response->getStatus());
+			self::assertSame(['error' => 'notReviewable'], $response->getData());
+		}
+		self::assertFalse($store->isReviewable($share));
+	}
+
+	private function pageServices(): void {
+		require_once dirname(__DIR__, 2) . '/stubs/Server.php';
+		$language = $this->createMock(\OCP\L10N\IFactory::class);
+		$language->method('findLanguage')->willReturn('en');
+		\OC::$server = $this->createMock(\OCP\IServerContainer::class);
+		\OC::$server->method('get')->willReturnMap([
+			[\OCP\L10N\IFactory::class, $language],
+			[\OCP\IInitialStateService::class, $this->createMock(\OCP\IInitialStateService::class)],
+		]);
+	}
+
+	#[DataProvider('unreviewableShares')]
+	public function testPageReportsUnreviewableSharesWithValidMarker(int $permissions, int $type, string $sharedBy): void {
+		if ($type === Share::TYPE_REMOTE) {
+			// S1 refuses federated shares before the page is rendered.
+			$this->expectException(\OCP\Files\NotFoundException::class);
+		}
+		$this->pageServices();
+		$marker = $this->createMock(File::class);
+		$marker->method('getContent')->willReturn('{}');
+		$folder = $this->createMock(Folder::class);
+		$folder->method('get')->with('.gloss-review')->willReturn($marker);
+		$share = $this->createMock(IShare::class);
+		$share->method('getSharedBy')->willReturn($sharedBy);
+		$share->method('getShareOwner')->willReturn('owner');
+		$store = new ReviewStore($this->createMock(\OCP\Files\IRootFolder::class), $this->createMock(\OCP\Lock\ILockingProvider::class));
+		$controller = $this->controller($folder, $store, $share, permissions: $permissions, type: $type);
+		self::assertFalse($controller->page()->getParams()['reviewable']);
 	}
 
 	public function testPasswordlessLinksStayAuthenticatedWithoutSession(): void {
@@ -51,18 +151,14 @@ final class ReviewControllerTest extends TestCase {
 	}
 
 	public function testReviewPassesGeneratedCsrfRouteAndFragmentScope(): void {
-		require_once dirname(__DIR__, 2) . '/stubs/Server.php';
-		$language = $this->createMock(\OCP\L10N\IFactory::class);
-		$language->method('findLanguage')->willReturn('en');
-		\OC::$server = $this->createMock(\OCP\IServerContainer::class);
-		\OC::$server->method('get')->willReturnMap([
-			[\OCP\L10N\IFactory::class, $language],
-			[\OCP\IInitialStateService::class, $this->createMock(\OCP\IInitialStateService::class)],
-		]);
+		$this->pageServices();
 		$folder = $this->createMock(Folder::class);
 		$folder->method('getDirectoryListing')->willReturn([]);
 		$share = $this->createMock(IShare::class);
 		$share->method('getNode')->willReturn($folder);
+		$share->method('getShareType')->willReturn(Share::TYPE_LINK);
+		$share->method('getPermissions')->willReturn(Constants::PERMISSION_READ);
+		$folder->method('isReadable')->willReturn(true);
 		$manager = $this->createMock(IManager::class);
 		$manager->method('getShareByToken')->willReturn($share);
 		$urls = $this->createMock(IURLGenerator::class);
@@ -185,7 +281,6 @@ final class ReviewControllerTest extends TestCase {
 		$folder->method('getPath')->willReturn('/u/files/Review');
 		$folder->method('get')->willReturnCallback(static fn (string $p) => $p === 'refs.bib' ? $file : throw new \OCP\Files\NotFoundException());
 		$share = $this->createMock(IShare::class);
-		$share->method('getPermissions')->willReturn(\OCP\Constants::PERMISSION_READ);
 		$controller = $this->controller($folder, null, $share);
 		$ok = $controller->file('refs.bib');
 		self::assertInstanceOf(\OCP\AppFramework\Http\StreamResponse::class, $ok);

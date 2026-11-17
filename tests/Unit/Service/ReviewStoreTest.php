@@ -7,6 +7,9 @@ namespace OCA\Gloss\Tests\Unit\Service;
 use OCA\Gloss\Exception\ReviewRefused;
 use OCA\Gloss\Service\ReviewKey;
 use OCA\Gloss\Service\ReviewStore;
+use OCP\Constants;
+use OCP\Share;
+use OCA\Gloss\Service\SentNotifier;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
@@ -50,6 +53,9 @@ final class ReviewStoreTest extends TestCase {
 	private function store(?string $marker = '{}', bool $exists = true, bool $blocked = false): ReviewStore {
 		$folder = $this->createMock(Folder::class);
 		$folder->method('getName')->willReturn('Review');
+		$draft = $this->createMock(File::class);
+		$draft->method('getName')->willReturn('paper.typ');
+		$folder->method('getDirectoryListing')->willReturn([$draft]);
 		$markerFile = $this->createMock(File::class);
 		$markerFile->method('getSize')->willReturn(strlen($marker ?? ''));
 		$markerFile->method('getContent')->willReturn($marker ?? '');
@@ -80,7 +86,9 @@ final class ReviewStoreTest extends TestCase {
 		$this->share->method('getShareOwner')->willReturn('synthetic-owner');
 		$this->share->method('getNodeId')->willReturn(23);
 		$this->share->method('getToken')->willReturn('synthetic-link');
-		$this->share->expects(self::never())->method('getPermissions');
+		$this->share->method('getPermissions')->willReturn(Constants::PERMISSION_READ);
+		$this->share->method('getShareType')->willReturn(Share::TYPE_LINK);
+		$this->share->method('getSharedBy')->willReturn('synthetic-owner');
 		$user = $this->createMock(Folder::class);
 		$user->method('getFirstNodeById')->with(23)->willReturn($folder);
 		$root = $this->createMock(IRootFolder::class);
@@ -138,14 +146,34 @@ final class ReviewStoreTest extends TestCase {
 		self::assertSame($row['expected']['written'] ? 1 : 0, $this->writes);
 	}
 
-	public function testSaveResultCarriesDraftFileForInitialSaveAndRetry(): void {
+	public function testSaveResultCarriesServerDraftFileForInitialSaveAndRetry(): void {
 		$store = $this->store();
 		$key = ReviewKey::parse(self::KEY);
 		$body = json_encode(array_merge(json_decode($this->body(), true), ['draft' => ['file' => 'chapter.typ']]));
 		foreach ([0, 1] as $attempt) {
 			$result = $store->save($this->share, $key, $body, 0);
-			self::assertSame('chapter.typ', $result->draftFile);
+			self::assertSame('paper.typ', $result->draftFile);
 		}
+	}
+
+	public function testSendNotificationUsesServerDraftNameInsteadOfReviewBody(): void {
+		$store = $this->store();
+		$body = json_encode(array_merge(json_decode($this->body(sent: true), true), ['draft' => ['file' => 'reviewer-chosen.typ']]));
+		$result = $store->save($this->share, ReviewKey::parse(self::KEY), $body, 0);
+		self::assertTrue($result->sentNow);
+		$notification = $this->createMock(\OCP\Notification\INotification::class);
+		foreach (['setApp', 'setUser', 'setDateTime', 'setObject'] as $setter) {
+			$notification->method($setter)->willReturnSelf();
+		}
+		$notification->expects(self::once())->method('setSubject')->with('review_sent', [
+			'name' => 'Ada Lovelace', 'draft' => 'paper.typ', 'fileId' => 42, 'path' => $result->path,
+		])->willReturnSelf();
+		$manager = $this->createMock(\OCP\Notification\IManager::class);
+		$manager->method('createNotification')->willReturn($notification);
+		$manager->expects(self::once())->method('notify')->with($notification);
+		$logger = $this->createMock(\Psr\Log\LoggerInterface::class);
+		$logger->expects(self::never())->method('error');
+		(new SentNotifier($manager, $this->createMock(\OCP\AppFramework\Utility\ITimeFactory::class), $logger))->notify($this->share, $result);
 	}
 
 	public static function nonStringDraftFiles(): array {
@@ -153,7 +181,7 @@ final class ReviewStoreTest extends TestCase {
 	}
 
 	#[DataProvider('nonStringDraftFiles')]
-	public function testNonStringDraftFileOnlyClearsNotificationMetadata(mixed $draftFile): void {
+	public function testNonStringDraftFileDoesNotChangeServerNotificationMetadata(mixed $draftFile): void {
 		$store = $this->store();
 		$key = ReviewKey::parse(self::KEY);
 		$body = json_encode(array_merge(json_decode($this->body(name: 'Synthetic reviewer'), true), ['draft' => ['file' => $draftFile]]));
@@ -161,7 +189,7 @@ final class ReviewStoreTest extends TestCase {
 			$result = $store->save($this->share, $key, $body, 0);
 			self::assertSame(1, $result->revision);
 			self::assertFalse($result->sentNow);
-			self::assertSame('', $result->draftFile);
+			self::assertSame('paper.typ', $result->draftFile);
 			self::assertSame($body, $store->open($this->share, $key)->content);
 			self::assertSame(1, $this->writes);
 		}
