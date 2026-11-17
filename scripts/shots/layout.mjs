@@ -26,7 +26,7 @@ export function layoutScene({ ready, status }) {
   return {
     folder: 'Typst',
     navigate: false,
-    run: async ({ page, context, state }) => {
+    run: async ({ page, context, state, capture }) => {
       await context.addInitScript(() => {
         window.__shift = 0; window.__shiftLog = [];
         try {
@@ -48,6 +48,7 @@ export function layoutScene({ ready, status }) {
         const now = await geometry(page);
         seen.push(`${view}: ${JSON.stringify(differences(first, now))}`);
         expect(differences(first, now), `${view} geometry`).toEqual([]);
+        await capture(`-${view}`);
       }
       await ready(page);
       await expect(status(page)).toBeVisible();
