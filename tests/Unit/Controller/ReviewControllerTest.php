@@ -96,6 +96,22 @@ final class ReviewControllerTest extends TestCase {
 		}
 	}
 
+	public static function downloadAttributesThatPass(): array {
+		return [
+			'download true' => [true],
+			'attributes without a download entry' => [null],
+		];
+	}
+
+	#[DataProvider('downloadAttributesThatPass')]
+	public function testDownloadAttributeThatDoesNotForbidDownloadPassesTokenValidation(?bool $download): void {
+		$share = $this->createMock(IShare::class);
+		$attributes = $this->createMock(IAttributes::class);
+		$attributes->method('getAttribute')->with('permissions', 'download')->willReturn($download);
+		$share->method('getAttributes')->willReturn($attributes);
+		self::assertTrue($this->controller($this->createMock(Folder::class), share: $share)->isValidToken());
+	}
+
 	public static function unreviewableShares(): array {
 		return [
 			'update' => [Constants::PERMISSION_READ | Constants::PERMISSION_UPDATE, IShare::TYPE_LINK, 'owner'],
