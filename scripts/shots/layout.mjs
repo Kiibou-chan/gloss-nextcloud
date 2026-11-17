@@ -28,16 +28,16 @@ export function layoutScene({ ready, status }) {
     navigate: false,
     run: async ({ page, context, state }) => {
       await context.addInitScript(() => {
-        window.__shift = 0;
+        window.__shift = 0; window.__shiftLog = [];
         try {
-          new PerformanceObserver(list => { for (const entry of list.getEntries()) if (!entry.hadRecentInput) window.__shift += entry.value; }).observe({ type: 'layout-shift', buffered: true });
+          new PerformanceObserver(list => { for (const entry of list.getEntries()) if (!entry.hadRecentInput) { window.__shift += entry.value; window.__shiftLog.push({ value: entry.value, at: Math.round(entry.startTime), nodes: entry.sources.map(source => (source.node?.id || source.node?.className || source.node?.nodeName) + ' ' + JSON.stringify(source.previousRect) + '>' + JSON.stringify(source.currentRect)) }); } }).observe({ type: 'layout-shift', buffered: true });
         } catch { window.__shift = null; }
       });
       await page.goto(state.links.Typst, { waitUntil: 'networkidle' });
       await expect(page.locator('#gr-text .cm-content')).toBeVisible();
       await page.waitForTimeout(1500);
       const shift = await page.evaluate(() => window.__shift);
-      if (shift !== null) expect(shift, `layout shift while loading`).toBeLessThan(loadShiftLimit);
+      if (shift !== null) expect(shift, `layout shift while loading ${JSON.stringify(await page.evaluate(() => window.__shiftLog))}`).toBeLessThan(loadShiftLimit);
       const first = await geometry(page);
       const seen = [];
       for (const [label, view] of [...views, views[0]]) {

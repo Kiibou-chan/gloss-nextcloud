@@ -152,8 +152,8 @@ describe('review islands', () => {
     click(el.querySelector('#gr-pdf-look-original')); expect(session.setPdfLook).toHaveBeenLastCalledWith('original')
     expect(el.querySelector('#gr-pdf-look-changes')?.getAttribute('aria-pressed')).toBe('true'); expect(el.querySelector('#gr-pdf-look-new')?.getAttribute('aria-pressed')).toBe('false')
     click(el.querySelector('#gr-pdf-look-new')); expect(session.setPdfLook).toHaveBeenLastCalledWith('new')
-    act(() => model.setHead(head({ view: 'both', pdfLook: 'new' }))); expect(group.hasAttribute('hidden')).toBe(false); expect(el.querySelector('#gr-pdf-look-new')?.getAttribute('aria-pressed')).toBe('true')
-    act(() => model.setHead(head({ view: 'editor' }))); expect(group.hasAttribute('hidden')).toBe(true)
+    act(() => model.setHead(head({ view: 'both', pdfLook: 'new' }))); expect(group.hasAttribute('hidden')).toBe(false); expect(group.classList.contains('gr-off')).toBe(false); expect(el.querySelector('#gr-pdf-look-new')?.getAttribute('aria-pressed')).toBe('true')
+    act(() => model.setHead(head({ view: 'editor' }))); expect(group.hasAttribute('hidden')).toBe(false); expect(group.classList.contains('gr-off')).toBe(true)
     act(() => model.setHead(head({ view: 'pdf', hasPdf: false }))); expect(group.hasAttribute('hidden')).toBe(true)
   })
   it('shows the quiet PDF line on a row of its own after the controls and nothing when it is empty', () => {

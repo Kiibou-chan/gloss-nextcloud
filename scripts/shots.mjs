@@ -69,8 +69,7 @@ async function main() {
               status: document.querySelector('.gr-status')?.textContent,
               editorStyle: [...document.querySelectorAll('.cm-content')].map(element => ({ color: getComputedStyle(element).color, opacity: getComputedStyle(element).opacity, background: getComputedStyle(element).backgroundColor, editable: element.contentEditable })),
               editorAncestors: [...document.querySelectorAll('.cm-content')].flatMap(element => { const ancestors = []; for (let node = element.parentElement; node && ancestors.length < 7; node = node.parentElement) ancestors.push({ tag: node.tagName, class: node.className, opacity: getComputedStyle(node).opacity, overflow: getComputedStyle(node).overflow, ...rect(node) }); return ancestors; }),
-              footer: [...document.querySelectorAll('footer')].map(rect),
-              cards: [...document.querySelectorAll('.gr-items > li')].map(rect),
+                            cards: [...document.querySelectorAll('.gr-items > li')].map(rect),
               panel: [...document.querySelectorAll('.gr-side')].map(rect),
               pdf: [...document.querySelectorAll('#gr-pdf canvas')].map(canvas => {
                 const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
@@ -124,15 +123,14 @@ async function main() {
             if (width === 640) await page.locator('#content').evaluate(element => { element.scrollTo({ top: element.scrollHeight, behavior: 'instant' }); });
             await page.waitForTimeout(150);
             const geometry = await page.evaluate(() => {
-              const panel = document.querySelector('.gr-side'), footer = document.querySelector('footer');
+              const panel = document.querySelector('.gr-side'), root = document.querySelector('#gloss-review');
               const rect = element => { const r = element.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, height: r.height }; };
               const last = panel.querySelector('.gr-items > li:last-child');
               const ancestors = []; for (let node = panel.parentElement; node; node = node.parentElement) ancestors.push({ tag: node.tagName, id: node.id, overflow: getComputedStyle(node).overflowY, flex: getComputedStyle(node).flex, minHeight: getComputedStyle(node).minHeight, heightStyle: getComputedStyle(node).height, scrollTop: node.scrollTop, scrollHeight: node.scrollHeight, clientHeight: node.clientHeight, ...rect(node) });
-              return { ancestors, panel: rect(panel), last: rect(last), footer: rect(footer), paddingBottom: getComputedStyle(document.querySelector('#gloss-review')).paddingBottom, buttons: [...last.querySelectorAll('button')].map(rect), overflow: getComputedStyle(panel).overflowY, columns: getComputedStyle(document.querySelector('.gr-body')).gridTemplateColumns };
+              return { ancestors, panel: rect(panel), last: rect(last), root: rect(root), pageScrolls: document.documentElement.scrollHeight > innerHeight, buttons: [...last.querySelectorAll('button')].map(rect), overflow: getComputedStyle(panel).overflowY, columns: getComputedStyle(document.querySelector('.gr-body')).gridTemplateColumns };
             });
             await writeFile(resolve(out, `${prefix}-layout-${width}.json`), JSON.stringify(geometry, null, 2));
-            if (geometry.panel.bottom > geometry.footer.top + 1 || geometry.last.bottom > geometry.footer.top + 1 || geometry.overflow !== (width === 640 ? 'visible' : 'auto')) throw new Error(`Footer overlap at ${width}px.`);
-            if (parseFloat(geometry.paddingBottom) < geometry.footer.height || geometry.buttons.some(button => button.bottom > geometry.footer.top || button.top < 0)) throw new Error(`Footer covers a button or page padding is too small at ${width}px.`);
+            if (geometry.pageScrolls || (width !== 640 && (geometry.panel.bottom > geometry.root.bottom + 1 || geometry.overflow !== 'auto'))) throw new Error(`Review page overflows the window at ${width}px.`);
             if (width === 640 && geometry.columns.split(' ').length !== 1) throw new Error('Narrow layout is not stacked.');
             await capture(`-layout-${width}`);
           }

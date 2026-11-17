@@ -10,10 +10,7 @@ export function CommentForm({ model, session }: { model: PanelModel; session: Pa
   }, [form])
   return <>
     <div id="gr-hint" class="gr-hint" hidden={!!form || reviewable === false || !!sent}>
-      Type in the editor to propose new wording; your changes show struck and underlined.
-      {' '}Select words with the pointer in the editor or the PDF to comment on them.
-      {' '}Use Ctrl+Alt+M or Comment on selection for a keyboard selection.
-      <button type="button" onClick={() => session.commentSelection?.()}>Comment on selection</button>
+      <button type="button" title="Ctrl+Alt+M" onClick={() => session.commentSelection?.()}>Comment on selection</button>
     </div>
     <form id="gr-form" class="gr-form" hidden={!form} onSubmit={event => {
       event.preventDefault()

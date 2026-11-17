@@ -33,7 +33,7 @@ it('keeps half-typed text and target through editor and PDF selections, and Canc
 })
 it('offers Comment on selection and documents Ctrl+Alt+M, with a bounded quote', async () => {
   const { root, model } = await setup()
-  expect(root.querySelector('#gr-hint')?.textContent).toContain('Ctrl+Alt+M')
+  expect(root.querySelector('#gr-hint')?.textContent).toBe('Comment on selection'); expect(root.querySelector('#gr-hint button')?.getAttribute('title')).toContain('Ctrl+Alt+M')
   expect([...root.querySelectorAll('button')].some(b => b.textContent === 'Comment on selection')).toBe(true)
   act(() => model.setHead({ ...model.head.value, form: { target: { from: 0, to: 5 }, quote: 'x'.repeat(2000), focus: false } }))
   expect(root.querySelector('#gr-quote')!.textContent!.length).toBeLessThanOrEqual(201)
@@ -83,14 +83,14 @@ it('uses a small Delete button like Add comment', async () => {
   expect(button.classList.contains('gr-small')).toBe(true)
 })
 it.each([
-  ['quiet PDF line row', /\.gr-pdf-note-line\s*\{[^}]*flex-basis:\s*100%/],
-  ['status row', /\.gr-status\s*\{[^}]*flex-basis:\s*100%/],
+  ['quiet PDF line shares the status row', /\.gr-pdf-note-line\s*\{[^}]*order:\s*98/],
+  ['reserved status row', /\.gr-status\s*\{[^}]*min-height:\s*1\.75em/],
   ['panel-width review link', /\.gr-review-link input[^}]*width:\s*100%/],
   ['panel-width kept changes', /\.gr-conflict textarea[^}]*width:\s*100%/],
   ['monospace content', /\.gr-text \.cm-content\s*\{[^}]*font-family:\s*ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace/],
   ['bounded quote', /\.gr-quote\s*\{[^}]*max-height:/],
   ['PDF page border', /\.gr-page\s*\{[^}]*border:\s*1px solid var\(--color-border\)/],
-  ['PDF pane background', /\.gr-pdf\s*\{[^}]*background:\s*var\(--color-background-hover\)/],
+  ['PDF pane background', /\.gr-pdf\s*\{[^}]*background:\s*var\(--gr-panel\)/],
   ['PDF contained box', /\.gr-pdf\s*\{[^}]*box-sizing:\s*border-box/],
 ])('styles the %s', (_name, pattern) => {
   expect(readFileSync('css/review.css', 'utf8')).toMatch(pattern)
