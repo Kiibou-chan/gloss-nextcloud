@@ -21,19 +21,26 @@ use OCP\Files\Folder;
 use OCP\IRequest;
 use OCP\ISession;
 use OCP\IURLGenerator;
+use OCP\Share\IAttributes;
 use OCP\Share\IManager;
 use OCP\Share\IShare;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ReviewControllerTest extends TestCase {
-	private function controller(Folder $folder, ?ReviewStore $store = null, ?IShare $share = null, ?SentNotifier $notifier = null, int $permissions = Constants::PERMISSION_READ, int $type = IShare::TYPE_LINK, bool $hideDownload = false, bool $readable = true): ReviewController {
+	private function controller(Folder $folder, ?ReviewStore $store = null, ?IShare $share = null, ?SentNotifier $notifier = null, int $permissions = Constants::PERMISSION_READ, int $type = IShare::TYPE_LINK, bool $hideDownload = false, bool $readable = true, bool $shareable = true, ?bool $download = null): ReviewController {
 		$share ??= $this->createMock(IShare::class);
 		$share->method('getNode')->willReturn($folder);
 		$share->method('getPermissions')->willReturn($permissions);
 		$share->method('getShareType')->willReturn($type);
 		$share->method('getHideDownload')->willReturn($hideDownload);
 		$folder->method('isReadable')->willReturn($readable);
+		$folder->method('isShareable')->willReturn($shareable);
+		if ($download !== null) {
+			$attributes = $this->createMock(IAttributes::class);
+			$attributes->method('getAttribute')->with('permissions', 'download')->willReturn($download);
+			$share->method('getAttributes')->willReturn($attributes);
+		}
 		$manager = $this->createMock(IManager::class);
 		$manager->method('getShareByToken')->with('synthetic-link')->willReturn($share);
 		$controller = new ReviewController('gloss', $this->createMock(IRequest::class), $this->createMock(ISession::class), $manager, $this->createMock(IURLGenerator::class), new DraftLocator(), $store ?? $this->createMock(ReviewStore::class), $notifier ?? $this->createMock(SentNotifier::class), new SharedFiles());
@@ -43,17 +50,19 @@ final class ReviewControllerTest extends TestCase {
 
 	public static function inaccessibleShares(): array {
 		$rows = [];
-		foreach (['draft', 'pdf', 'page', 'file'] as $action) {
+		foreach (['draft', 'pdf', 'page', 'file', 'open', 'save'] as $action) {
 			$rows["$action create-only"] = [$action, Constants::PERMISSION_CREATE, false, true, IShare::TYPE_LINK];
 			$rows["$action hide-download"] = [$action, Constants::PERMISSION_READ, true, true, IShare::TYPE_LINK];
 			$rows["$action unreadable"] = [$action, Constants::PERMISSION_READ, false, false, IShare::TYPE_LINK];
 			$rows["$action remote"] = [$action, Constants::PERMISSION_READ, false, true, IShare::TYPE_REMOTE];
+			$rows["$action download-attribute"] = [$action, Constants::PERMISSION_READ, false, true, IShare::TYPE_LINK, true, false];
+			$rows["$action non-shareable"] = [$action, Constants::PERMISSION_READ, false, true, IShare::TYPE_LINK, false];
 		}
 		return $rows;
 	}
 
 	#[DataProvider('inaccessibleShares')]
-	public function testServingEndpointsRejectInaccessibleShares(string $action, int $permissions, bool $hidden, bool $readable, int $type): void {
+	public function testServingEndpointsRejectInaccessibleShares(string $action, int $permissions, bool $hidden, bool $readable, int $type, bool $shareable = true, ?bool $download = null): void {
 		$source = $this->createMock(File::class);
 		$source->method('getName')->willReturn('paper.typ');
 		$source->method('getContent')->willReturn('Synthetic private draft.');
@@ -62,15 +71,22 @@ final class ReviewControllerTest extends TestCase {
 		$pdf->method('fopen')->willReturnCallback(static fn () => fopen('php://memory', 'rb'));
 		$folder = $this->createMock(Folder::class);
 		$folder->method('getDirectoryListing')->willReturn([$source, $pdf]);
-		$controller = $this->controller($folder, permissions: $permissions, type: $type, hideDownload: $hidden, readable: $readable);
+		$store = $this->createMock(ReviewStore::class);
+		$store->expects(self::never())->method('open');
+		$store->expects(self::never())->method('save');
+		$controller = $this->controller($folder, $store, permissions: $permissions, type: $type, hideDownload: $hidden, readable: $readable, shareable: $shareable, download: $download);
 		if ($action === 'page') { $this->pageServices(); }
 		$this->expectException(\OCP\Files\NotFoundException::class);
-		$controller->$action();
+		match ($action) {
+			'open' => $controller->open('AbCdEf0123456789'),
+			'save' => $controller->save('AbCdEf0123456789', '{"format":1,"revision":1,"name":"Ada","sent":false,"items":[]}', 0),
+			default => $controller->$action(),
+		};
 	}
 
 	#[DataProvider('inaccessibleShares')]
-	public function testInvalidSharesFailTokenValidation(string $action, int $permissions, bool $hidden, bool $readable, int $type): void {
-		$controller = $this->controller($this->createMock(Folder::class), permissions: $permissions, type: $type, hideDownload: $hidden, readable: $readable);
+	public function testInvalidSharesFailTokenValidation(string $action, int $permissions, bool $hidden, bool $readable, int $type, bool $shareable = true, ?bool $download = null): void {
+		$controller = $this->controller($this->createMock(Folder::class), permissions: $permissions, type: $type, hideDownload: $hidden, readable: $readable, shareable: $shareable, download: $download);
 		self::assertFalse($controller->isValidToken());
 	}
 
@@ -116,6 +132,9 @@ final class ReviewControllerTest extends TestCase {
 		$locks->expects(self::never())->method('acquireLock');
 		$store = new ReviewStore($root, $locks, new DraftLocator());
 		$controller = $this->controller($folder, $store, $share, permissions: $permissions, type: $type);
+		if ($type === IShare::TYPE_REMOTE) {
+			$this->expectException(\OCP\Files\NotFoundException::class);
+		}
 		$response = $action === 'open' ? $controller->open('AbCdEf0123456789') : $controller->save('AbCdEf0123456789', '{"format":1,"revision":1,"name":"Ada","sent":false,"items":[]}', 0);
 		self::assertSame(403, $response->getStatus());
 		self::assertSame(['error' => 'notReviewable'], $response->getData());
@@ -176,6 +195,7 @@ final class ReviewControllerTest extends TestCase {
 		$share->method('getShareType')->willReturn(IShare::TYPE_LINK);
 		$share->method('getPermissions')->willReturn(Constants::PERMISSION_READ);
 		$folder->method('isReadable')->willReturn(true);
+		$folder->method('isShareable')->willReturn(true);
 		$manager = $this->createMock(IManager::class);
 		$manager->method('getShareByToken')->willReturn($share);
 		$urls = $this->createMock(IURLGenerator::class);
@@ -190,7 +210,12 @@ final class ReviewControllerTest extends TestCase {
 	public function testPasswordVerificationAndRedirect(): void {
 		$share = $this->createMock(IShare::class);
 		$share->method('getPassword')->willReturn('synthetic-hash');
-		$share->method('getNode')->willReturn($this->createMock(Folder::class));
+		$folder = $this->createMock(Folder::class);
+		$folder->method('isReadable')->willReturn(true);
+		$folder->method('isShareable')->willReturn(true);
+		$share->method('getNode')->willReturn($folder);
+		$share->method('getShareType')->willReturn(IShare::TYPE_LINK);
+		$share->method('getPermissions')->willReturn(Constants::PERMISSION_READ);
 		$manager = $this->createMock(IManager::class);
 		$manager->method('getShareByToken')->willReturn($share);
 		$manager->expects(self::exactly(2))->method('checkPassword')->with($share, self::anything())->willReturn(false, true);
@@ -238,9 +263,9 @@ final class ReviewControllerTest extends TestCase {
 	public function testOnlyNewSendNotifiesAndLandedRetryDoesNot(): void {
 		$share = $this->createMock(IShare::class);
 		$store = $this->createMock(ReviewStore::class);
-		$draftSave = new SaveResult(1, false, 42, '/owner/files/Review reviews/ada.json', 'Ada', 'paper.typ');
+		$draftSave = new SaveResult(1, false, 42, '/owner/files/Review reviews/ada.json', 'Ada', '');
 		$send = new SaveResult(2, true, 42, $draftSave->path, 'Ada', 'chapter.typ');
-		$retry = new SaveResult(2, false, 42, $draftSave->path, 'Ada', 'chapter.typ');
+		$retry = new SaveResult(2, false, 42, $draftSave->path, 'Ada', '');
 		$store->expects(self::exactly(3))->method('save')->willReturn($draftSave, $send, $retry);
 		$notifier = $this->createMock(SentNotifier::class);
 		$notifier->expects(self::once())->method('notify')->with($share, $send);
@@ -325,7 +350,7 @@ final class ReviewControllerTest extends TestCase {
 		$body = '{"format":1,"revision":2,"name":"Ada","items":[],"sent":false}';
 		$key = 'AbCdEf0123456789';
 		$store->expects(self::once())->method('open')->with($share, ReviewKey::parse($key))->willReturn(new StoredReview($body, 2));
-		$store->expects(self::once())->method('save')->with($share, ReviewKey::parse($key), $body, 1)->willReturn(new SaveResult(2, false, 42, '/synthetic/review.json', 'Ada', 'paper.typ'));
+		$store->expects(self::once())->method('save')->with($share, ReviewKey::parse($key), $body, 1)->willReturn(new SaveResult(2, false, 42, '/synthetic/review.json', 'Ada', ''));
 		$controller = $this->controller($this->createMock(Folder::class), $store, $share);
 		self::assertSame(['review' => json_decode($body, true), 'revision' => 2, 'rawReview' => $body], $controller->open($key)->getData());
 		$response = $controller->save($key, $body, 1);

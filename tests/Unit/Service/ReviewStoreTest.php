@@ -50,7 +50,7 @@ final class ReviewStoreTest extends TestCase {
 		return $file;
 	}
 
-	private function store(?string $marker = '{}', bool $exists = true, bool $blocked = false): ReviewStore {
+	private function store(?string $marker = '{}', bool $exists = true, bool $blocked = false, ?DraftLocator $locator = null): ReviewStore {
 		$folder = $this->createMock(Folder::class);
 		$folder->method('getName')->willReturn('Review');
 		$draft = $this->createMock(File::class);
@@ -94,7 +94,7 @@ final class ReviewStoreTest extends TestCase {
 		$root = $this->createMock(IRootFolder::class);
 		$root->method('getUserFolder')->with('synthetic-owner')->willReturn($user);
 		$this->locks = $this->createMock(ILockingProvider::class);
-		return new ReviewStore($root, $this->locks, new DraftLocator());
+		return new ReviewStore($root, $this->locks, $locator ?? new DraftLocator());
 	}
 
 	public static function markers(): array {
@@ -146,14 +146,30 @@ final class ReviewStoreTest extends TestCase {
 		self::assertSame($row['expected']['written'] ? 1 : 0, $this->writes);
 	}
 
-	public function testSaveResultCarriesServerDraftFileForInitialSaveAndRetry(): void {
-		$store = $this->store();
+	public static function nonSendSaves(): array {
+		return [
+			'initial draft' => [0, 1, false, 0],
+			'updated draft' => [1, 2, false, 1],
+			'draft retry' => [1, 1, false, 0],
+			'Send retry' => [1, 1, true, 0],
+		];
+	}
+
+	#[DataProvider('nonSendSaves')]
+	public function testNonSendSaveNeverLocatesDraft(int $storedRevision, int $incomingRevision, bool $sent, int $baseRevision): void {
+		$locator = $this->createMock(DraftLocator::class);
+		$locator->expects(self::never())->method('locate');
+		$store = $this->store(locator: $locator);
+		$this->share->getNode()->expects(self::never())->method('getDirectoryListing');
 		$key = ReviewKey::parse(self::KEY);
-		$body = json_encode(array_merge(json_decode($this->body(), true), ['draft' => ['file' => 'chapter.typ']]));
-		foreach ([0, 1] as $attempt) {
-			$result = $store->save($this->share, $key, $body, 0);
-			self::assertSame('paper.typ', $result->draftFile);
+		$body = json_encode(array_merge(json_decode($this->body($incomingRevision, $sent), true), ['draft' => ['file' => 'chapter.typ']]));
+		if ($storedRevision > 0) {
+			$this->files['ada' . $key->fileSuffix()] = $storedRevision === $incomingRevision ? $body : $this->body($storedRevision);
 		}
+		$result = $store->save($this->share, $key, $body, $baseRevision);
+		self::assertSame($incomingRevision, $result->revision);
+		self::assertFalse($result->sentNow);
+		self::assertSame('', $result->draftFile);
 	}
 
 	public function testSendNotificationUsesServerDraftNameInsteadOfReviewBody(): void {
@@ -189,7 +205,7 @@ final class ReviewStoreTest extends TestCase {
 			$result = $store->save($this->share, $key, $body, 0);
 			self::assertSame(1, $result->revision);
 			self::assertFalse($result->sentNow);
-			self::assertSame('paper.typ', $result->draftFile);
+			self::assertSame('', $result->draftFile);
 			self::assertSame($body, $store->open($this->share, $key)->content);
 			self::assertSame(1, $this->writes);
 		}
