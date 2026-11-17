@@ -54,7 +54,15 @@ final class ReviewControllerTest extends TestCase {
 
 	#[DataProvider('inaccessibleShares')]
 	public function testServingEndpointsRejectInaccessibleShares(string $action, int $permissions, bool $hidden, bool $readable, int $type): void {
-		$controller = $this->controller($this->createMock(Folder::class), permissions: $permissions, type: $type, hideDownload: $hidden, readable: $readable);
+		$source = $this->createMock(File::class);
+		$source->method('getName')->willReturn('paper.typ');
+		$source->method('getContent')->willReturn('Synthetic private draft.');
+		$pdf = $this->createMock(File::class);
+		$pdf->method('getName')->willReturn('paper.pdf');
+		$pdf->method('fopen')->willReturnCallback(static fn () => fopen('php://memory', 'rb'));
+		$folder = $this->createMock(Folder::class);
+		$folder->method('getDirectoryListing')->willReturn([$source, $pdf]);
+		$controller = $this->controller($folder, permissions: $permissions, type: $type, hideDownload: $hidden, readable: $readable);
 		if ($action === 'page') { $this->pageServices(); }
 		$this->expectException(\OCP\Files\NotFoundException::class);
 		$controller->$action();
@@ -135,6 +143,7 @@ final class ReviewControllerTest extends TestCase {
 		$marker = $this->createMock(File::class);
 		$marker->method('getContent')->willReturn('{}');
 		$folder = $this->createMock(Folder::class);
+		$folder->method('getDirectoryListing')->willReturn([]);
 		$folder->method('get')->with('.gloss-review')->willReturn($marker);
 		$share = $this->createMock(IShare::class);
 		$share->method('getSharedBy')->willReturn($sharedBy);
