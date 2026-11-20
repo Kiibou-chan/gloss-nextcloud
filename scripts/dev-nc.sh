@@ -143,7 +143,7 @@ JS
   printf '{}\n' > build/nc/Long/.gloss-review
   local mounts=()
   if [[ "$copy" = false ]]; then mounts=(--mount "type=bind,src=$root,dst=/var/www/html/custom_apps/gloss,readonly"); fi
-  docker run -d --name "$container" --label "gloss.dev.root=$root" --label "gloss.dev.copy=$copy" -p "127.0.0.1:$port:80" "${mounts[@]}" nextcloud:33-apache >/dev/null
+  docker run -d --name "$container" --label "gloss.dev.root=$root" --label "gloss.dev.copy=$copy" -p "127.0.0.1:$port:80" "${mounts[@]}" "${GLOSS_DEV_NC_IMAGE:-nextcloud:33-apache}" >/dev/null
   local ready=0
   for ((i=0; i<180; i++)); do
     if docker exec "$container" test -f /var/www/html/lib/versioncheck.php && curl --silent --fail "http://127.0.0.1:$port/status.php" >/dev/null; then ready=1; break; fi

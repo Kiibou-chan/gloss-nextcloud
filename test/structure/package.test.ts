@@ -78,7 +78,7 @@ test('the archive version exceeds the base release', () => {
   const { root } = fixture()
   const xml = execFileSync('tar', ['-xOzf', archive(root, scratch()), 'gloss/appinfo/info.xml'], { encoding: 'utf8' })
   const version = xml.match(/<version>([^<]+)<\/version>/)![1]!
-  expect(version).toBe('0.2.0')
+  expect(version).toBe('0.2.1')
   const base = spawnSync('git', ['show', 'origin/main:appinfo/info.xml'], { encoding: 'utf8' })
   const tag = spawnSync('git', ['describe', '--tags', '--abbrev=0'], { encoding: 'utf8' })
   const tagged = tag.status === 0 ? spawnSync('git', ['show', `${tag.stdout.trim()}:appinfo/info.xml`], { encoding: 'utf8' }).stdout : ''
